@@ -1,26 +1,144 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* لوحة ألوان الهوية البصرية */
+  --primary-navy: #0b1325;
+  --primary-navy-dark: #070d1a;
+  --primary-navy-light: #162444;
+  
+  /* لوحة ألوان الهوية: الذهب الملكي المصقول (Satin Rolex Gold) */
+  --accent-gold: #c5a059;
+  --accent-gold-bright: #d4af37;
+  --accent-gold-light: #f3e5ab;
+  --accent-gold-dark: #997736;
+  --accent-gold-subtle: rgba(197, 160, 89, 0.12);
+
+  --background: #060b17;
+  --foreground: #f8fafc;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* التمرير الانسيابي الفاخر مع snap لطيف لا يتعارض مع القراءة */
+html {
+  scroll-behavior: smooth;
+  scroll-snap-type: y proximity;
+  font-family: var(--font-cairo), 'Cairo', system-ui, -apple-system, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+.snap-section {
+  scroll-snap-align: start;
+  scroll-snap-stop: normal;
+  scroll-margin-top: 5rem;
+}
+
+/* دعم حركات التمرير الأصلية فائقة السلاسة (Pure Modern CSS Scroll-Driven Animations) */
+@keyframes revealCardOnScroll {
+  from {
+    opacity: 0;
+    transform: translateY(50px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(45px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-45px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* للمتصفحات الحديثة Chrome / Edge: تعمل تلقائياً 100% مع حركة إصبعك وعجلة الماوس */
+@supports (animation-timeline: view()) {
+  .scroll-card-reveal {
+    animation: revealCardOnScroll ease-out both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 35%;
+  }
+
+  .chauffeur-left {
+    animation: slideInFromRight ease-out both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 35%;
+  }
+
+  .chauffeur-right {
+    animation: slideInFromLeft ease-out both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 35%;
+  }
+}
+
+/* Fallback للمتصفحات التي لا تدعم view() بعد */
+@supports not (animation-timeline: view()) {
+  .scroll-card-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .chauffeur-left, .chauffeur-right {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-cairo), 'Cairo', system-ui, -apple-system, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
+
+*, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, a, span {
+  font-family: var(--font-cairo), 'Cairo', system-ui, -apple-system, sans-serif !important;
+}
+
+@keyframes carReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes spotlightGlow {
+  0%, 100% {
+    opacity: 0.15;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.28;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+.animate-car-reveal {
+  animation: carReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-spotlight-glow {
+  animation: spotlightGlow 6s ease-in-out infinite;
+}
+
+
