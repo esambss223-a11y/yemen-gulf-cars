@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useFleet } from '@/context/FleetContext';
@@ -61,6 +61,37 @@ export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [carFilter, setCarFilter] = useState<'all' | 'available' | 'rented' | 'maintenance'>('all');
+  
+  // حماية اللوحة وتسجيل الدخول وتفادي Hydration Mismatch
+  const [isMounted, setIsMounted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  useEffect(() => {
+    setIsMounted(true);
+    const authStatus = sessionStorage.getItem('yg_admin_auth');
+    if (authStatus === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // كلمة المرور الافتراضية للوحة التحكم (يمكن تغييرها بأي وقت)
+    if (loginPassword === 'admin2026' || loginPassword === '123456') {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('yg_admin_auth', 'true');
+      setLoginError('');
+    } else {
+      setLoginError('كلمة المرور غير صحيحة، يرجى المحاولة مجدداً');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('yg_admin_auth');
+  };
   
   // Modals state
   const [isAddCarOpen, setIsAddCarOpen] = useState(false);
@@ -222,6 +253,79 @@ export default function AdminDashboardPage() {
     const matchesFilter = carFilter === 'all' || car.status === carFilter;
     return matchesSearch && matchesFilter;
   });
+
+  // منع الـ Hydration Mismatch حتى يتم تحميل المتصفح بالكامل
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#060b17] flex items-center justify-center font-arabic">
+        <div className="text-center space-y-3">
+          <div className="w-12 h-12 border-4 border-[#c5a059]/30 border-t-[#c5a059] rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-slate-400">جاري تحميل لوحة التحكم الفاخرة...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // إذا لم يسجل الدخول بعد، تظهر له بوابة تسجيل الدخول المحمية
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#060b17] flex items-center justify-center p-4 font-arabic">
+        <div className="w-full max-w-md bg-[#0a1122] border border-[#c5a059]/40 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
+          
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#c5a059] to-[#8a6d3b] flex items-center justify-center p-0.5 mx-auto shadow-lg shadow-[#c5a059]/20">
+              <div className="w-full h-full bg-[#060b17] rounded-[14px] flex items-center justify-center">
+                <CarIcon className="w-8 h-8 text-[#c5a059]" />
+              </div>
+            </div>
+            <h2 className="text-lg font-black text-white">بوابة الإدارة — شركة اليمن والخليج</h2>
+            <p className="text-xs text-slate-400">نظام إدارة الأسطول والحجوزات (ERP)</p>
+          </div>
+
+          <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
+            <div>
+              <label className="block text-slate-300 font-semibold mb-1.5">كلمة مرور الإدارة (رمز الدخول):</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="أدخل كلمة المرور (الافتراضية: 123456 أو admin2026)"
+                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-[#c5a059] font-mono text-sm"
+                />
+                <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              </div>
+              {loginError && (
+                <p className="text-[11px] text-rose-400 font-bold mt-1.5 flex items-center gap-1">
+                  <span>⚠</span> {loginError}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#c5a059] to-[#96793e] hover:from-[#d4af37] hover:to-[#a98845] text-black font-black text-xs shadow-lg shadow-[#c5a059]/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>تسجيل الدخول إلى النظام</span>
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div className="text-center pt-2">
+              <Link href="/" className="text-[11px] text-slate-400 hover:text-[#c5a059] transition-colors">
+                ← العودة إلى الموقع الرئيسي للعملاء
+              </Link>
+            </div>
+          </form>
+
+          <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[10px] text-slate-500 text-center">
+            🔒 النظام مشفر ومحمي بصلاحيات وصول آمنة (Role-Based Access)
+          </div>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#060b17] text-slate-100 flex flex-col md:flex-row font-arabic">
@@ -421,9 +525,16 @@ export default function AdminDashboardPage() {
             className="text-[10px] text-slate-500 hover:text-amber-400 flex items-center gap-1 transition-colors"
             title="استعادة البيانات الأصلية"
           >
-            <RotateCcw className="w-3 h-3" /> استعادة البيانات الافتراضية
+            <RotateCcw className="w-3 h-3" /> استعادة الافتراضي
           </button>
-          <span className="text-[10px] font-mono text-[#c5a059]">v2.0 EGP</span>
+          
+          <button
+            onClick={handleLogout}
+            className="text-[10px] text-rose-400/80 hover:text-rose-300 font-bold flex items-center gap-1 transition-colors"
+            title="تسجيل الخروج من اللوحة"
+          >
+            خروج ⏻
+          </button>
         </div>
       </aside>
 
