@@ -87,45 +87,72 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS);
   const [isCloudConnected, setIsCloudConnected] = useState(false);
   const [visitorStats, setVisitorStats] = useState<VisitorStats>({
-    today: 142,
-    thisMonth: 3890,
-    total: 24750,
-    liveNow: 12,
-    lastUpdated: 'الآن'
+    today: 0,
+    thisMonth: 0,
+    total: 0,
+    liveNow: 1,
+    lastUpdated: 'جاري التحميل...'
   });
 
-  // 1. مزامنة البيانات وتتبع زوار الموقع
+  // 1. مزامنة البيانات وتتبع زوار الموقع الحقيقيين
   useEffect(() => {
-    // تتبع زائر جديد وحساب اليوم والشهر
-    try {
-      const todayKey = `yg_visit_date_${new Date().toISOString().slice(0, 10)}`;
-      const hasVisitedToday = sessionStorage.getItem(todayKey);
-      
-      const savedStatsRaw = localStorage.getItem('yg_visitor_stats');
-      let currentStats: VisitorStats = savedStatsRaw ? JSON.parse(savedStatsRaw) : {
-        today: 142,
-        thisMonth: 3890,
-        total: 24750,
-        liveNow: 12,
-        lastUpdated: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
-      };
+    async function trackAndLoadVisits() {
+      try {
+        // إنشاء معرف جلسة فريد لكل متصفح
+        let sessionId = sessionStorage.getItem('yg_visitor_session');
+        if (!sessionId) {
+          sessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          sessionStorage.setItem('yg_visitor_session', sessionId);
+          
+          // تسجيل زيارة حقيقية في Supabase
+          const deviceType = window.innerWidth < 640 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop';
+          await supabase.from('site_visits').insert({
+            session_id: sessionId,
+            device_type: deviceType,
+            page_path: window.location.pathname,
+          });
+        }
 
-      if (!hasVisitedToday) {
-        sessionStorage.setItem(todayKey, '1');
-        currentStats = {
-          ...currentStats,
-          today: currentStats.today + 1,
-          thisMonth: currentStats.thisMonth + 1,
-          total: currentStats.total + 1,
-          liveNow: Math.floor(Math.random() * 8) + 9, // محاكاة زوار مباشرين (8-17)
-          lastUpdated: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
-        };
-        localStorage.setItem('yg_visitor_stats', JSON.stringify(currentStats));
+        // قراءة عدد الزيارات الحقيقية من جدول site_visits في Supabase
+        const todayDateStr = new Date().toISOString().slice(0, 10);
+        const startOfMonthStr = `${todayDateStr.slice(0, 7)}-01`;
+
+        const [
+          { count: todayCount },
+          { count: monthCount },
+          { count: totalCount }
+        ] = await Promise.all([
+          supabase.from('site_visits').select('*', { count: 'exact', head: true }).gte('visited_at', `${todayDateStr}T00:00:00Z`),
+          supabase.from('site_visits').select('*', { count: 'exact', head: true }).gte('visited_at', `${startOfMonthStr}T00:00:00Z`),
+          supabase.from('site_visits').select('*', { count: 'exact', head: true })
+        ]);
+
+        if (totalCount !== null && totalCount !== undefined) {
+          setVisitorStats({
+            today: todayCount || 1,
+            thisMonth: monthCount || 1,
+            total: totalCount || 1,
+            liveNow: 1,
+            lastUpdated: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+          });
+        } else {
+          // في حال لم يتم رفع الجدول بعد على Supabase: قراءة الزيارات الحقيقية من LocalStorage
+          const savedLocalVisits = parseInt(localStorage.getItem('yg_real_total_visits') || '0', 10) + 1;
+          localStorage.setItem('yg_real_total_visits', savedLocalVisits.toString());
+          setVisitorStats({
+            today: 1,
+            thisMonth: savedLocalVisits,
+            total: savedLocalVisits,
+            liveNow: 1,
+            lastUpdated: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+          });
+        }
+      } catch (err) {
+        console.warn('Real visits tracking notice:', err);
       }
-      setVisitorStats(currentStats);
-    } catch {
-      // ignore
     }
+
+    trackAndLoadVisits();
 
     async function loadData() {
       try {

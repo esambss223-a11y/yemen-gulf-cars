@@ -117,6 +117,18 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 
 -- ========================================================
 -- سياسات الأمان والحماية (Row Level Security - RLS)
+-- 7. جدول تتبع زوار الموقع الحقيقيين (site_visits)
+CREATE TABLE IF NOT EXISTS public.site_visits (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  visited_at TIMESTAMPTZ DEFAULT now(),
+  page_path TEXT DEFAULT '/',
+  device_type TEXT DEFAULT 'desktop', -- mobile, tablet, desktop
+  session_id TEXT NOT NULL,
+  created_date DATE DEFAULT CURRENT_DATE
+);
+
+-- ========================================================
+-- سياسات الأمان وتصاريح الجداول (Row Level Security - RLS)
 -- ========================================================
 ALTER TABLE public.owners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cars ENABLE ROW LEVEL SECURITY;
@@ -124,6 +136,7 @@ ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.site_visits ENABLE ROW LEVEL SECURITY;
 
 -- السماح بالقراءة والإضافة لجميع العمليات المصرح بها
 CREATE POLICY "Allow public read cars" ON public.cars FOR SELECT USING (true);
@@ -143,6 +156,9 @@ CREATE POLICY "Allow public write coupons" ON public.coupons FOR ALL USING (true
 
 CREATE POLICY "Allow public read logs" ON public.audit_logs FOR SELECT USING (true);
 CREATE POLICY "Allow public write logs" ON public.audit_logs FOR ALL USING (true);
+
+CREATE POLICY "Allow public read site_visits" ON public.site_visits FOR SELECT USING (true);
+CREATE POLICY "Allow public insert site_visits" ON public.site_visits FOR INSERT WITH CHECK (true);
 
 -- ========================================================
 -- بيانات أولية افتراضية للمشروع (Seed Data)
