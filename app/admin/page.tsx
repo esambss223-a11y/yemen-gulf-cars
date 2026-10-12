@@ -34,8 +34,9 @@ import {
   ExternalLink,
   RotateCcw
 } from 'lucide-react';
-import { Car, Booking, UserRole } from '@/types/fleet';
+import { Car, Booking, UserRole, VehicleOwner } from '@/types/fleet';
 import RentalContractModal from '@/components/admin/RentalContractModal';
+import OwnerSettlementModal from '@/components/admin/OwnerSettlementModal';
 
 type AdminTab = 'overview' | 'cars' | 'bookings' | 'invoices' | 'owners' | 'coupons' | 'audit';
 
@@ -66,6 +67,7 @@ export default function AdminDashboardPage() {
   const [isAddBookingOpen, setIsAddBookingOpen] = useState(false);
   const [selectedBookingForReturn, setSelectedBookingForReturn] = useState<Booking | null>(null);
   const [selectedBookingForContract, setSelectedBookingForContract] = useState<Booking | null>(null);
+  const [selectedOwnerForSettlement, setSelectedOwnerForSettlement] = useState<VehicleOwner | null>(null);
   const [returnKmInput, setReturnKmInput] = useState('');
 
   // Form states - Add Car
@@ -936,8 +938,16 @@ export default function AdminDashboardPage() {
                       <p className="text-xs text-slate-400 mb-1">الهاتف: <span className="font-mono text-slate-300">{owner.phone}</span></p>
                       <p className="text-xs text-slate-400 mb-3">{owner.notes}</p>
                       <div className="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
-                        <span className="text-slate-500">حصة شركة يمن الخليج:</span>
-                        <span className="font-bold text-emerald-400 font-mono">{100 - owner.ownerSharePercent}%</span>
+                        <div>
+                          <span className="text-slate-500">حصة شركة يمن الخليج: </span>
+                          <span className="font-bold text-emerald-400 font-mono">{100 - owner.ownerSharePercent}%</span>
+                        </div>
+                        <button
+                          onClick={() => setSelectedOwnerForSettlement(owner)}
+                          className="px-3 py-1.5 rounded-lg bg-[#c5a059] hover:bg-[#d4af37] text-black text-xs font-bold transition-all flex items-center gap-1 shadow-sm"
+                        >
+                          <FileText className="w-3.5 h-3.5" /> كشف حساب وتصفية الأرباح
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1336,6 +1346,16 @@ export default function AdminDashboardPage() {
         <RentalContractModal
           booking={selectedBookingForContract}
           onClose={() => setSelectedBookingForContract(null)}
+        />
+      )}
+
+      {/* 7. نافذة منبثقة: كشف حساب وتصفية أرباح المالك للطباعة (Modal: Owner Settlement) */}
+      {selectedOwnerForSettlement && (
+        <OwnerSettlementModal
+          owner={selectedOwnerForSettlement}
+          cars={cars}
+          bookings={bookings}
+          onClose={() => setSelectedOwnerForSettlement(null)}
         />
       )}
 
