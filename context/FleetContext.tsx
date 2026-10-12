@@ -31,6 +31,12 @@ interface FleetContextType {
   // حالة الاتصال بقاعدة البيانات السحابية
   isCloudConnected: boolean;
 
+  // إدارة الموظفين
+  staffList: StaffUser[];
+  addStaff: (staff: Omit<StaffUser, 'id'>) => void;
+  updateStaff: (id: string, partial: Partial<StaffUser>) => void;
+  deleteStaff: (id: string) => void;
+
   // السيارات
   cars: Car[];
   addCar: (car: Omit<Car, 'id'>) => Promise<void>;
@@ -49,6 +55,8 @@ interface FleetContextType {
   // الملاك
   owners: VehicleOwner[];
   addOwner: (owner: Omit<VehicleOwner, 'id'>) => Promise<void>;
+  updateOwner: (id: string, partial: Partial<VehicleOwner>) => void;
+  deleteOwner: (id: string) => void;
 
   // الكوبونات
   coupons: PromoCoupon[];
@@ -66,6 +74,7 @@ const FleetContext = createContext<FleetContextType | undefined>(undefined);
 
 export function FleetProvider({ children }: { children: React.ReactNode }) {
   const [currentStaff, setCurrentStaff] = useState<StaffUser>(INITIAL_STAFF[0]);
+  const [staffList, setStaffList] = useState<StaffUser[]>(INITIAL_STAFF);
   const [cars, setCars] = useState<Car[]>(INITIAL_CARS);
   const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
   const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
@@ -154,6 +163,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         // جلب الفواتير والملاك والكوبونات والسجلات
         const savedInvoices = localStorage.getItem('yg_invoices');
         if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
+
+        const savedStaff = localStorage.getItem('yg_staff');
+        if (savedStaff) setStaffList(JSON.parse(savedStaff));
 
         const savedOwners = localStorage.getItem('yg_owners');
         if (savedOwners) setOwners(JSON.parse(savedOwners));
@@ -435,7 +447,53 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     logAction('إضافة مالك/مستثمر جديد', `تمت إضافة المالك ${newOwner.name}`);
   };
 
-  // 6. الكوبونات
+  const updateOwner = (id: string, partial: Partial<VehicleOwner>) => {
+    const updated = owners.map(o => o.id === id ? { ...o, ...partial } : o);
+    setOwners(updated);
+    saveToStorage('yg_owners', updated);
+    logAction('تعديل بيانات مالك', `تم تحديث المالك ID: ${id}`);
+  };
+
+  const deleteOwner = (id: string) => {
+    const owner = owners.find(o => o.id === id);
+    const updated = owners.filter(o => o.id !== id);
+    setOwners(updated);
+    saveToStorage('yg_owners', updated);
+    logAction('حذف مالك', `تم حذف المالك: ${owner?.name}`);
+  };
+
+  // 6. إدارة الموظفين
+  const addStaff = (staffData: Omit<StaffUser, 'id'>) => {
+    const newStaff: StaffUser = {
+      ...staffData,
+      id: `staff-${Date.now()}`,
+    };
+    const updated = [...staffList, newStaff];
+    setStaffList(updated);
+    saveToStorage('yg_staff', updated);
+    logAction('إضافة موظف جديد', `تمت إضافة الموظف ${newStaff.name} بدور ${newStaff.role}`);
+  };
+
+  const updateStaff = (id: string, partial: Partial<StaffUser>) => {
+    const updated = staffList.map(s => s.id === id ? { ...s, ...partial } : s);
+    setStaffList(updated);
+    saveToStorage('yg_staff', updated);
+    logAction('تعديل حساب موظف', `تم تعديل بيانات الموظف ID: ${id}`);
+  };
+
+  const deleteStaff = (id: string) => {
+    if (staffList.length <= 1) {
+      alert('لا يمكن حذف الموظف الوحيد في النظام');
+      return;
+    }
+    const staff = staffList.find(s => s.id === id);
+    const updated = staffList.filter(s => s.id !== id);
+    setStaffList(updated);
+    saveToStorage('yg_staff', updated);
+    logAction('حذف موظف', `تم حذف حساب الموظف: ${staff?.name}`);
+  };
+
+  // 7. الكوبونات
   const applyCoupon = (code: string): PromoCoupon | null => {
     const found = coupons.find(c => c.code.toUpperCase() === code.toUpperCase() && c.active);
     return found || null;
@@ -449,6 +507,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     setOwners(INITIAL_OWNERS);
     setCoupons(INITIAL_COUPONS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
+    setStaffList(INITIAL_STAFF);
     localStorage.clear();
     logAction('إعادة ضبط المصنع', 'تم استعادة البيانات الافتراضية');
   };
@@ -460,6 +519,10 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         setCurrentStaff,
         switchStaffRole,
         isCloudConnected,
+        staffList,
+        addStaff,
+        updateStaff,
+        deleteStaff,
         cars,
         addCar,
         updateCar,
@@ -471,6 +534,8 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         addInvoice,
         owners,
         addOwner,
+        updateOwner,
+        deleteOwner,
         coupons,
         applyCoupon,
         auditLogs,

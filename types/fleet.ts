@@ -12,6 +12,7 @@ export interface StaffUser {
   username: string;
   role: UserRole;
   phone: string;
+  password?: string;
   avatar?: string;
   active: boolean;
 }
