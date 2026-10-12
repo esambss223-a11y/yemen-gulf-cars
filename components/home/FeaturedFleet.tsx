@@ -105,6 +105,7 @@ const FLEET_CARS: FleetCar[] = [
 
 import { useFleet } from "@/context/FleetContext";
 import PublicBookingModal from "@/components/home/PublicBookingModal";
+import CarGalleryModal from "@/components/home/CarGalleryModal";
 import { Car } from "@/types/fleet";
 
 type FilterKey = "all" | "available" | "unavailable";
@@ -113,6 +114,7 @@ export default function FeaturedFleet() {
   const { cars } = useFleet();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [selectedCarForBooking, setSelectedCarForBooking] = useState<{ car: Car; label: string } | null>(null);
+  const [selectedCarForGallery, setSelectedCarForGallery] = useState<Car | null>(null);
 
   // تحويل سيارات النظام إلى بنية العرض في الكتالوج
   const displayCars: FleetCar[] = cars.map(car => ({
@@ -244,13 +246,29 @@ export default function FeaturedFleet() {
                   {/* تدرج سفلي للنص */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#080f1e] via-transparent to-transparent pointer-events-none" />
 
-                  {/* مؤشر التوفر — dot هادئ */}
+                  {/* مؤشر التوفر وزر استعراض الصور */}
                   <div className="absolute top-3 right-3 flex items-center gap-1.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${car.isAvailable ? "bg-emerald-400" : "bg-slate-500"}`} />
                     <span className="text-[10px] font-semibold text-white bg-[#080f1e]/80 backdrop-blur-sm px-2 py-0.5 rounded">
                       {car.isAvailable ? "متاحة" : "محجوزة"}
                     </span>
                   </div>
+
+                  {/* زر استعراض الألبوم المتعدد */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const originalCar = cars.find(c => c.id === car.id) || cars[0];
+                      if (originalCar) {
+                        setSelectedCarForGallery(originalCar);
+                      }
+                    }}
+                    className="absolute top-3 left-3 bg-black/75 hover:bg-[#c5a059] text-white hover:text-black backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 border border-white/10"
+                    title="استعراض ألبوم الصور"
+                  >
+                    <span>📷 صور إضافية</span>
+                  </button>
 
                   {/* اسم السيارة والموديل فوق التدرج */}
                   <div className="absolute bottom-3 right-3 left-3">
@@ -345,6 +363,18 @@ export default function FeaturedFleet() {
             car={selectedCarForBooking.car}
             durationLabel={selectedCarForBooking.label}
             onClose={() => setSelectedCarForBooking(null)}
+          />
+        )}
+
+        {/* نافذة ألبوم صور السيارة للعميل */}
+        {selectedCarForGallery && (
+          <CarGalleryModal
+            car={selectedCarForGallery}
+            onClose={() => setSelectedCarForGallery(null)}
+            onBookNow={() => {
+              setSelectedCarForBooking({ car: selectedCarForGallery, label: "يومي" });
+              setSelectedCarForGallery(null);
+            }}
           />
         )}
 
