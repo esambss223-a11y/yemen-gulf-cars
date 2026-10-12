@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 const FOOTER_SECTIONS = [
   { id: "featured-fleet", label: "أسطول السيارات 2024" },
@@ -10,6 +11,11 @@ const FOOTER_SECTIONS = [
 ];
 
 export default function Footer() {
+  const pathname = usePathname();
+
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (el) {

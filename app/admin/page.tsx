@@ -489,10 +489,10 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#060b17] text-slate-100 flex flex-col md:flex-row font-arabic">
+    <div className="h-screen w-screen overflow-hidden bg-[#060b17] text-slate-100 flex flex-col md:flex-row font-arabic select-none">
       
       {/* 1. الشريط الجانبي الفاخر (Sidebar) */}
-      <aside className="w-full md:w-72 bg-[#0a1122] border-b md:border-b-0 md:border-l border-[#c5a059]/20 flex flex-col shrink-0">
+      <aside className="w-full md:w-72 bg-[#0a1122] border-b md:border-b-0 md:border-l border-[#c5a059]/20 flex flex-col shrink-0 h-full overflow-hidden">
         
         {/* ترويسة اللوحة والشعار */}
         <div className="p-5 border-b border-[#c5a059]/15 flex items-center justify-between">
@@ -1230,6 +1230,34 @@ export default function AdminDashboardPage() {
           )}
 
         </div>
+
+        {/* 3. شريط الحالة السفلي للبرنامج (ERP Software Bottom Status Bar) */}
+        <footer className="h-8 bg-[#040813] border-t border-slate-800/80 px-4 flex items-center justify-between text-[11px] text-slate-400 select-none shrink-0 font-mono z-10">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1.5 text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-sans font-bold">النظام: نشط ومتصل</span>
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="hidden sm:inline font-sans">
+              الفرع: <strong className="text-slate-300 font-sans">القاهرة - المركز الرئيسي</strong>
+            </span>
+            <span className="hidden sm:inline text-slate-600">|</span>
+            <span className="font-sans">
+              العملة: <strong className="text-[#c5a059] font-sans">جنيه مصري (EGP)</strong>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="hidden md:inline text-slate-500 font-sans">
+              الأسطول: <span className="text-white font-mono">{totalCars}</span> سيارة (<span className="text-emerald-400 font-mono">{availableCars}</span> متاحة / <span className="text-amber-400 font-mono">{rentedCars}</span> مؤجرة)
+            </span>
+            <span className="text-slate-600 hidden md:inline">|</span>
+            <span className="text-[10px] bg-slate-900 border border-slate-700/60 text-[#c5a059] px-2 py-0.5 rounded font-mono font-bold">
+              YEMEN GULF ERP v2.4
+            </span>
+          </div>
+        </footer>
 
       </main>
 
