@@ -47,12 +47,14 @@ export default function AdminDashboardPage() {
     addOwner,
     updateOwner,
     auditLogs, 
+    visitorStats,
     resetToDefault 
   } = useFleet();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [carFilter, setCarFilter] = useState<'all' | 'available' | 'rented' | 'maintenance'>('all');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // حماية اللوحة وتسجيل الدخول وتفادي Hydration Mismatch
   const [isMounted, setIsMounted] = useState(false);
@@ -374,12 +376,17 @@ export default function AdminDashboardPage() {
       {/* 1. الشريط الجانبي الفاخر (Sidebar) */}
       <AdminSidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          setIsMobileMenuOpen(false);
+        }}
         currentStaff={currentStaff}
         totalCarsCount={cars.length}
         activeBookingsCount={activeBookings.length}
         staffCount={staffList.length}
         ownersCount={owners.length}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
         resetToDefault={resetToDefault}
         handleLogout={handleLogout}
       />
@@ -395,10 +402,11 @@ export default function AdminDashboardPage() {
           currentStaff={currentStaff}
           onOpenAddBooking={() => setIsAddBookingOpen(true)}
           onOpenAddCar={openAddCarModal}
+          onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         />
 
         {/* منطقة المحتوى التفاعلي (Tabs) */}
-        <div className="p-6 flex-1 space-y-6">
+        <div className="p-3.5 sm:p-6 flex-1 space-y-6">
 
           {/* TAB 1: الإحصائيات العامة */}
           {activeTab === 'overview' && (
@@ -410,6 +418,7 @@ export default function AdminDashboardPage() {
               totalRevenueEGP={totalRevenueEGP}
               totalHeldDepositsEGP={totalHeldDepositsEGP}
               currentStaff={currentStaff}
+              visitorStats={visitorStats}
               onReturnCar={(bk) => {
                 setSelectedBookingForReturn(bk);
                 setReturnKmInput(String(bk.startKm + 350));

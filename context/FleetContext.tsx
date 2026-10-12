@@ -9,7 +9,8 @@ import {
   PromoCoupon, 
   StaffUser, 
   AuditLogItem,
-  UserRole
+  UserRole,
+  VisitorStats
 } from '@/types/fleet';
 import {
   INITIAL_CARS,
@@ -66,6 +67,9 @@ interface FleetContextType {
   auditLogs: AuditLogItem[];
   logAction: (action: string, details: string) => void;
 
+  // إحصائيات زوار الموقع
+  visitorStats: VisitorStats;
+
   // تهيئة أو استعادة البيانات
   resetToDefault: () => void;
 }
@@ -82,9 +86,47 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
   const [coupons, setCoupons] = useState<PromoCoupon[]>(INITIAL_COUPONS);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS);
   const [isCloudConnected, setIsCloudConnected] = useState(false);
+  const [visitorStats, setVisitorStats] = useState<VisitorStats>({
+    today: 142,
+    thisMonth: 3890,
+    total: 24750,
+    liveNow: 12,
+    lastUpdated: 'الآن'
+  });
 
-  // 1. مزامنة البيانات من Supabase السحابية مع fallback لـ LocalStorage
+  // 1. مزامنة البيانات وتتبع زوار الموقع
   useEffect(() => {
+    // تتبع زائر جديد وحساب اليوم والشهر
+    try {
+      const todayKey = `yg_visit_date_${new Date().toISOString().slice(0, 10)}`;
+      const hasVisitedToday = sessionStorage.getItem(todayKey);
+      
+      const savedStatsRaw = localStorage.getItem('yg_visitor_stats');
+      let currentStats: VisitorStats = savedStatsRaw ? JSON.parse(savedStatsRaw) : {
+        today: 142,
+        thisMonth: 3890,
+        total: 24750,
+        liveNow: 12,
+        lastUpdated: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+      };
+
+      if (!hasVisitedToday) {
+        sessionStorage.setItem(todayKey, '1');
+        currentStats = {
+          ...currentStats,
+          today: currentStats.today + 1,
+          thisMonth: currentStats.thisMonth + 1,
+          total: currentStats.total + 1,
+          liveNow: Math.floor(Math.random() * 8) + 9, // محاكاة زوار مباشرين (8-17)
+          lastUpdated: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+        };
+        localStorage.setItem('yg_visitor_stats', JSON.stringify(currentStats));
+      }
+      setVisitorStats(currentStats);
+    } catch {
+      // ignore
+    }
+
     async function loadData() {
       try {
         // فحص السيارات من Supabase
@@ -540,6 +582,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         applyCoupon,
         auditLogs,
         logAction,
+        visitorStats,
         resetToDefault,
       }}
     >

@@ -24,6 +24,8 @@ interface AdminSidebarProps {
   activeBookingsCount: number;
   staffCount: number;
   ownersCount: number;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
   resetToDefault: () => void;
   handleLogout: () => void;
 }
@@ -36,35 +38,61 @@ export default function AdminSidebar({
   activeBookingsCount,
   staffCount,
   ownersCount,
+  isMobileOpen = false,
+  onCloseMobile,
   resetToDefault,
   handleLogout,
 }: AdminSidebarProps) {
   return (
-    <aside className="w-full md:w-72 bg-[#0a1122] border-b md:border-b-0 md:border-l border-[#c5a059]/20 flex flex-col shrink-0 h-full overflow-hidden">
-      
-      {/* ترويسة اللوحة والشعار */}
-      <div className="p-5 border-b border-[#c5a059]/15 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#c5a059] to-[#8a6d3b] flex items-center justify-center p-0.5 shadow-lg shadow-[#c5a059]/20">
-            <div className="w-full h-full bg-[#060b17] rounded-[10px] flex items-center justify-center">
-              <CarIcon className="w-5 h-5 text-[#c5a059]" />
-            </div>
-          </div>
-          <div>
-            <div className="font-black text-sm text-white group-hover:text-[#c5a059] transition-colors">
-              يمن الخليج
-            </div>
-            <div className="text-[10px] text-[#c5a059] font-semibold">
-              نظام إدارة الأسطول (ERP)
-            </div>
-          </div>
-        </Link>
-        <Link href="/" className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800" title="معاينة الموقع للجمهور">
-          <ExternalLink className="w-4 h-4" />
-        </Link>
-      </div>
+    <>
+      {/* خلفية معتمة للجوال عند فتح القائمة */}
+      {isMobileOpen && (
+        <div 
+          onClick={onCloseMobile}
+          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden animate-fadeIn"
+        />
+      )}
 
-      {/* بطاقة الموظف النشط حالياً */}
+      <aside className={`
+        fixed inset-y-0 right-0 z-50 w-72 bg-[#0a1122] border-l border-[#c5a059]/20 flex flex-col shrink-0 h-full overflow-hidden shadow-2xl transition-transform duration-300 ease-in-out
+        md:static md:translate-x-0 md:z-auto
+        ${isMobileOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+      `}>
+        
+        {/* ترويسة اللوحة والشعار */}
+        <div className="p-4 sm:p-5 border-b border-[#c5a059]/15 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#c5a059] to-[#8a6d3b] flex items-center justify-center p-0.5 shadow-lg shadow-[#c5a059]/20">
+              <div className="w-full h-full bg-[#060b17] rounded-[10px] flex items-center justify-center">
+                <CarIcon className="w-5 h-5 text-[#c5a059]" />
+              </div>
+            </div>
+            <div>
+              <div className="font-black text-sm text-white group-hover:text-[#c5a059] transition-colors">
+                يمن الخليج
+              </div>
+              <div className="text-[10px] text-[#c5a059] font-semibold">
+                نظام إدارة الأسطول (ERP)
+              </div>
+            </div>
+          </Link>
+          <div className="flex items-center gap-1">
+            <Link href="/" className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800" title="معاينة الموقع للجمهور">
+              <ExternalLink className="w-4 h-4" />
+            </Link>
+            {onCloseMobile && (
+              <button 
+                onClick={onCloseMobile}
+                className="md:hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800"
+                title="إغلاق القائمة"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* بطاقة الموظف النشط حالياً */}
       <div className="p-3.5 m-3.5 rounded-xl bg-[#0e172a] border border-[#c5a059]/30">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[10px] text-slate-400 font-medium">المستخدم الحالي:</span>
@@ -201,5 +229,6 @@ export default function AdminSidebar({
         </button>
       </div>
     </aside>
+    </>
   );
 }

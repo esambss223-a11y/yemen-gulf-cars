@@ -139,3 +139,13 @@ export interface AuditLogItem {
   timestamp: string;
   details: string;
 }
+
+// 7. إحصائيات زوار الموقع
+export interface VisitorStats {
+  today: number;
+  thisMonth: number;
+  total: number;
+  liveNow: number;
+  lastUpdated: string;
+}
+
