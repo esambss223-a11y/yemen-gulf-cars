@@ -20,6 +20,7 @@ import {
   INITIAL_STAFF,
   INITIAL_AUDIT_LOGS
 } from '@/lib/initial-data';
+import { supabase } from '@/lib/supabase';
 
 interface FleetContextType {
   // الحساب الحالي النشط
@@ -27,24 +28,27 @@ interface FleetContextType {
   setCurrentStaff: (staff: StaffUser) => void;
   switchStaffRole: (role: UserRole) => void;
 
+  // حالة الاتصال بقاعدة البيانات السحابية
+  isCloudConnected: boolean;
+
   // السيارات
   cars: Car[];
-  addCar: (car: Omit<Car, 'id'>) => void;
-  updateCar: (id: string, car: Partial<Car>) => void;
-  deleteCar: (id: string) => void;
+  addCar: (car: Omit<Car, 'id'>) => Promise<void>;
+  updateCar: (id: string, car: Partial<Car>) => Promise<void>;
+  deleteCar: (id: string) => Promise<void>;
 
   // الحجوزات
   bookings: Booking[];
-  addBooking: (booking: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>) => void;
-  updateBookingStatus: (id: string, status: Booking['status'], returnKm?: number) => void;
+  addBooking: (booking: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>) => Promise<void>;
+  updateBookingStatus: (id: string, status: Booking['status'], returnKm?: number) => Promise<void>;
 
   // الفواتير
   invoices: Invoice[];
-  addInvoice: (invoice: Omit<Invoice, 'id' | 'invoiceNumber' | 'issuedAt'>) => void;
+  addInvoice: (invoice: Omit<Invoice, 'id' | 'invoiceNumber' | 'issuedAt'>) => Promise<void>;
 
   // الملاك
   owners: VehicleOwner[];
-  addOwner: (owner: Omit<VehicleOwner, 'id'>) => void;
+  addOwner: (owner: Omit<VehicleOwner, 'id'>) => Promise<void>;
 
   // الكوبونات
   coupons: PromoCoupon[];
@@ -68,33 +72,105 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
   const [owners, setOwners] = useState<VehicleOwner[]>(INITIAL_OWNERS);
   const [coupons, setCoupons] = useState<PromoCoupon[]>(INITIAL_COUPONS);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS);
+  const [isCloudConnected, setIsCloudConnected] = useState(false);
 
-  // استرجاع البيانات من LocalStorage إن وجدت
+  // 1. مزامنة البيانات من Supabase السحابية مع fallback لـ LocalStorage
   useEffect(() => {
-    try {
-      const savedCars = localStorage.getItem('yg_cars');
-      if (savedCars) setCars(JSON.parse(savedCars));
+    async function loadData() {
+      try {
+        // فحص السيارات من Supabase
+        const { data: cloudCars, error: carsErr } = await supabase.from('cars').select('*');
+        if (!carsErr && cloudCars && cloudCars.length > 0) {
+          setIsCloudConnected(true);
+          const mappedCars: Car[] = cloudCars.map(c => ({
+            id: c.id,
+            make: c.make,
+            model: c.model,
+            year: c.year,
+            category: c.category,
+            plateNumber: c.plate_number,
+            color: c.color,
+            currentKm: c.current_km,
+            dailyPriceEGP: Number(c.daily_price_egp),
+            weeklyPriceEGP: c.weekly_price_egp ? Number(c.weekly_price_egp) : undefined,
+            monthlyPriceEGP: c.monthly_price_egp ? Number(c.monthly_price_egp) : undefined,
+            securityDepositEGP: Number(c.security_deposit_egp),
+            status: c.status,
+            images: Array.isArray(c.images) ? c.images : ['/car-mercedes.jpg'],
+            coverImage: c.cover_image || '/car-mercedes.jpg',
+            transmission: c.transmission || 'automatic',
+            fuelType: c.fuel_type || 'petrol',
+            seats: c.seats || 5,
+            ownership: c.ownership || 'company',
+            ownerId: c.owner_id,
+            ownerName: c.owner_name,
+            features: Array.isArray(c.features) ? c.features : [],
+            insuranceExpiryDate: c.insurance_expiry_date,
+          }));
+          setCars(mappedCars);
+        } else {
+          // fallback to localStorage
+          const savedCars = localStorage.getItem('yg_cars');
+          if (savedCars) setCars(JSON.parse(savedCars));
+        }
 
-      const savedBookings = localStorage.getItem('yg_bookings');
-      if (savedBookings) setBookings(JSON.parse(savedBookings));
+        // جلب الحجوزات
+        const { data: cloudBookings, error: bkErr } = await supabase.from('bookings').select('*');
+        if (!bkErr && cloudBookings && cloudBookings.length > 0) {
+          const mappedBk: Booking[] = cloudBookings.map(b => ({
+            id: b.id,
+            bookingNumber: b.booking_number,
+            carId: b.car_id,
+            carName: b.car_name,
+            carPlate: b.car_plate,
+            customer: typeof b.customer === 'string' ? JSON.parse(b.customer) : b.customer,
+            startDate: b.start_date,
+            startTime: b.start_time,
+            endDate: b.end_date,
+            endTime: b.end_time,
+            actualReturnDate: b.actual_return_date,
+            daysCount: b.days_count,
+            dailyRateEGP: Number(b.daily_rate_egp),
+            totalRentEGP: Number(b.total_rent_egp),
+            discountCode: b.discount_code,
+            discountAmountEGP: Number(b.discount_amount_egp || 0),
+            finalTotalEGP: Number(b.final_total_egp),
+            securityDepositEGP: Number(b.security_deposit_egp),
+            depositStatus: b.deposit_status,
+            startKm: b.start_km,
+            returnKm: b.return_km,
+            status: b.status,
+            staffId: b.staff_id,
+            staffName: b.staff_name,
+            notes: b.notes,
+            createdAt: b.created_at || new Date().toLocaleString('ar-EG'),
+          }));
+          setBookings(mappedBk);
+        } else {
+          const savedBookings = localStorage.getItem('yg_bookings');
+          if (savedBookings) setBookings(JSON.parse(savedBookings));
+        }
 
-      const savedInvoices = localStorage.getItem('yg_invoices');
-      if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
+        // جلب الفواتير والملاك والكوبونات والسجلات
+        const savedInvoices = localStorage.getItem('yg_invoices');
+        if (savedInvoices) setInvoices(JSON.parse(savedInvoices));
 
-      const savedOwners = localStorage.getItem('yg_owners');
-      if (savedOwners) setOwners(JSON.parse(savedOwners));
+        const savedOwners = localStorage.getItem('yg_owners');
+        if (savedOwners) setOwners(JSON.parse(savedOwners));
 
-      const savedCoupons = localStorage.getItem('yg_coupons');
-      if (savedCoupons) setCoupons(JSON.parse(savedCoupons));
+        const savedCoupons = localStorage.getItem('yg_coupons');
+        if (savedCoupons) setCoupons(JSON.parse(savedCoupons));
 
-      const savedLogs = localStorage.getItem('yg_audit_logs');
-      if (savedLogs) setAuditLogs(JSON.parse(savedLogs));
-    } catch {
-      // LocalStorage not available or parse error
+        const savedLogs = localStorage.getItem('yg_audit_logs');
+        if (savedLogs) setAuditLogs(JSON.parse(savedLogs));
+      } catch (err) {
+        console.warn('Supabase fetch fallback:', err);
+      }
     }
+
+    loadData();
   }, []);
 
-  // حفظ التغييرات في LocalStorage
   const saveToStorage = (key: string, data: unknown) => {
     try {
       localStorage.setItem(key, JSON.stringify(data));
@@ -103,7 +179,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logAction = (action: string, details: string) => {
+  const logAction = async (action: string, details: string) => {
     const newLog: AuditLogItem = {
       id: `log-${Date.now()}`,
       action,
@@ -115,6 +191,20 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     const updated = [newLog, ...auditLogs];
     setAuditLogs(updated);
     saveToStorage('yg_audit_logs', updated);
+
+    // سحابياً
+    try {
+      await supabase.from('audit_logs').insert({
+        id: newLog.id,
+        action: newLog.action,
+        staff_name: newLog.staffName,
+        staff_role: newLog.staffRole,
+        timestamp: newLog.timestamp,
+        details: newLog.details,
+      });
+    } catch {
+      // ignore
+    }
   };
 
   const switchStaffRole = (role: UserRole) => {
@@ -122,8 +212,8 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     setCurrentStaff(staff);
   };
 
-  // 1. إضافة وتعديل السيارات
-  const addCar = (newCarData: Omit<Car, 'id'>) => {
+  // 2. إضافة سيارة (محلياً وسحابياً)
+  const addCar = async (newCarData: Omit<Car, 'id'>) => {
     const newCar: Car = {
       ...newCarData,
       id: `car-${Date.now()}`,
@@ -131,26 +221,72 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     const updated = [newCar, ...cars];
     setCars(updated);
     saveToStorage('yg_cars', updated);
+
+    try {
+      await supabase.from('cars').insert({
+        id: newCar.id,
+        make: newCar.make,
+        model: newCar.model,
+        year: newCar.year,
+        category: newCar.category,
+        plate_number: newCar.plateNumber,
+        color: newCar.color,
+        current_km: newCar.currentKm,
+        daily_price_egp: newCar.dailyPriceEGP,
+        weekly_price_egp: newCar.weeklyPriceEGP,
+        security_deposit_egp: newCar.securityDepositEGP,
+        status: newCar.status,
+        images: newCar.images,
+        cover_image: newCar.coverImage,
+        transmission: newCar.transmission,
+        fuel_type: newCar.fuelType,
+        seats: newCar.seats,
+        ownership: newCar.ownership,
+        owner_name: newCar.ownerName,
+        features: newCar.features,
+      });
+    } catch (e) {
+      console.warn('Cloud car insert warning:', e);
+    }
+
     logAction('إضافة سيارة جديدة', `تمت إضافة ${newCar.make} ${newCar.model} (${newCar.plateNumber})`);
   };
 
-  const updateCar = (id: string, partial: Partial<Car>) => {
+  const updateCar = async (id: string, partial: Partial<Car>) => {
     const updated = cars.map(c => c.id === id ? { ...c, ...partial } : c);
     setCars(updated);
     saveToStorage('yg_cars', updated);
+
+    try {
+      const payload: Record<string, any> = {};
+      if (partial.status) payload.status = partial.status;
+      if (partial.currentKm !== undefined) payload.current_km = partial.currentKm;
+      if (partial.dailyPriceEGP !== undefined) payload.daily_price_egp = partial.dailyPriceEGP;
+      await supabase.from('cars').update(payload).eq('id', id);
+    } catch {
+      // ignore
+    }
+
     logAction('تعديل سيارة', `تم تحديث بيانات السيارة ID: ${id}`);
   };
 
-  const deleteCar = (id: string) => {
+  const deleteCar = async (id: string) => {
     const car = cars.find(c => c.id === id);
     const updated = cars.filter(c => c.id !== id);
     setCars(updated);
     saveToStorage('yg_cars', updated);
+
+    try {
+      await supabase.from('cars').delete().eq('id', id);
+    } catch {
+      // ignore
+    }
+
     logAction('حذف سيارة', `تم حذف السيارة: ${car?.make} ${car?.model}`);
   };
 
-  // 2. الحجوزات
-  const addBooking = (bookingData: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>) => {
+  // 3. الحجوزات (محلياً وسحابياً)
+  const addBooking = async (bookingData: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>) => {
     const seq = bookings.length + 1;
     const bookingNumber = `BK-${new Date().getFullYear()}-${String(seq).padStart(3, '0')}`;
     const newBooking: Booking = {
@@ -164,7 +300,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     saveToStorage('yg_bookings', updated);
 
     // تحديث حالة السيارة تلقائياً إلى مؤجرة
-    updateCar(newBooking.carId, { status: 'rented' });
+    await updateCar(newBooking.carId, { status: 'rented' });
 
     // إنشاء فاتورة تلقائياً
     const newInvoice: Invoice = {
@@ -185,10 +321,55 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     setInvoices(updatedInvoices);
     saveToStorage('yg_invoices', updatedInvoices);
 
+    try {
+      await supabase.from('bookings').insert({
+        id: newBooking.id,
+        booking_number: newBooking.bookingNumber,
+        car_id: newBooking.carId,
+        car_name: newBooking.carName,
+        car_plate: newBooking.carPlate,
+        customer: newBooking.customer,
+        start_date: newBooking.startDate,
+        start_time: newBooking.startTime,
+        end_date: newBooking.endDate,
+        end_time: newBooking.endTime,
+        days_count: newBooking.daysCount,
+        daily_rate_egp: newBooking.dailyRateEGP,
+        total_rent_egp: newBooking.totalRentEGP,
+        discount_code: newBooking.discountCode,
+        discount_amount_egp: newBooking.discountAmountEGP,
+        final_total_egp: newBooking.finalTotalEGP,
+        security_deposit_egp: newBooking.securityDepositEGP,
+        deposit_status: newBooking.depositStatus,
+        start_km: newBooking.startKm,
+        status: newBooking.status,
+        staff_id: newBooking.staffId,
+        staff_name: newBooking.staffName,
+        notes: newBooking.notes,
+      });
+
+      await supabase.from('invoices').insert({
+        id: newInvoice.id,
+        invoice_number: newInvoice.invoiceNumber,
+        booking_id: newInvoice.bookingId,
+        customer_name: newInvoice.customerName,
+        customer_phone: newInvoice.customerPhone,
+        car_details: newInvoice.carDetails,
+        total_amount_egp: newInvoice.totalAmountEGP,
+        deposit_amount_egp: newInvoice.depositAmountEGP,
+        payment_method: newInvoice.paymentMethod,
+        paid: newInvoice.paid,
+        issued_at: newInvoice.issuedAt,
+        issued_by: newInvoice.issuedBy,
+      });
+    } catch (e) {
+      console.warn('Cloud booking sync warning:', e);
+    }
+
     logAction('إنشاء حجز وفاتورة جديدة', `تم حجز ${newBooking.carName} للعميل ${newBooking.customer.fullName} بقيمة ${newBooking.finalTotalEGP.toLocaleString()} ج.م`);
   };
 
-  const updateBookingStatus = (id: string, status: Booking['status'], returnKm?: number) => {
+  const updateBookingStatus = async (id: string, status: Booking['status'], returnKm?: number) => {
     const booking = bookings.find(b => b.id === id);
     if (!booking) return;
 
@@ -210,16 +391,26 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
     // إذا اكتمل الحجز، نعيد السيارة لحالة متاحة ونحدث الكيلومترات
     if (status === 'completed') {
-      updateCar(booking.carId, {
+      await updateCar(booking.carId, {
         status: 'available',
         currentKm: returnKm || booking.startKm,
       });
       logAction('إرجاع سيارة وإغلاق العقد', `تم استلام ${booking.carName} وتسجيل العداد ${returnKm || booking.startKm} كم واسترجاع التأمين`);
     }
+
+    try {
+      await supabase.from('bookings').update({
+        status,
+        return_km: returnKm || booking.startKm,
+        deposit_status: status === 'completed' ? 'refunded_full' : booking.depositStatus,
+      }).eq('id', id);
+    } catch {
+      // ignore
+    }
   };
 
-  // 3. الفواتير
-  const addInvoice = (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'issuedAt'>) => {
+  // 4. الفواتير
+  const addInvoice = async (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'issuedAt'>) => {
     const seq = invoices.length + 1;
     const newInvoice: Invoice = {
       ...invoiceData,
@@ -232,8 +423,8 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     saveToStorage('yg_invoices', updated);
   };
 
-  // 4. الملاك
-  const addOwner = (ownerData: Omit<VehicleOwner, 'id'>) => {
+  // 5. الملاك
+  const addOwner = async (ownerData: Omit<VehicleOwner, 'id'>) => {
     const newOwner: VehicleOwner = {
       ...ownerData,
       id: `owner-${Date.now()}`,
@@ -244,7 +435,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     logAction('إضافة مالك/مستثمر جديد', `تمت إضافة المالك ${newOwner.name}`);
   };
 
-  // 5. الكوبونات
+  // 6. الكوبونات
   const applyCoupon = (code: string): PromoCoupon | null => {
     const found = coupons.find(c => c.code.toUpperCase() === code.toUpperCase() && c.active);
     return found || null;
@@ -268,6 +459,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         currentStaff,
         setCurrentStaff,
         switchStaffRole,
+        isCloudConnected,
         cars,
         addCar,
         updateCar,

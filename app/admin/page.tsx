@@ -44,6 +44,7 @@ export default function AdminDashboardPage() {
   const { 
     currentStaff, 
     switchStaffRole, 
+    isCloudConnected,
     cars, 
     addCar, 
     updateCar, 
@@ -556,8 +557,18 @@ export default function AdminDashboardPage() {
             />
           </div>
 
-          {/* أزرار الإجراءات السريعة (Action Buttons) */}
-          <div className="flex items-center gap-3">
+          {/* أزرار الإجراءات السريعة وشارة السحابة */}
+          <div className="flex items-center gap-2.5">
+            {/* شارة حالة السحابة Supabase */}
+            <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 border ${
+              isCloudConnected 
+                ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-400' 
+                : 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? 'bg-emerald-400 animate-pulse' : 'bg-cyan-400'}`} />
+              <span>{isCloudConnected ? 'Supabase متصل سحابياً ☁️' : 'جاهز للمزامنة السحابية ☁️'}</span>
+            </div>
+
             {/* زر حجز جديد متاح لمسؤول التأجير والمدير */}
             {(currentStaff.role === 'super_admin' || currentStaff.role === 'rental_agent') && (
               <button
