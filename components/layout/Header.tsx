@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 
 const NAV_ITEMS = [
@@ -102,8 +103,17 @@ export default function Header() {
             })}
           </nav>
 
-          {/* الإجراءات: زر الاتصال وزر قائمة الهاتف */}
-          <div className="flex items-center gap-3">
+          {/* الإجراءات: زر لوحة التحكم وزر الاتصال وزر قائمة الهاتف */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* زر لوحة التحكم الإدارية */}
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] sm:text-xs font-bold text-[#c5a059] border border-[#c5a059]/40 hover:bg-[#c5a059]/15 transition-all shadow-sm"
+              title="لوحة تحكم الأسطول والحجوزات"
+            >
+              <span>لوحة الإدارة</span>
+            </Link>
+
             {/* زر واتساب السريع (ظاهر دائماً وبحجم ذكي على الهاتف) */}
             <a
               href="https://wa.me/201034025211?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%B4%D8%B1%D9%83%D8%A9%20%D8%A7%D9%84%D9%8a%D9%85%D9%86%20%D9%88%D8%A7%D9%84%D8%AE%D9%84%D9%8a%D8%AC%D8%8C%20%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8a%20%D8%AD%D8%AC%D8%B2%20%D8%B3%D9%8a%D8%A7%D8%B1%D8%A9."

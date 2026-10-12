@@ -103,27 +103,45 @@ const FLEET_CARS: FleetCar[] = [
   },
 ];
 
+import { useFleet } from "@/context/FleetContext";
+
 type FilterKey = "all" | "available" | "unavailable";
 
 export default function FeaturedFleet() {
+  const { cars } = useFleet();
   const [filter, setFilter] = useState<FilterKey>("all");
-  const [durations, setDurations] = useState<Record<string, DurationKey>>(
-    Object.fromEntries(FLEET_CARS.map((c) => [c.id, "day" as DurationKey]))
-  );
+
+  // تحويل سيارات النظام إلى بنية العرض في الكتالوج
+  const displayCars: FleetCar[] = cars.map(car => ({
+    id: car.id,
+    name: `${car.make} ${car.model}`,
+    category: car.category === 'vip' ? 'سيدان فاخر — VIP' : car.category === 'suv' ? 'دفع رباعي فاخر — SUV' : 'سيارة فارهة',
+    modelYear: String(car.year),
+    image: car.coverImage || car.images[0] || '/car-mercedes.jpg',
+    odometer: `${car.currentKm.toLocaleString()} كم`,
+    isAvailable: car.status === 'available',
+    prices: {
+      day: { amount: `${car.dailyPriceEGP.toLocaleString()} ج.م`, label: "يومي" },
+      week: { amount: `${(car.weeklyPriceEGP || car.dailyPriceEGP * 6).toLocaleString()} ج.م`, label: "أسبوعي" },
+      month: { amount: `${(car.monthlyPriceEGP || car.dailyPriceEGP * 24).toLocaleString()} ج.م`, label: "شهري" },
+    }
+  }));
+
+  const [durations, setDurations] = useState<Record<string, DurationKey>>({});
 
   const setCarDuration = (id: string, d: DurationKey) =>
     setDurations((prev) => ({ ...prev, [id]: d }));
 
-  const filtered = FLEET_CARS.filter((c) => {
+  const filtered = displayCars.filter((c) => {
     if (filter === "available") return c.isAvailable;
     if (filter === "unavailable") return !c.isAvailable;
     return true;
   });
 
   const FILTERS: { key: FilterKey; label: string }[] = [
-    { key: "all",         label: `الكل (${FLEET_CARS.length})` },
-    { key: "available",   label: `متاحة (${FLEET_CARS.filter((c) => c.isAvailable).length})` },
-    { key: "unavailable", label: `محجوزة (${FLEET_CARS.filter((c) => !c.isAvailable).length})` },
+    { key: "all",         label: `الكل (${displayCars.length})` },
+    { key: "available",   label: `متاحة (${displayCars.filter((c) => c.isAvailable).length})` },
+    { key: "unavailable", label: `محجوزة (${displayCars.filter((c) => !c.isAvailable).length})` },
   ];
 
   const gridRef = useRef<HTMLDivElement>(null);

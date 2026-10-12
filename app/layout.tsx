@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   description: "شركة اليمن والخليج لتأجير السيارات. تعرّف على السيارات المتاحة وخيارات التأجير وخدمات توريد السيارات.",
 };
 
+import { FleetProvider } from "@/context/FleetContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,9 +30,11 @@ export default function RootLayout({
       className={`${cairo.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-arabic bg-[#060b17] text-slate-100">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <FleetProvider>
+          <Header />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </FleetProvider>
       </body>
     </html>
   );
