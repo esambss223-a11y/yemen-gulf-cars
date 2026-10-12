@@ -35,6 +35,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { Car, Booking, UserRole } from '@/types/fleet';
+import RentalContractModal from '@/components/admin/RentalContractModal';
 
 type AdminTab = 'overview' | 'cars' | 'bookings' | 'invoices' | 'owners' | 'coupons' | 'audit';
 
@@ -64,6 +65,7 @@ export default function AdminDashboardPage() {
   const [isAddCarOpen, setIsAddCarOpen] = useState(false);
   const [isAddBookingOpen, setIsAddBookingOpen] = useState(false);
   const [selectedBookingForReturn, setSelectedBookingForReturn] = useState<Booking | null>(null);
+  const [selectedBookingForContract, setSelectedBookingForContract] = useState<Booking | null>(null);
   const [returnKmInput, setReturnKmInput] = useState('');
 
   // Form states - Add Car
@@ -829,17 +831,27 @@ export default function AdminDashboardPage() {
                           </span>
                         </td>
                         <td className="py-3.5 pl-2 text-center">
-                          {bk.status === 'active' && (
+                          <div className="flex items-center justify-center gap-1.5">
                             <button
-                              onClick={() => {
-                                setSelectedBookingForReturn(bk);
-                                setReturnKmInput(String(bk.startKm + 300));
-                              }}
-                              className="px-2.5 py-1 rounded bg-[#c5a059] text-black text-[11px] font-bold hover:bg-[#d4af37]"
+                              onClick={() => setSelectedBookingForContract(bk)}
+                              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-[#c5a059] text-slate-300 hover:text-black text-[11px] font-bold transition-all flex items-center gap-1"
+                              title="معاينة وطباعة العقد"
                             >
-                              استلام
+                              <FileText className="w-3 h-3" /> العقد
                             </button>
-                          )}
+
+                            {bk.status === 'active' && (
+                              <button
+                                onClick={() => {
+                                  setSelectedBookingForReturn(bk);
+                                  setReturnKmInput(String(bk.startKm + 300));
+                                }}
+                                className="px-2.5 py-1 rounded bg-[#c5a059] text-black text-[11px] font-bold hover:bg-[#d4af37]"
+                              >
+                                استلام
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1317,6 +1329,14 @@ export default function AdminDashboardPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* 6. نافذة منبثقة: عقد الإيجار الرسمي وسند التأمين للطباعة (Modal: Printable Contract) */}
+      {selectedBookingForContract && (
+        <RentalContractModal
+          booking={selectedBookingForContract}
+          onClose={() => setSelectedBookingForContract(null)}
+        />
       )}
 
     </div>

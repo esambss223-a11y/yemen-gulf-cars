@@ -109,6 +109,20 @@ body {
   font-family: var(--font-cairo), 'Cairo', system-ui, -apple-system, sans-serif !important;
 }
 
+/* تجهيز نموذج الطباعة الرسمي (Clean Print Sheet) */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  header, footer, aside, .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+
 @keyframes carReveal {
   0% {
     opacity: 0;

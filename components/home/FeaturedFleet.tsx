@@ -104,12 +104,15 @@ const FLEET_CARS: FleetCar[] = [
 ];
 
 import { useFleet } from "@/context/FleetContext";
+import PublicBookingModal from "@/components/home/PublicBookingModal";
+import { Car } from "@/types/fleet";
 
 type FilterKey = "all" | "available" | "unavailable";
 
 export default function FeaturedFleet() {
   const { cars } = useFleet();
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [selectedCarForBooking, setSelectedCarForBooking] = useState<{ car: Car; label: string } | null>(null);
 
   // تحويل سيارات النظام إلى بنية العرض في الكتالوج
   const displayCars: FleetCar[] = cars.map(car => ({
@@ -297,15 +300,19 @@ export default function FeaturedFleet() {
                     </div>
 
                     {car.isAvailable ? (
-                      <a
-                        href={`https://wa.me/201034025211?text=${msg}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const originalCar = cars.find(c => c.id === car.id) || cars[0];
+                          if (originalCar) {
+                            setSelectedCarForBooking({ car: originalCar, label: price.label });
+                          }
+                        }}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#c5a059] hover:bg-[#d4af37] text-[#060b17] text-xs font-black transition-colors active:scale-95 cursor-pointer shadow-sm shadow-[#c5a059]/15"
                       >
                         احجز الآن
                         <span>←</span>
-                      </a>
+                      </button>
                     ) : (
                       <div className="w-full py-2.5 rounded-lg bg-white/[0.04] border border-white/10 text-slate-500 text-xs font-bold text-center">
                         غير متاحة حالياً
@@ -331,6 +338,15 @@ export default function FeaturedFleet() {
             تواصل معنا لعقود سنوية أو أسطول مخصص
           </a>
         </p>
+
+        {/* نافذة الحجز التفاعلية للزائر */}
+        {selectedCarForBooking && (
+          <PublicBookingModal
+            car={selectedCarForBooking.car}
+            durationLabel={selectedCarForBooking.label}
+            onClose={() => setSelectedCarForBooking(null)}
+          />
+        )}
 
       </div>
     </section>
