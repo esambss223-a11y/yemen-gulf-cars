@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import Image from 'next/image';
 import { Booking } from '@/types/fleet';
-import { Printer, X, ShieldCheck, FileText, CheckCircle2, Phone, MapPin, Calendar, Car } from 'lucide-react';
+import { Printer, X, FileText } from 'lucide-react';
 
 interface RentalContractModalProps {
   booking: Booking;

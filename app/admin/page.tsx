@@ -17,6 +17,7 @@ import BookingsTab from '@/components/admin/tabs/BookingsTab';
 import StaffTab from '@/components/admin/tabs/StaffTab';
 import OwnersTab from '@/components/admin/tabs/OwnersTab';
 import AuditTab from '@/components/admin/tabs/AuditTab';
+import ProfileTab from '@/components/admin/tabs/ProfileTab';
 
 // Modular Modals
 import CarFormModal from '@/components/admin/modals/CarFormModal';
@@ -30,7 +31,9 @@ import OwnerSettlementModal from '@/components/admin/OwnerSettlementModal';
 export default function AdminDashboardPage() {
   const { 
     currentStaff, 
-    setCurrentStaff,
+    signIn,
+    signOut,
+    isAuthReady,
     isCloudConnected,
     staffList,
     addStaff,
@@ -58,8 +61,8 @@ export default function AdminDashboardPage() {
   
   // حماية اللوحة وتسجيل الدخول وتفادي Hydration Mismatch
   const [isMounted, setIsMounted] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loginUsername, setLoginUsername] = useState('admin');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('admin');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
@@ -134,34 +137,28 @@ export default function AdminDashboardPage() {
   });
 
   useEffect(() => {
+    // تهيئة العرض بعد التهيئة فقط، لأن حالة المصادقة
+    // تُستعاد بشكل غير متزامن من Supabase Auth
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
-    const authStatus = sessionStorage.getItem('yg_admin_auth');
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
-    }
   }, []);
 
-  // تسجيل الدخول بالموظف
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  // تسجيل الدخول بالموظف عبر Supabase Auth والتحقق من دليل staff
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const matchedStaff = staffList.find(
-      s => s.username.toLowerCase() === loginUsername.trim().toLowerCase() && 
-           (s.password === loginPassword || loginPassword === '123456' || loginPassword === 'admin2026')
-    );
-
-    if (matchedStaff) {
-      setCurrentStaff(matchedStaff);
-      setIsAuthenticated(true);
-      sessionStorage.setItem('yg_admin_auth', 'true');
-      setLoginError('');
-    } else {
-      setLoginError('اسم المستخدم أو كلمة المرور غير صحيحة');
+    setLoginError('');
+    setIsLoggingIn(true);
+    try {
+      await signIn(loginEmail.trim(), loginPassword);
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : 'حدث خطأ أثناء تسجيل الدخول');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    sessionStorage.removeItem('yg_admin_auth');
+  const handleLogout = async () => {
+    await signOut();
   };
 
   // إحصائيات الأسطول
@@ -284,6 +281,9 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     const selectedCar = cars.find(c => c.id === newBooking.carId);
     if (!selectedCar) return;
+    // الموظف الحالي مثبت بعد بوابة المصادقة
+    const staff = currentStaff;
+    if (!staff) return;
 
     const start = new Date(newBooking.startDate);
     const end = new Date(newBooking.endDate);
@@ -314,8 +314,8 @@ export default function AdminDashboardPage() {
       depositStatus: 'held' as const,
       startKm: selectedCar.currentKm,
       status: 'active' as const,
-      staffId: currentStaff.id,
-      staffName: currentStaff.name,
+      staffId: staff.id,
+      staffName: staff.name,
       notes: newBooking.notes
     };
 
@@ -344,8 +344,8 @@ export default function AdminDashboardPage() {
     return matchesSearch && matchesFilter;
   });
 
-  // منع Hydration Mismatch
-  if (!isMounted) {
+  // منع Hydration Mismatch وانتظار استعادة جلسة المصادقة
+  if (!isMounted || !isAuthReady) {
     return (
       <div className="min-h-screen bg-[#060b17] flex items-center justify-center font-arabic">
         <div className="text-center space-y-3">
@@ -356,22 +356,23 @@ export default function AdminDashboardPage() {
     );
   }
 
-  // شاشة تسجيل الدخول المحمية
-  if (!isAuthenticated) {
+  // شاشة تسجيل الدخول المحمية (غير مصادق عليه)
+  if (!currentStaff) {
     return (
       <AdminLogin
-        loginUsername={loginUsername}
-        setLoginUsername={setLoginUsername}
+        loginEmail={loginEmail}
+        setLoginEmail={setLoginEmail}
         loginPassword={loginPassword}
         setLoginPassword={setLoginPassword}
         loginError={loginError}
+        isLoggingIn={isLoggingIn}
         handleLoginSubmit={handleLoginSubmit}
       />
     );
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#060b17] text-slate-100 flex flex-col md:flex-row font-arabic select-none">
+    <div className="h-screen w-screen overflow-hidden bg-[#f4f6fa] text-slate-800 flex flex-col md:flex-row font-arabic select-none">
       
       {/* 1. الشريط الجانبي الفاخر (Sidebar) */}
       <AdminSidebar
@@ -392,7 +393,7 @@ export default function AdminDashboardPage() {
       />
 
       {/* 2. المحتوى الرئيسي (Main Dashboard Content) */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#f4f6fa]">
         
         {/* شريط الإجراءات والبحث العلوي */}
         <AdminHeader
@@ -403,6 +404,7 @@ export default function AdminDashboardPage() {
           onOpenAddBooking={() => setIsAddBookingOpen(true)}
           onOpenAddCar={openAddCarModal}
           onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
+          onOpenProfile={() => setActiveTab('profile')}
         />
 
         {/* منطقة المحتوى التفاعلي (Tabs) */}
@@ -419,10 +421,15 @@ export default function AdminDashboardPage() {
               totalHeldDepositsEGP={totalHeldDepositsEGP}
               currentStaff={currentStaff}
               visitorStats={visitorStats}
+              cars={cars}
+              bookings={bookings}
               onReturnCar={(bk) => {
                 setSelectedBookingForReturn(bk);
                 setReturnKmInput(String(bk.startKm + 350));
               }}
+              onOpenAddBooking={() => setIsAddBookingOpen(true)}
+              onOpenContract={(bk) => setSelectedBookingForContract(bk)}
+              setActiveTab={setActiveTab}
             />
           )}
 
@@ -520,6 +527,17 @@ export default function AdminDashboardPage() {
           {/* TAB 6: سجل الرقابة والأمان */}
           {activeTab === 'audit' && currentStaff.role === 'super_admin' && (
             <AuditTab auditLogs={auditLogs} />
+          )}
+
+          {/* TAB 7: حسابي الشخصي وسجل نشاطاتي */}
+          {activeTab === 'profile' && (
+            <ProfileTab
+              currentStaff={currentStaff}
+              bookings={bookings}
+              auditLogs={auditLogs}
+              onUpdateStaff={updateStaff}
+              onLogout={handleLogout}
+            />
           )}
 
         </div>

@@ -1,48 +1,40 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Car as CarIcon, 
-  X, 
-  Sparkles, 
-  Upload, 
-  Plus, 
-  Trash2, 
-  Image as ImageIcon,
-  CheckCircle2,
-  AlertCircle
-} from 'lucide-react';
+import { Car as CarIcon, X, Sparkles, Upload, Plus, Trash2, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 import { Car, VehicleOwner } from '@/types/fleet';
 import { LUXURY_CAR_PRESETS, CarPreset } from '@/lib/car-presets';
 import { supabase } from '@/lib/supabase';
 
+export interface CarFormState {
+  make: string;
+  model: string;
+  year: number;
+  category: Car['category'];
+  plateNumber: string;
+  color: string;
+  currentKm: number;
+  dailyPriceEGP: number;
+  weeklyPriceEGP: number;
+  securityDepositEGP: number;
+  status: Car['status'];
+  images: string[];
+  transmission: Car['transmission'];
+  fuelType: Car['fuelType'];
+  seats: number;
+  ownership: Car['ownership'];
+  ownerId: string;
+  ownerName: string;
+  features: string[];
+}
+
 interface CarFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingCar: Car | null;
-  carForm: {
-    make: string;
-    model: string;
-    year: number;
-    category: Car['category'];
-    plateNumber: string;
-    color: string;
-    currentKm: number;
-    dailyPriceEGP: number;
-    weeklyPriceEGP: number;
-    securityDepositEGP: number;
-    status: Car['status'];
-    images: string[];
-    transmission: Car['transmission'];
-    fuelType: Car['fuelType'];
-    seats: number;
-    ownership: Car['ownership'];
-    ownerId: string;
-    ownerName: string;
-    features: string[];
-  };
-  setCarForm: React.Dispatch<React.SetStateAction<any>>;
+  carForm: CarFormState;
+  setCarForm: React.Dispatch<React.SetStateAction<CarFormState>>;
   owners: VehicleOwner[];
   onSubmit: (e: React.FormEvent) => void;
 }
@@ -66,7 +58,7 @@ export default function CarFormModal({
 
   // جلب وتطبيق بيانات السيارة المقترحة فوراً
   const applyPreset = (preset: CarPreset) => {
-    setCarForm((prev: any) => ({
+    setCarForm((prev) => ({
       ...prev,
       make: preset.make,
       model: preset.model,
@@ -108,7 +100,7 @@ export default function CarFormModal({
           .from('car-images')
           .getPublicUrl(filePath);
 
-        setCarForm((prev: any) => ({
+        setCarForm((prev) => ({
           ...prev,
           images: [...(prev.images || []), publicUrl]
         }));
@@ -118,7 +110,7 @@ export default function CarFormModal({
         const reader = new FileReader();
         reader.onloadend = () => {
           if (reader.result) {
-            setCarForm((prev: any) => ({
+            setCarForm((prev) => ({
               ...prev,
               images: [...(prev.images || []), reader.result as string]
             }));
@@ -138,7 +130,7 @@ export default function CarFormModal({
   // إضافة رابط صورة يدوياً للألبوم
   const addImageByUrl = () => {
     if (!newImageUrl.trim()) return;
-    setCarForm((prev: any) => ({
+    setCarForm((prev) => ({
       ...prev,
       images: [...(prev.images || []), newImageUrl.trim()]
     }));
@@ -147,9 +139,9 @@ export default function CarFormModal({
 
   // حذف صورة معينة من الألبوم
   const removeImageAt = (index: number) => {
-    setCarForm((prev: any) => ({
+    setCarForm((prev) => ({
       ...prev,
-      images: prev.images.filter((_: any, i: number) => i !== index)
+        images: prev.images.filter((_: string, i: number) => i !== index)
     }));
   };
 
@@ -293,7 +285,7 @@ export default function CarFormModal({
               <label className="block text-slate-300 font-semibold mb-1">حالة السيارة:</label>
               <select
                 value={carForm.status}
-                onChange={(e) => setCarForm({ ...carForm, status: e.target.value as any })}
+                onChange={(e) => setCarForm({ ...carForm, status: e.target.value as Car['status'] })}
                 className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#c5a059]"
               >
                 <option value="available">🟢 متاحة للتأجير</option>

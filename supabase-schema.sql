@@ -127,9 +127,27 @@ CREATE TABLE IF NOT EXISTS public.site_visits (
   created_date DATE DEFAULT CURRENT_DATE
 );
 
+-- 8. جدول دليل الموظفين المرتبط بحسابات المصادقة (staff directory)
+-- كل سجل مرتبط بحساب في auth.users — لا يمكن تسجيل الدخول إلا لمن يوجد له سجل هنا
+CREATE TABLE IF NOT EXISTS public.staff (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  username TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL DEFAULT 'rental_agent', -- super_admin, rental_agent, accountant
+  phone TEXT,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- ========================================================
 -- سياسات الأمان وتصاريح الجداول (Row Level Security - RLS)
+-- قاعدة أساسية: مفتاح anon العام لا يسمح إلا بقراءة كتالوج السيارات
+-- وتسجيل زيارات الموقع. كل عمليات الكتابة وقراءة البيانات الحساسة
+-- (حجوزات، فواتير، ملاك، موظفين، سجل رقابة) محصورة بالموظفين الموثقين.
+-- ملاحظة: حتى تفعيل مصادقة الموظفين، تُنفذ عمليات الإدارة محلياً
+-- عبر localStorage كإجراء احتياطي عند رفض السحابة.
 -- ========================================================
+
 ALTER TABLE public.owners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cars ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
@@ -137,28 +155,89 @@ ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_visits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.staff ENABLE ROW LEVEL SECURITY;
 
--- السماح بالقراءة والإضافة لجميع العمليات المصرح بها
-CREATE POLICY "Allow public read cars" ON public.cars FOR SELECT USING (true);
-CREATE POLICY "Allow public write cars" ON public.cars FOR ALL USING (true);
+-- دالة تفويض موحدة: صاحب الحساب الموثق يجب أن يكون موظفاً فعالاً في جدول staff
+-- SECURITY DEFINER لتفادي تكرار سياسات RLS عند استعلام جدول staff من داخل السياسات
+CREATE OR REPLACE FUNCTION public.is_active_staff()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.staff WHERE id = auth.uid() AND active = true);
+$$;
 
-CREATE POLICY "Allow public read owners" ON public.owners FOR SELECT USING (true);
-CREATE POLICY "Allow public write owners" ON public.owners FOR ALL USING (true);
+-- السيارات: القراءة العامة للجميع (الكتالوج العام)
+DROP POLICY IF EXISTS "Public read cars" ON public.cars;
+CREATE POLICY "Public read cars" ON public.cars FOR SELECT TO public USING (true);
 
-CREATE POLICY "Allow public read bookings" ON public.bookings FOR SELECT USING (true);
-CREATE POLICY "Allow public write bookings" ON public.bookings FOR ALL USING (true);
+-- الكتابة على السيارات: للموظفين الفعالين فقط
+DROP POLICY IF EXISTS "Staff write cars" ON public.cars;
+CREATE POLICY "Staff write cars" ON public.cars
+  FOR ALL TO authenticated
+  USING (public.is_active_staff())
+  WITH CHECK (public.is_active_staff());
 
-CREATE POLICY "Allow public read invoices" ON public.invoices FOR SELECT USING (true);
-CREATE POLICY "Allow public write invoices" ON public.invoices FOR ALL USING (true);
+-- الملاك: للموظفين الفعالين فقط (لا وصول عام إطلاقاً)
+DROP POLICY IF EXISTS "Staff access owners" ON public.owners;
+CREATE POLICY "Staff access owners" ON public.owners
+  FOR ALL TO authenticated
+  USING (public.is_active_staff())
+  WITH CHECK (public.is_active_staff());
 
-CREATE POLICY "Allow public read coupons" ON public.coupons FOR SELECT USING (true);
-CREATE POLICY "Allow public write coupons" ON public.coupons FOR ALL USING (true);
+-- الحجوزات والعقود: للموظفين الفعالين فقط (تحتوي بيانات عملاء حساسة)
+DROP POLICY IF EXISTS "Staff access bookings" ON public.bookings;
+CREATE POLICY "Staff access bookings" ON public.bookings
+  FOR ALL TO authenticated
+  USING (public.is_active_staff())
+  WITH CHECK (public.is_active_staff());
 
-CREATE POLICY "Allow public read logs" ON public.audit_logs FOR SELECT USING (true);
-CREATE POLICY "Allow public write logs" ON public.audit_logs FOR ALL USING (true);
+-- الفواتير: للموظفين الفعالين فقط
+DROP POLICY IF EXISTS "Staff access invoices" ON public.invoices;
+CREATE POLICY "Staff access invoices" ON public.invoices
+  FOR ALL TO authenticated
+  USING (public.is_active_staff())
+  WITH CHECK (public.is_active_staff());
 
-CREATE POLICY "Allow public read site_visits" ON public.site_visits FOR SELECT USING (true);
-CREATE POLICY "Allow public insert site_visits" ON public.site_visits FOR INSERT WITH CHECK (true);
+-- أكواد الخصم: للموظفين الفعالين فقط
+DROP POLICY IF EXISTS "Staff access coupons" ON public.coupons;
+CREATE POLICY "Staff access coupons" ON public.coupons
+  FOR ALL TO authenticated
+  USING (public.is_active_staff())
+  WITH CHECK (public.is_active_staff());
+
+-- سجل الرقابة والأمان: للموظفين الفعالين فقط
+DROP POLICY IF EXISTS "Staff access audit_logs" ON public.audit_logs;
+CREATE POLICY "Staff access audit_logs" ON public.audit_logs
+  FOR ALL TO authenticated
+  USING (public.is_active_staff())
+  WITH CHECK (public.is_active_staff());
+
+-- دليل الموظفين: كل موظف يقرأ سجله، والمدير العام يقرأ السجلات كلها
+DROP POLICY IF EXISTS "Staff read profiles" ON public.staff;
+CREATE POLICY "Staff read profiles" ON public.staff
+  FOR SELECT TO authenticated
+  USING (
+    id = auth.uid() OR
+    EXISTS (SELECT 1 FROM public.staff s WHERE s.id = auth.uid() AND s.role = 'super_admin' AND s.active = true)
+  );
+
+-- إدارة سجلات الموظفين: المدير العام الفعال فقط
+DROP POLICY IF EXISTS "Super admin manage staff" ON public.staff;
+CREATE POLICY "Super admin manage staff" ON public.staff
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.staff s WHERE s.id = auth.uid() AND s.role = 'super_admin' AND s.active = true))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.staff s WHERE s.id = auth.uid() AND s.role = 'super_admin' AND s.active = true));
+
+-- تتبع زوار الموقع: تسجيل مفتوح + قراءة الإحصائيات (بيانات غير حساسة)
+DROP POLICY IF EXISTS "Public insert site_visits" ON public.site_visits;
+CREATE POLICY "Public insert site_visits" ON public.site_visits
+  FOR INSERT TO public WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public read site_visits" ON public.site_visits;
+CREATE POLICY "Public read site_visits" ON public.site_visits
+  FOR SELECT TO public USING (true);
 
 -- ========================================================
 -- بيانات أولية افتراضية للمشروع (Seed Data)

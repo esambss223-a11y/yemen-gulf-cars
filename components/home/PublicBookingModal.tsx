@@ -4,15 +4,14 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useFleet } from '@/context/FleetContext';
 import { Car } from '@/types/fleet';
-import { X, Calendar, CheckCircle2, ShieldCheck, Tag, Phone, User, Clock, ArrowLeft } from 'lucide-react';
+import { X, Calendar, CheckCircle2, ArrowLeft } from 'lucide-react';
 
 interface PublicBookingModalProps {
   car: Car;
-  durationLabel: string;
   onClose: () => void;
 }
 
-export default function PublicBookingModal({ car, durationLabel, onClose }: PublicBookingModalProps) {
+export default function PublicBookingModal({ car, onClose }: PublicBookingModalProps) {
   const { addBooking, coupons } = useFleet();
 
   const [customerName, setCustomerName] = useState('');

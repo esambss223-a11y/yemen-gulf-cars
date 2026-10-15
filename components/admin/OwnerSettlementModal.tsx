@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { VehicleOwner, Car, Booking } from '@/types/fleet';
-import { Printer, X, DollarSign, Calendar, TrendingUp, Car as CarIcon, FileText } from 'lucide-react';
+import { Printer, X, TrendingUp } from 'lucide-react';
 
 interface OwnerSettlementModalProps {
   owner: VehicleOwner;

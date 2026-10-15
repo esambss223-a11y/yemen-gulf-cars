@@ -4,18 +4,20 @@ import React from 'react';
 import { UserCheck, X } from 'lucide-react';
 import { StaffUser, UserRole } from '@/types/fleet';
 
+export interface StaffFormState {
+  name: string;
+  username: string;
+  password: string;
+  role: UserRole;
+  phone: string;
+}
+
 interface StaffFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingStaff: StaffUser | null;
-  staffForm: {
-    name: string;
-    username: string;
-    password?: string;
-    role: UserRole;
-    phone: string;
-  };
-  setStaffForm: React.Dispatch<React.SetStateAction<any>>;
+  staffForm: StaffFormState;
+  setStaffForm: React.Dispatch<React.SetStateAction<StaffFormState>>;
   onSubmit: (e: React.FormEvent) => void;
 }
 

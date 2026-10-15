@@ -25,11 +25,6 @@ export default function HeroSection() {
         >
           <source src="/hero-video.webm" type="video/webm" />
           <source src="/hero-video.mp4" type="video/mp4" />
-          <img
-            src="/hero-poster.jpg"
-            alt="شركة اليمن والخليج"
-            className="w-full h-full object-cover object-center"
-          />
         </video>
 
         {/* تدرج سينمائي مخصص: يمنح الجزء العلوي تظليلاً ملكياً ناعماً ليبرز النص والشعار بوضوح تام، ويترك سيارات الأسطول بالأسفل مكشوفة */}

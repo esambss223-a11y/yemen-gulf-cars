@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   Car, 
   Booking, 
@@ -24,10 +24,11 @@ import {
 import { supabase } from '@/lib/supabase';
 
 interface FleetContextType {
-  // الحساب الحالي النشط
-  currentStaff: StaffUser;
-  setCurrentStaff: (staff: StaffUser) => void;
-  switchStaffRole: (role: UserRole) => void;
+  // الحساب النشط المصادق عليه عبر Supabase Auth (null = غير مسجل الدخول)
+  currentStaff: StaffUser | null;
+  isAuthReady: boolean;
+  signIn: (email: string, password: string) => Promise<StaffUser>;
+  signOut: () => Promise<void>;
 
   // حالة الاتصال بقاعدة البيانات السحابية
   isCloudConnected: boolean;
@@ -77,7 +78,8 @@ interface FleetContextType {
 const FleetContext = createContext<FleetContextType | undefined>(undefined);
 
 export function FleetProvider({ children }: { children: React.ReactNode }) {
-  const [currentStaff, setCurrentStaff] = useState<StaffUser>(INITIAL_STAFF[0]);
+  const [currentStaff, setCurrentStaff] = useState<StaffUser | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [staffList, setStaffList] = useState<StaffUser[]>(INITIAL_STAFF);
   const [cars, setCars] = useState<Car[]>(INITIAL_CARS);
   const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
@@ -95,8 +97,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
   });
 
   // 1. مزامنة البيانات وتتبع زوار الموقع الحقيقيين
-  useEffect(() => {
-    async function trackAndLoadVisits() {
+  const trackAndLoadVisits = useCallback(async () => {
       try {
         // إنشاء معرف جلسة فريد لكل متصفح
         let sessionId = sessionStorage.getItem('yg_visitor_session');
@@ -150,11 +151,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.warn('Real visits tracking notice:', err);
       }
-    }
+  }, []);
 
-    trackAndLoadVisits();
-
-    async function loadData() {
+  const loadData = useCallback(async () => {
       try {
         // فحص السيارات من Supabase
         const { data: cloudCars, error: carsErr } = await supabase.from('cars').select('*');
@@ -247,10 +246,71 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.warn('Supabase fetch fallback:', err);
       }
-    }
-
-    loadData();
   }, []);
+
+  /* eslint-disable react-hooks/set-state-in-effect -- تحميل البيانات الأولي
+     عند التهيئة: كل تحديثات الحالة تحدث بعد await داخل الدالتين
+     (لا تسلسل متزامن يسبب إعادة عرض متتالية) */
+  useEffect(() => {
+    trackAndLoadVisits();
+    loadData();
+  }, [trackAndLoadVisits, loadData]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // 0. مصادقة الموظفين عبر Supabase Auth
+  const mapStaffRow = useCallback((row: Record<string, unknown>): StaffUser => ({
+    id: String(row.id),
+    name: String(row.name ?? ''),
+    username: String(row.username ?? ''),
+    role: (row.role as UserRole) ?? 'rental_agent',
+    phone: String(row.phone ?? ''),
+    active: Boolean(row.active),
+  }), []);
+
+  const loadStaffProfile = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('staff')
+        .select('id, name, username, role, phone, active')
+        .eq('id', userId)
+        .single();
+      if (!error && data) {
+        setCurrentStaff(mapStaffRow(data));
+      } else {
+        // مستخدم موثق لكنه غير مسجل في دليل موظفي الشركة
+        setCurrentStaff(null);
+      }
+    } catch {
+      setCurrentStaff(null);
+    } finally {
+      setIsAuthReady(true);
+    }
+  }, [mapStaffRow]);
+
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        loadStaffProfile(session.user.id);
+        if (event === 'SIGNED_IN') {
+          loadData();
+        }
+      } else {
+        // إذا لم يكن هناك جلسة Supabase، نتحقق من جلسة الموظف المحلية
+        try {
+          const savedStaff = localStorage.getItem('yg_current_staff');
+          if (savedStaff) {
+            setCurrentStaff(JSON.parse(savedStaff));
+          } else {
+            setCurrentStaff(null);
+          }
+        } catch {
+          setCurrentStaff(null);
+        }
+        setIsAuthReady(true);
+      }
+    });
+    return () => listener.subscription.unsubscribe();
+  }, [loadStaffProfile, loadData]);
 
   const saveToStorage = (key: string, data: unknown) => {
     try {
@@ -264,8 +324,8 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     const newLog: AuditLogItem = {
       id: `log-${Date.now()}`,
       action,
-      staffName: currentStaff.name,
-      staffRole: currentStaff.role,
+      staffName: currentStaff?.name ?? 'النظام',
+      staffRole: currentStaff?.role ?? 'rental_agent',
       timestamp: new Date().toLocaleString('ar-EG'),
       details,
     };
@@ -288,9 +348,69 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const switchStaffRole = (role: UserRole) => {
-    const staff = INITIAL_STAFF.find(s => s.role === role) || INITIAL_STAFF[0];
-    setCurrentStaff(staff);
+  // تسجيل دخول الموظف: يدعم اسم المستخدم المحلي (admin / agent / accountant) و Supabase Auth
+  const signIn = async (identifier: string, password: string): Promise<StaffUser> => {
+    const cleanId = identifier.trim().toLowerCase();
+
+    // 1. فحص الحسابات المحلية والتجريبية الجاهزة
+    const localDemoMap: Record<string, { username: string; pass: string }> = {
+      admin: { username: 'admin', pass: 'admin' },
+      'admin@yemen-gulf-cars.com': { username: 'admin', pass: 'admin' },
+      agent: { username: 'agent', pass: 'agent' },
+      'agent@yemen-gulf-cars.com': { username: 'agent', pass: 'agent' },
+      accountant: { username: 'accountant', pass: 'acc' },
+      'accountant@yemen-gulf-cars.com': { username: 'accountant', pass: 'acc' },
+      acc: { username: 'accountant', pass: 'acc' },
+    };
+
+    const localMatch = localDemoMap[cleanId];
+    if (localMatch && password === localMatch.pass) {
+      const foundStaff =
+        staffList.find(s => s.username.toLowerCase() === localMatch.username) ||
+        INITIAL_STAFF.find(s => s.username.toLowerCase() === localMatch.username) ||
+        INITIAL_STAFF[0];
+      setCurrentStaff(foundStaff);
+      saveToStorage('yg_current_staff', foundStaff);
+      return foundStaff;
+    }
+
+    // 2. التحقق عبر Supabase Auth إذا كان المدخل بريداً إلكترونياً
+    if (cleanId.includes('@')) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email: identifier.trim(), password });
+        if (!error && data?.user) {
+          const { data: staffRow } = await supabase
+            .from('staff')
+            .select('id, name, username, role, phone, active')
+            .eq('id', data.user.id)
+            .single();
+          if (staffRow) {
+            const staff = mapStaffRow(staffRow);
+            setCurrentStaff(staff);
+            saveToStorage('yg_current_staff', staff);
+            return staff;
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase Auth check notice:', err);
+      }
+    }
+
+    throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
+  };
+
+  const signOut = async () => {
+    setCurrentStaff(null);
+    try {
+      localStorage.removeItem('yg_current_staff');
+    } catch {
+      // ignore
+    }
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // ignore
+    }
   };
 
   // 2. إضافة سيارة (محلياً وسحابياً)
@@ -339,7 +459,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     saveToStorage('yg_cars', updated);
 
     try {
-      const payload: Record<string, any> = {};
+      const payload: Record<string, string | number> = {};
       if (partial.status) payload.status = partial.status;
       if (partial.currentKm !== undefined) payload.current_km = partial.currentKm;
       if (partial.dailyPriceEGP !== undefined) payload.daily_price_egp = partial.dailyPriceEGP;
@@ -396,7 +516,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       paymentMethod: 'cash',
       paid: true,
       issuedAt: new Date().toLocaleString('ar-EG'),
-      issuedBy: currentStaff.name,
+      issuedBy: currentStaff?.name ?? 'النظام',
     };
     const updatedInvoices = [newInvoice, ...invoices];
     setInvoices(updatedInvoices);
@@ -585,8 +705,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     <FleetContext.Provider
       value={{
         currentStaff,
-        setCurrentStaff,
-        switchStaffRole,
+        isAuthReady,
+        signIn,
+        signOut,
         isCloudConnected,
         staffList,
         addStaff,

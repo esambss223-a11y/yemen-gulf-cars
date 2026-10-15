@@ -4,7 +4,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const FOOTER_SECTIONS = [
-  { id: "featured-fleet", label: "أسطول السيارات 2024" },
+  { id: "featured-fleet", label: "أسطول السيارات 2026" },
   { id: "chauffeur-service", label: "خدمة المطار مع سائق خاص" },
   { id: "how-to-book", label: "إجراءات وخطوات الحجز" },
   { id: "why-us", label: "معايير الجودة والضمان" },
@@ -50,7 +50,7 @@ export default function Footer() {
               />
             </button>
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-sm">
-              الوجهة الأولى لتأجير وتوريد سيارات النخبة ورجال الأعمال في جمهورية مصر العربية. أسطول 2024 بأعلى معايير النظافة والجاهزية الفورية.
+              الوجهة الأولى لتأجير وتوريد سيارات النخبة ورجال الأعمال في جمهورية مصر العربية. أسطول 2026 بأعلى معايير النظافة والجاهزية الفورية.
             </p>
             
             {/* بطاقة واتساب السريعة */}

@@ -1,5 +1,37 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment Variables
+
+انسخ `.env.example` إلى `.env.local` واملأ قيم مشروع Supabase من لوحة التحكم (Project Settings > API):
+
+```bash
+cp .env.example .env.local
+```
+
+| المتغير | الاستخدام |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | عنوان المشروع (يُبنى معه العميل العام) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | مفتاح النشر للعميل — آمن فقط مع سياسات RLS المشددة في `supabase-schema.sql` |
+| `SUPABASE_SERVICE_ROLE_KEY` | للسيرفر فقط (Server Actions) — لا يُستورد في مكونات العميل أبداً |
+
+بعد إعداد قاعدة البيانات بشغل `supabase-schema.sql`، تأكد أن سياسات RLS مفعّلة كما هو موثق في الملف: القراءة العامة مقتصرة على كتالوج السيارات وتسجيل الزيارات، وكل الجداول الحساسة محصورة بالموظفين الموثقين.
+
+## إعداد موظفي لوحة الإدارة (Bootstrap)
+
+تسجيل دخول اللوحة موثّق عبر Supabase Auth، ولا يمكن الدخول إلا لمن يوجد له سجل في جدول `staff`:
+
+1. أنشئ حساب الموظف في لوحة Supabase: **Authentication → Users → Add user** (بريد الموظف + كلمة مرور، مع تفعيل Auto-confirm).
+2. انسخ الـ UUID الخاص بالمستخدم وأضف سجله في جدول staff بتشغيل:
+
+```sql
+INSERT INTO public.staff (id, name, username, role, phone, active)
+VALUES ('<USER_UUID>', 'اسم الموظف', 'username', 'super_admin', '+20 100 000 0000', true);
+```
+
+3. سجّل الدخول من `/admin` ببريد الموظف وكلمة المرور.
+
+> ملاحظة: تبويب "فريق العمل" يدير النسخة المحلية من الدليل (localStorage) حالياً؛ الربط الكامل لإنشاء الموظفين مع جدول staff السحابي يأتي في مرحلة لاحقة.
+
 ## Getting Started
 
 First, run the development server:

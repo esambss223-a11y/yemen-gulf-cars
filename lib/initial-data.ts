@@ -8,7 +8,6 @@ export const INITIAL_STAFF: StaffUser[] = [
     username: 'admin',
     role: 'super_admin',
     phone: '+20 100 000 0001',
-    password: 'admin',
     active: true,
   },
   {
@@ -17,7 +16,6 @@ export const INITIAL_STAFF: StaffUser[] = [
     username: 'agent',
     role: 'rental_agent',
     phone: '+20 100 000 0002',
-    password: 'agent',
     active: true,
   },
   {
@@ -26,7 +24,6 @@ export const INITIAL_STAFF: StaffUser[] = [
     username: 'accountant',
     role: 'accountant',
     phone: '+20 100 000 0003',
-    password: 'acc',
     active: true,
   },
 ];

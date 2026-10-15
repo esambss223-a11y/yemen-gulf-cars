@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 
 type DurationKey = "day" | "week" | "month";
@@ -17,93 +17,6 @@ interface FleetCar {
   isAvailable: boolean;
   prices: Record<DurationKey, { amount: string; label: string }>;
 }
-
-const FLEET_CARS: FleetCar[] = [
-  {
-    id: "range-rover-vogue",
-    name: "Range Rover Vogue",
-    category: "دفع رباعي فاخر — SUV VIP",
-    modelYear: "2024",
-    image: "/car-rangerover.jpg",
-    odometer: "12,400 كم",
-    isAvailable: true,
-    prices: {
-      day:   { amount: "6,500 ج.م",   label: "يومي" },
-      week:  { amount: "45,000 ج.م",  label: "أسبوعي" },
-      month: { amount: "160,000 ج.م", label: "شهري" },
-    },
-  },
-  {
-    id: "mercedes-s-class",
-    name: "Mercedes-Benz S-Class",
-    category: "سيدان رجال أعمال — S500",
-    modelYear: "2024",
-    image: "/car-mercedes.jpg",
-    odometer: "9,800 كم",
-    isAvailable: true,
-    prices: {
-      day:   { amount: "8,000 ج.م",   label: "يومي" },
-      week:  { amount: "55,000 ج.م",  label: "أسبوعي" },
-      month: { amount: "190,000 ج.م", label: "شهري" },
-    },
-  },
-  {
-    id: "nissan-patrol",
-    name: "Nissan Patrol Platinum",
-    category: "دفع رباعي عائلي — V8",
-    modelYear: "2024",
-    image: "/car-nissan.jpg",
-    odometer: "18,200 كم",
-    isAvailable: true,
-    prices: {
-      day:   { amount: "5,000 ج.م",   label: "يومي" },
-      week:  { amount: "35,000 ج.م",  label: "أسبوعي" },
-      month: { amount: "125,000 ج.م", label: "شهري" },
-    },
-  },
-  {
-    id: "cadillac-escalade",
-    name: "Cadillac Escalade V",
-    category: "دفع رباعي رئاسي",
-    modelYear: "2024",
-    image: "/car-rangerover.jpg",
-    odometer: "14,100 كم",
-    isAvailable: false,
-    prices: {
-      day:   { amount: "9,000 ج.م",   label: "يومي" },
-      week:  { amount: "60,000 ج.م",  label: "أسبوعي" },
-      month: { amount: "210,000 ج.م", label: "شهري" },
-    },
-  },
-  {
-    id: "bmw-7-series",
-    name: "BMW 735i M-Sport",
-    category: "سيدان فارهة — VIP",
-    modelYear: "2024",
-    image: "/car-mercedes.jpg",
-    odometer: "11,300 كم",
-    isAvailable: true,
-    prices: {
-      day:   { amount: "7,500 ج.م",   label: "يومي" },
-      week:  { amount: "50,000 ج.م",  label: "أسبوعي" },
-      month: { amount: "180,000 ج.م", label: "شهري" },
-    },
-  },
-  {
-    id: "toyota-land-cruiser",
-    name: "Toyota Land Cruiser LC300",
-    category: "دفع رباعي — اعتمادي",
-    modelYear: "2024",
-    image: "/car-nissan.jpg",
-    odometer: "21,500 كم",
-    isAvailable: false,
-    prices: {
-      day:   { amount: "5,500 ج.م",   label: "يومي" },
-      week:  { amount: "38,000 ج.م",  label: "أسبوعي" },
-      month: { amount: "135,000 ج.م", label: "شهري" },
-    },
-  },
-];
 
 import { useFleet } from "@/context/FleetContext";
 import PublicBookingModal from "@/components/home/PublicBookingModal";
@@ -172,35 +85,6 @@ export default function FeaturedFleet() {
     { key: "unavailable", label: `محجوزة (${displayCars.filter((c) => !c.isAvailable).length})` },
   ];
 
-  const gridRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const container = gridRef.current;
-    if (!container) return;
-
-    const cards = container.querySelectorAll(".scroll-card-reveal");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            // انطلاق الحركات بانزلاق متسلسل فاخر (Staggered animation)
-            cards.forEach((card, index) => {
-              setTimeout(() => {
-                card.classList.add("is-visible");
-              }, index * 90);
-            });
-            observer.disconnect();
-          }
-        });
-      },
-      { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
-    );
-
-    observer.observe(container);
-
-    return () => observer.disconnect();
-  }, [filter]);
-
   return (
     <section
       id="featured-fleet"
@@ -239,16 +123,12 @@ export default function FeaturedFleet() {
         </div>
 
         {/* الشبكة بتأثيرات التمرير المتزامنة */}
-        <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-          {filtered.map((car, index) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+          {filtered.map((car) => {
             const dur = durations[car.id] || "day";
             const price = car.prices[dur];
             const TABS: DurationKey[] = ["day", "week", "month"];
             const TAB_AR: Record<DurationKey, string> = { day: "يومي", week: "أسبوعي", month: "شهري" };
-
-            const msg = encodeURIComponent(
-              `مرحباً شركة اليمن والخليج، أود حجز:\n• السيارة: ${car.name} (${car.modelYear})\n• العداد: ${car.odometer}\n• المدة: عقد ${price.label} — ${price.amount}\nيرجى تأكيد التوافر والإجراءات.`
-            );
 
             return (
               <div
@@ -276,7 +156,7 @@ export default function FeaturedFleet() {
                         alt={`${car.name} - صورة ${currentImgIdx + 1}`}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        priority={car.id === "range-rover-vogue"}
+                        priority={filtered[0]?.id === car.id}
                         className="object-cover object-center transition-transform duration-500 group-hover/img:scale-105"
                       />
 
@@ -424,7 +304,6 @@ export default function FeaturedFleet() {
         {selectedCarForBooking && (
           <PublicBookingModal
             car={selectedCarForBooking.car}
-            durationLabel={selectedCarForBooking.label}
             onClose={() => setSelectedCarForBooking(null)}
           />
         )}

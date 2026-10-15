@@ -4,19 +4,21 @@ import React from 'react';
 import { Users, X } from 'lucide-react';
 import { VehicleOwner } from '@/types/fleet';
 
+export interface OwnerFormState {
+  name: string;
+  phone: string;
+  bankAccount: string;
+  commissionModel: VehicleOwner['commissionModel'];
+  ownerSharePercent: number;
+  notes: string;
+}
+
 interface OwnerFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingOwner: VehicleOwner | null;
-  ownerForm: {
-    name: string;
-    phone: string;
-    bankAccount: string;
-    commissionModel: VehicleOwner['commissionModel'];
-    ownerSharePercent: number;
-    notes: string;
-  };
-  setOwnerForm: React.Dispatch<React.SetStateAction<any>>;
+  ownerForm: OwnerFormState;
+  setOwnerForm: React.Dispatch<React.SetStateAction<OwnerFormState>>;
   onSubmit: (e: React.FormEvent) => void;
 }
 

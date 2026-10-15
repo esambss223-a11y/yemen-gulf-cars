@@ -1,20 +1,23 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
+  LayoutDashboard, 
   Car as CarIcon, 
-  ExternalLink, 
-  TrendingUp, 
   Calendar, 
-  UserCheck, 
   Users, 
-  ShieldCheck, 
-  RotateCcw 
+  FileText, 
+  Truck, 
+  BarChart3, 
+  Settings,
+  LogOut,
+  ExternalLink,
+  ChevronLeft
 } from 'lucide-react';
 import { StaffUser } from '@/types/fleet';
 
-export type AdminTab = 'overview' | 'cars' | 'bookings' | 'staff' | 'owners' | 'coupons' | 'audit';
+export type AdminTab = 'overview' | 'cars' | 'bookings' | 'staff' | 'owners' | 'coupons' | 'audit' | 'profile';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -43,192 +46,152 @@ export default function AdminSidebar({
   resetToDefault,
   handleLogout,
 }: AdminSidebarProps) {
+  const [timeStr, setTimeStr] = useState('');
+  const [dateStr, setDateStr] = useState('');
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      setTimeStr(now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }));
+      setDateStr(now.toISOString().split('T')[0]);
+    };
+    updateClock();
+    const interval = setInterval(updateClock, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number | string }[] = [
+    { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard },
+    { id: 'cars', label: 'السيارات', icon: CarIcon, badge: totalCarsCount },
+    { id: 'bookings', label: 'الحجوزات', icon: Calendar, badge: activeBookingsCount },
+    { id: 'staff', label: 'العملاء وفريق العمل', icon: Users, badge: staffCount },
+    { id: 'owners', label: 'المبيعات والموردين', icon: Truck, badge: ownersCount },
+    { id: 'audit', label: 'التقارير وسجل الرقابة', icon: BarChart3 },
+    { id: 'profile', label: 'الإعدادات وحسابي', icon: Settings },
+  ];
+
   return (
     <>
       {/* خلفية معتمة للجوال عند فتح القائمة */}
       {isMobileOpen && (
         <div 
           onClick={onCloseMobile}
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden animate-fadeIn"
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden animate-fadeIn"
         />
       )}
 
       <aside className={`
-        fixed inset-y-0 right-0 z-50 w-72 bg-[#0a1122] border-l border-[#c5a059]/20 flex flex-col shrink-0 h-full overflow-hidden shadow-2xl transition-transform duration-300 ease-in-out
+        fixed inset-y-0 right-0 z-50 w-64 bg-[#081225] border-l border-white/5 flex flex-col shrink-0 h-full overflow-hidden shadow-2xl transition-transform duration-300 ease-in-out
         md:static md:translate-x-0 md:z-auto
         ${isMobileOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
       `}>
         
-        {/* ترويسة اللوحة والشعار */}
-        <div className="p-4 sm:p-5 border-b border-[#c5a059]/15 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#c5a059] to-[#8a6d3b] flex items-center justify-center p-0.5 shadow-lg shadow-[#c5a059]/20">
-              <div className="w-full h-full bg-[#060b17] rounded-[10px] flex items-center justify-center">
-                <CarIcon className="w-5 h-5 text-[#c5a059]" />
+        {/* ========================================================
+            1. ترويسة المستخدم في أعلى الشريط (User Profile Pill)
+            ======================================================== */}
+        <div className="p-4 border-b border-white/5">
+          <button
+            onClick={() => {
+              setActiveTab('profile');
+              if (onCloseMobile) onCloseMobile();
+            }}
+            className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-[#0e1b36] hover:bg-[#132347] border border-white/5 hover:border-[#c5a059]/40 transition-all text-right cursor-pointer group"
+            title="عرض ملفك الشخصي وإعداداتك"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#c5a059] to-[#8a6d3b] flex items-center justify-center text-slate-950 font-black text-sm shrink-0 shadow-md">
+                {currentStaff.name.charAt(0)}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] text-slate-400 font-medium">أهلاً بك</div>
+                <div className="text-xs font-black text-white truncate group-hover:text-[#c5a059] transition-colors">
+                  {currentStaff.name}
+                </div>
               </div>
             </div>
-            <div>
-              <div className="font-black text-sm text-white group-hover:text-[#c5a059] transition-colors">
-                يمن الخليج
-              </div>
-              <div className="text-[10px] text-[#c5a059] font-semibold">
-                نظام إدارة الأسطول (ERP)
-              </div>
-            </div>
-          </Link>
-          <div className="flex items-center gap-1">
-            <Link href="/" className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800" title="معاينة الموقع للجمهور">
-              <ExternalLink className="w-4 h-4" />
-            </Link>
-            {onCloseMobile && (
-              <button 
-                onClick={onCloseMobile}
-                className="md:hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800"
-                title="إغلاق القائمة"
+            <ChevronLeft className="w-4 h-4 text-slate-500 group-hover:text-[#c5a059] group-hover:-translate-x-0.5 transition-transform shrink-0" />
+          </button>
+        </div>
+
+        {/* ========================================================
+            2. روابط التنقل (Navigation Menu Items)
+            ======================================================== */}
+        <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto font-arabic">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-gradient-to-r from-[#d4af37] to-[#c5a059] text-slate-950 shadow-lg shadow-[#c5a059]/20 font-black'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
               >
-                ✕
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950 stroke-[2.5]' : 'text-slate-400'}`} />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge !== undefined && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+                    isActive 
+                      ? 'bg-slate-950/20 text-slate-950' 
+                      : 'bg-slate-800/80 text-slate-400'
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
               </button>
-            )}
+            );
+          })}
+        </nav>
+
+        {/* ========================================================
+            3. تذييل الشريط الجانبي وحالة النظام الحية (System Status)
+            ======================================================== */}
+        <div className="p-3.5 border-t border-white/5 bg-[#060e1d]/80 space-y-2.5">
+          
+          {/* حالة النظام والوقت */}
+          <div className="p-2.5 rounded-xl bg-[#09152b] border border-white/5 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span className="text-[11px] font-bold text-white">النظام يعمل بشكل طبيعي</span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pr-4">
+              <span>{timeStr || '10:24 ص'}</span>
+              <span>{dateStr || '2026-10-16'}</span>
+            </div>
           </div>
+
+          {/* روابط سريعة: معاينة الموقع وزر تسجيل الخروج */}
+          <div className="flex items-center justify-between px-1 text-[11px] text-slate-400">
+            <Link 
+              href="/" 
+              className="hover:text-[#c5a059] flex items-center gap-1 transition-colors"
+              title="معاينة الواجهة العامة للعملاء"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>عرض الموقع</span>
+            </Link>
+
+            <button
+              onClick={handleLogout}
+              className="text-rose-400/80 hover:text-rose-300 flex items-center gap-1 transition-colors cursor-pointer"
+              title="تسجيل الخروج من الحساب"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>خروج</span>
+            </button>
+          </div>
+
         </div>
 
-        {/* بطاقة الموظف النشط حالياً */}
-      <div className="p-3.5 m-3.5 rounded-xl bg-[#0e172a] border border-[#c5a059]/30">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[10px] text-slate-400 font-medium">المستخدم الحالي:</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            currentStaff.role === 'super_admin' ? 'bg-[#c5a059]/20 text-[#c5a059] border border-[#c5a059]/40' :
-            currentStaff.role === 'rental_agent' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-            'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-          }`}>
-            {currentStaff.role === 'super_admin' ? '👑 مدير عام' :
-             currentStaff.role === 'rental_agent' ? '👤 موظف تأجير' : '💼 محاسب مالي'}
-          </span>
-        </div>
-        <p className="text-xs font-bold text-white truncate">{currentStaff.name}</p>
-      </div>
-
-      {/* روابط التنقل في اللوحة (Navigation Menu) */}
-      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-        
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-            activeTab === 'overview'
-              ? 'bg-[#c5a059]/20 text-[#f3e5ab] border-r-4 border-[#c5a059]'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-          }`}
-        >
-          <span className="flex items-center gap-3">
-            <TrendingUp className="w-4 h-4 text-[#c5a059]" /> نظرة عامة وإحصائيات
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('cars')}
-          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-            activeTab === 'cars'
-              ? 'bg-[#c5a059]/20 text-[#f3e5ab] border-r-4 border-[#c5a059]'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-          }`}
-        >
-          <span className="flex items-center gap-3">
-            <CarIcon className="w-4 h-4 text-[#c5a059]" /> السيارات والأسطول
-          </span>
-          <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded-full text-[#c5a059] font-mono">
-            {totalCarsCount}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('bookings')}
-          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-            activeTab === 'bookings'
-              ? 'bg-[#c5a059]/20 text-[#f3e5ab] border-r-4 border-[#c5a059]'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-          }`}
-        >
-          <span className="flex items-center gap-3">
-            <Calendar className="w-4 h-4 text-[#c5a059]" /> الحجوزات والعقود
-          </span>
-          <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/50 px-2 py-0.5 rounded-full font-mono">
-            {activeBookingsCount} نشط
-          </span>
-        </button>
-
-        {/* قسم الموظفين وصلاحياتهم الكاملة */}
-        {currentStaff.role === 'super_admin' && (
-          <button
-            onClick={() => setActiveTab('staff')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'staff'
-                ? 'bg-[#c5a059]/20 text-[#f3e5ab] border-r-4 border-[#c5a059]'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-            }`}
-          >
-            <span className="flex items-center gap-3">
-              <UserCheck className="w-4 h-4 text-[#c5a059]" /> فريق العمل والموظفين
-            </span>
-            <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded-full text-blue-400 font-mono">
-              {staffCount}
-            </span>
-          </button>
-        )}
-
-        {/* قسم الملاك ونسب الأرباح */}
-        {(currentStaff.role === 'super_admin' || currentStaff.role === 'accountant') && (
-          <button
-            onClick={() => setActiveTab('owners')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'owners'
-                ? 'bg-[#c5a059]/20 text-[#f3e5ab] border-r-4 border-[#c5a059]'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-            }`}
-          >
-            <span className="flex items-center gap-3">
-              <Users className="w-4 h-4 text-[#c5a059]" /> الملاك ونسب الأرباح
-            </span>
-            <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded-full text-slate-300 font-mono">
-              {ownersCount}
-            </span>
-          </button>
-        )}
-
-        {currentStaff.role === 'super_admin' && (
-          <button
-            onClick={() => setActiveTab('audit')}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'audit'
-                ? 'bg-[#c5a059]/20 text-[#f3e5ab] border-r-4 border-[#c5a059]'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-            }`}
-          >
-            <span className="flex items-center gap-3">
-              <ShieldCheck className="w-4 h-4 text-[#c5a059]" /> سجل الرقابة والأمان
-            </span>
-          </button>
-        )}
-
-      </nav>
-
-      {/* تذييل الشريط الجانبي */}
-      <div className="p-3.5 border-t border-slate-800 flex items-center justify-between">
-        <button 
-          onClick={resetToDefault} 
-          className="text-[10px] text-slate-500 hover:text-amber-400 flex items-center gap-1 transition-colors"
-          title="استعادة البيانات الأصلية"
-        >
-          <RotateCcw className="w-3 h-3" /> استعادة الافتراضي
-        </button>
-        
-        <button
-          onClick={handleLogout}
-          className="text-[10px] text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 transition-colors cursor-pointer"
-        >
-          تسجيل الخروج ⏻
-        </button>
-      </div>
-    </aside>
+      </aside>
     </>
   );
 }

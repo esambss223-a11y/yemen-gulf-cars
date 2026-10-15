@@ -12,8 +12,49 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "شركة اليمن والخليج لتأجير السيارات",
-  description: "شركة اليمن والخليج لتأجير السيارات. تعرّف على السيارات المتاحة وخيارات التأجير وخدمات توريد السيارات.",
+  metadataBase: new URL("https://ygcarss.com"),
+  title: "شركة اليمن والخليج لتأجير السيارات | أسطول السيارات الفاخرة",
+  description: "شركة اليمن والخليج لتأجير السيارات الفارهة والاقتصادية في مصر - أسطول حديث، خدمات توصيل واستقبال مطار، تعاقدات يومية وشهرية بأفضل الأسعار.",
+  alternates: {
+    canonical: "https://ygcarss.com",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico?v=2" },
+      { url: "/icon.png?v=2", sizes: "64x64", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon.png?v=2", sizes: "512x512", type: "image/png" },
+    ],
+  },
+  openGraph: {
+    title: "شركة اليمن والخليج لتأجير السيارات",
+    description: "أرقى أسطول سيارات فاخرة وحديثة للإيجار اليومي والأسبوعي والشهري مع خدمات التوصيل للمطار.",
+    url: "https://ygcarss.com",
+    siteName: "شركة اليمن والخليج لتأجير السيارات",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "شعار شركة اليمن والخليج لتأجير السيارات",
+      },
+      {
+        url: "/logo2.png",
+        width: 1945,
+        height: 808,
+        alt: "شعار شركة اليمن والخليج",
+      },
+    ],
+    locale: "ar_EG",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "شركة اليمن والخليج لتأجير السيارات",
+    description: "أرقى أسطول سيارات فاخرة وحديثة للإيجار في مصر",
+    images: ["/og-image.png"],
+  },
 };
 
 import { FleetProvider } from "@/context/FleetContext";

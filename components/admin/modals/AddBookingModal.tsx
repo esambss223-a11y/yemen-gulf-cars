@@ -4,24 +4,26 @@ import React from 'react';
 import { Calendar, X } from 'lucide-react';
 import { Car } from '@/types/fleet';
 
+export interface NewBookingFormState {
+  carId: string;
+  customerName: string;
+  customerPhone: string;
+  nationalId: string;
+  licenseNumber: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  discountCode: string;
+  notes: string;
+}
+
 interface AddBookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   cars: Car[];
-  newBooking: {
-    carId: string;
-    customerName: string;
-    customerPhone: string;
-    nationalId: string;
-    licenseNumber: string;
-    startDate: string;
-    startTime: string;
-    endDate: string;
-    endTime: string;
-    discountCode: string;
-    notes: string;
-  };
-  setNewBooking: React.Dispatch<React.SetStateAction<any>>;
+  newBooking: NewBookingFormState;
+  setNewBooking: React.Dispatch<React.SetStateAction<NewBookingFormState>>;
   onSubmit: (e: React.FormEvent) => void;
 }
 
