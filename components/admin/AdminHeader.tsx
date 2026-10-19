@@ -78,6 +78,16 @@ export default function AdminHeader({
       {/* 3. الجانب الأيسر: زر الإشعارات والأزرار التشغيلية */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         
+        {/* شارة الاتصال السحابي */}
+        <div className={`hidden lg:flex px-2.5 py-1.5 rounded-full text-[10px] font-bold items-center gap-1.5 border shadow-2xs ${
+          isCloudConnected 
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+            : 'bg-cyan-50 border-cyan-200 text-cyan-700'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-cyan-500'}`} />
+          <span>{isCloudConnected ? 'سحابي متصل ✓' : 'مزامنة محلية ☁️'}</span>
+        </div>
+
         {/* زر الإشعارات */}
         <button
           className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200/80 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors relative cursor-pointer"
