@@ -170,7 +170,8 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
 
   // ========== إدارة الموظفين ==========
   const addStaff = async (staffData: Omit<StaffUser, 'id'>) => {
-    const tempId = `staff-${Date.now()}`;
+    // استخدام UUID قياسي متوافق مع نوع حقل id في قاعدة البيانات
+    const tempId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `staff-${Date.now()}`;
     const newStaff: StaffUser = { ...staffData, id: tempId };
     setStaffList((prev) => {
       const updated = [...prev, newStaff];
@@ -182,7 +183,7 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
       const res = await fetch('/api/admin/staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(staffData),
+        body: JSON.stringify({ ...staffData, id: tempId }),
       });
       const data = await res.json();
       if (res.ok && data?.staff) {

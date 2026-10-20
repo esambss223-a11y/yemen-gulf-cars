@@ -2,22 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://olpjfipferziqtzrbbbt.supabase.co';
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ttzLa9vmYT9Ym0eGckMY_w_yDEjmXZb';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+function getSupabase() {
+  return createClient(SUPABASE_URL, SERVICE_KEY || ANON_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
 
 // 1. استرجاع قائمة جميع الموظفين من جدول staff
 export async function GET() {
   try {
-    if (!SERVICE_KEY) {
-      return NextResponse.json({ staff: [] });
-    }
-
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    const { data: staffList, error } = await admin
+    const supabase = getSupabase();
+    const { data: staffList, error } = await supabase
       .from('staff')
-      .select('id, name, username, role, phone, active, created_at')
+      .select('id, name, username, role, phone, active, created_at, password')
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -34,72 +34,44 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, username, password, role, phone } = body;
+    const { id, name, username, password, role, phone } = body;
 
     const cleanUsername = (username || '').trim().toLowerCase();
     const cleanName = (name || '').trim();
     const cleanPhone = (phone || '').trim();
     const cleanRole = role || 'rental_agent';
     const cleanPassword = password && password.length >= 6 ? password : 'admin123';
+    const finalId = (id && id.length > 20) ? id : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined);
 
     if (!cleanUsername || !cleanName) {
       return NextResponse.json({ error: 'اسم الموظف واسم المستخدم مطلوبان' }, { status: 400 });
     }
 
-    if (!SERVICE_KEY) {
-      return NextResponse.json({
-        staff: {
-          id: `staff-${Date.now()}`,
-          name: cleanName,
-          username: cleanUsername,
-          role: cleanRole,
-          phone: cleanPhone,
-          active: true,
-        }
-      });
-    }
+    const supabase = getSupabase();
 
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    const authDomain = new URL(SUPABASE_URL).hostname;
-    const authEmail = `${cleanUsername}@${authDomain}`;
-
-    let userId: string | null = null;
-
-    // محاولة إنشاء حساب Auth
-    const { data: authData, error: authErr } = await admin.auth.admin.createUser({
-      email: authEmail,
-      password: cleanPassword,
-      email_confirm: true,
-      user_metadata: {
-        name: cleanName,
-        username: cleanUsername,
-        role: cleanRole,
-        phone: cleanPhone,
-      },
-    });
-
-    if (!authErr && authData?.user) {
-      userId = authData.user.id;
-    } else {
-      // إذا كان مسجلاً مسبقاً، نأخذ معرفه ونحدث كلمة مروره
-      const { data: users } = await admin.auth.admin.listUsers();
-      const existing = users?.users?.find(u => u.email === authEmail);
-      if (existing) {
-        userId = existing.id;
-        await admin.auth.admin.updateUserById(userId, {
+    // 1. إذا كان مفتاح الخدمة متوفراً، أنشئ حساب Auth للموظف
+    if (SERVICE_KEY) {
+      try {
+        const authDomain = new URL(SUPABASE_URL).hostname;
+        const authEmail = `${cleanUsername}@${authDomain}`;
+        await supabase.auth.admin.createUser({
+          email: authEmail,
           password: cleanPassword,
-          user_metadata: { name: cleanName, username: cleanUsername, role: cleanRole, phone: cleanPhone }
+          email_confirm: true,
+          user_metadata: {
+            name: cleanName,
+            username: cleanUsername,
+            role: cleanRole,
+            phone: cleanPhone,
+          },
         });
+      } catch (authErr) {
+        // الحساب قد يكون موجوداً مسبقاً، نتابع الإدراج في جدول staff
       }
     }
 
-    const finalId = userId || `staff-${Date.now()}`;
-
-    // إدراج أو تحديث في جدول staff
-    const { data: staffRow, error: staffErr } = await admin
+    // 2. إدراج أو تحديث في جدول staff
+    const { data: staffRow, error: staffErr } = await supabase
       .from('staff')
       .upsert({
         id: finalId,
@@ -107,6 +79,7 @@ export async function POST(req: NextRequest) {
         username: cleanUsername,
         role: cleanRole,
         phone: cleanPhone,
+        password: cleanPassword,
         active: true,
       })
       .select()
@@ -118,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       staff: staffRow || {
-        id: finalId,
+        id: finalId || `staff-${Date.now()}`,
         name: cleanName,
         username: cleanUsername,
         role: cleanRole,
@@ -143,26 +116,21 @@ export async function PUT(req: NextRequest) {
     const cleanPhone = (phone || '').trim();
     const cleanRole = role;
 
-    if (!SERVICE_KEY) {
-      return NextResponse.json({ success: true });
-    }
-
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const supabase = getSupabase();
 
     const payload: Record<string, unknown> = {};
     if (cleanName) payload.name = cleanName;
     if (cleanUsername) payload.username = cleanUsername;
     if (cleanPhone) payload.phone = cleanPhone;
     if (cleanRole) payload.role = cleanRole;
+    if (password && password.length >= 6) payload.password = password;
 
     // تحديث جدول staff بالمعرف أو باسم المستخدم
     let matchedId = id;
     if (id && id.length > 20) {
-      await admin.from('staff').update(payload).eq('id', id);
+      await supabase.from('staff').update(payload).eq('id', id);
     } else if (cleanUsername) {
-      const { data: matched } = await admin
+      const { data: matched } = await supabase
         .from('staff')
         .update(payload)
         .eq('username', cleanUsername)
@@ -171,15 +139,13 @@ export async function PUT(req: NextRequest) {
       if (matched?.id) matchedId = matched.id;
     }
 
-    // إذا كانت هناك كلمة مرور جديدة، نحدثها في Auth
-    if (password && password.length >= 6) {
+    // إذا كانت هناك كلمة مرور جديدة ومفتاح الخدمة متوفر، نحدث Auth
+    if (SERVICE_KEY && password && password.length >= 6 && matchedId && matchedId.length > 20) {
       try {
-        if (matchedId && matchedId.length > 20) {
-          await admin.auth.admin.updateUserById(matchedId, {
-            password,
-            user_metadata: { name: cleanName, username: cleanUsername, role: cleanRole, phone: cleanPhone }
-          });
-        }
+        await supabase.auth.admin.updateUserById(matchedId, {
+          password,
+          user_metadata: { name: cleanName, username: cleanUsername, role: cleanRole, phone: cleanPhone }
+        });
       } catch (authErr) {
         console.warn('Update password notice:', authErr);
       }
@@ -203,34 +169,31 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'معرف الموظف أو اسم المستخدم مطلوب' }, { status: 400 });
     }
 
-    if (SERVICE_KEY) {
-      const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
+    const supabase = getSupabase();
+    let staffIdToDelete = id;
 
-      let staffIdToDelete = id;
+    // إذا كان المعرف ليس UUID، نجلب الموظف بالاسم
+    if ((!staffIdToDelete || staffIdToDelete.startsWith('staff-')) && username) {
+      const { data: found } = await supabase
+        .from('staff')
+        .select('id')
+        .eq('username', username)
+        .maybeSingle();
+      if (found?.id) staffIdToDelete = found.id;
+    }
 
-      // إذا كان المعرف ليس UUID، نجلب الموظف بالاسم
-      if ((!staffIdToDelete || staffIdToDelete.startsWith('staff-')) && username) {
-        const { data: found } = await admin
-          .from('staff')
-          .select('id')
-          .eq('username', username)
-          .maybeSingle();
-        if (found?.id) staffIdToDelete = found.id;
-      }
-
-      // حذف من جدول staff
-      if (staffIdToDelete && staffIdToDelete.length > 20) {
-        await admin.from('staff').delete().eq('id', staffIdToDelete);
+    // حذف من جدول staff
+    if (staffIdToDelete && staffIdToDelete.length > 20) {
+      await supabase.from('staff').delete().eq('id', staffIdToDelete);
+      if (SERVICE_KEY) {
         try {
-          await admin.auth.admin.deleteUser(staffIdToDelete);
+          await supabase.auth.admin.deleteUser(staffIdToDelete);
         } catch {
           // ignore
         }
-      } else if (username) {
-        await admin.from('staff').delete().eq('username', username);
       }
+    } else if (username) {
+      await supabase.from('staff').delete().eq('username', username);
     }
 
     return NextResponse.json({ success: true });
