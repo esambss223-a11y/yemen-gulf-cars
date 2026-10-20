@@ -69,9 +69,11 @@ export function useFleetBookings({
       bookingNumber,
       createdAt: new Date().toLocaleString('ar-EG'),
     };
-    const updated = [newBooking, ...bookings];
-    setBookings(updated);
-    saveToStorage('yg_bookings', updated);
+    setBookings((prev) => {
+      const updated = [newBooking, ...prev];
+      saveToStorage('yg_bookings', updated);
+      return updated;
+    });
 
     // تحديث حالة السيارة تلقائياً إلى مؤجرة
     await updateCar(newBooking.carId, { status: 'rented' });
@@ -191,39 +193,40 @@ export function useFleetBookings({
     const damageFee = delayDetails?.damageFee || 0;
     const totalDeductions = penaltyFee + cleanlinessFee + damageFee;
 
-    const updated = bookings.map((b) => {
-      if (b.id === id) {
-        return {
-          ...b,
-          status,
-          returnKm: returnKm || b.returnKm,
-          actualReturnDate: status === 'completed' ? new Date().toISOString().split('T')[0] : b.actualReturnDate,
-          depositStatus:
-            status === 'completed'
-              ? totalDeductions >= b.securityDepositEGP
-                ? ('pending' as const)
-                : totalDeductions > 0
-                ? ('refunded_partial' as const)
-                : ('refunded_full' as const)
-              : b.depositStatus,
-          lateNoticeGiven: delayDetails?.lateNoticeGiven ?? b.lateNoticeGiven,
-          lateHoursCount: delayDetails?.lateHours ?? b.lateHoursCount,
-          latePenaltyFeeEGP: penaltyFee > 0 ? penaltyFee : b.latePenaltyFeeEGP,
-          cleanlinessFeeEGP: cleanlinessFee > 0 ? cleanlinessFee : b.cleanlinessFeeEGP,
-          cleanlinessScore: delayDetails?.cleanlinessScore ?? b.cleanlinessScore,
-          damageFeeEGP: damageFee > 0 ? damageFee : b.damageFeeEGP,
-          damageDescription: delayDetails?.damageDescription ?? b.damageDescription,
-          customerRatingStars: delayDetails?.customerRatingStars ?? b.customerRatingStars,
-          customerRecommendation: delayDetails?.customerRecommendation ?? b.customerRecommendation,
-          returnInspectionStaff: delayDetails?.staffName || b.returnInspectionStaff || currentStaffName,
-          approvedByStaffName: delayDetails?.staffName || b.approvedByStaffName,
-        };
-      }
-      return b;
+    setBookings((prev) => {
+      const updated = prev.map((b) => {
+        if (b.id === id) {
+          return {
+            ...b,
+            status,
+            returnKm: returnKm || b.returnKm,
+            actualReturnDate: status === 'completed' ? new Date().toISOString().split('T')[0] : b.actualReturnDate,
+            depositStatus:
+              status === 'completed'
+                ? totalDeductions >= b.securityDepositEGP
+                  ? ('pending' as const)
+                  : totalDeductions > 0
+                  ? ('refunded_partial' as const)
+                  : ('refunded_full' as const)
+                : b.depositStatus,
+            lateNoticeGiven: delayDetails?.lateNoticeGiven ?? b.lateNoticeGiven,
+            lateHoursCount: delayDetails?.lateHours ?? b.lateHoursCount,
+            latePenaltyFeeEGP: penaltyFee > 0 ? penaltyFee : b.latePenaltyFeeEGP,
+            cleanlinessFeeEGP: cleanlinessFee > 0 ? cleanlinessFee : b.cleanlinessFeeEGP,
+            cleanlinessScore: delayDetails?.cleanlinessScore ?? b.cleanlinessScore,
+            damageFeeEGP: damageFee > 0 ? damageFee : b.damageFeeEGP,
+            damageDescription: delayDetails?.damageDescription ?? b.damageDescription,
+            customerRatingStars: delayDetails?.customerRatingStars ?? b.customerRatingStars,
+            customerRecommendation: delayDetails?.customerRecommendation ?? b.customerRecommendation,
+            returnInspectionStaff: delayDetails?.staffName || b.returnInspectionStaff || currentStaffName,
+            approvedByStaffName: delayDetails?.staffName || b.approvedByStaffName,
+          };
+        }
+        return b;
+      });
+      saveToStorage('yg_bookings', updated);
+      return updated;
     });
-
-    setBookings(updated);
-    saveToStorage('yg_bookings', updated);
 
     // تحديث حالة السيارة عند الإرجاع
     if (status === 'completed') {

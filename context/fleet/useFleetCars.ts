@@ -59,9 +59,11 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       ...newCarData,
       id: `car-${Date.now()}`,
     };
-    const updated = [newCar, ...cars];
-    setCars(updated);
-    saveToStorage('yg_cars', updated);
+    setCars((prev) => {
+      const updated = [newCar, ...prev];
+      saveToStorage('yg_cars', updated);
+      return updated;
+    });
 
     try {
       await supabase.from('cars').insert({
@@ -109,9 +111,11 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
   };
 
   const updateCar = async (id: string, partial: Partial<Car>) => {
-    const updated = cars.map((c) => (c.id === id ? { ...c, ...partial } : c));
-    setCars(updated);
-    saveToStorage('yg_cars', updated);
+    setCars((prev) => {
+      const updated = prev.map((c) => (c.id === id ? { ...c, ...partial } : c));
+      saveToStorage('yg_cars', updated);
+      return updated;
+    });
 
     try {
       const payload: Record<string, unknown> = {};
@@ -153,10 +157,11 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
   };
 
   const deleteCar = async (id: string) => {
-    const car = cars.find((c) => c.id === id);
-    const updated = cars.filter((c) => c.id !== id);
-    setCars(updated);
-    saveToStorage('yg_cars', updated);
+    setCars((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      saveToStorage('yg_cars', updated);
+      return updated;
+    });
 
     try {
       await supabase.from('cars').delete().eq('id', id);
@@ -164,7 +169,7 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       // ignore
     }
 
-    logAction('حذف سيارة', `تم حذف السيارة: ${car?.make} ${car?.model}`);
+    logAction('حذف سيارة', `تم حذف السيارة ID: ${id}`);
   };
 
   return {

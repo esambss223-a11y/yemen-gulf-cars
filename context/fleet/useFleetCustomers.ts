@@ -26,9 +26,11 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
       totalRentalsCount: customerData.totalRentalsCount ?? 0,
       totalSpentEGP: customerData.totalSpentEGP ?? 0,
     };
-    const updated = [newCustomer, ...customers];
-    setCustomers(updated);
-    saveToStorage('yg_customers', updated);
+    setCustomers((prev) => {
+      const updated = [newCustomer, ...prev];
+      saveToStorage('yg_customers', updated);
+      return updated;
+    });
 
     try {
       supabase.from('customers').insert({
@@ -60,9 +62,11 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
   };
 
   const updateCustomer = (id: string, partial: Partial<Customer>) => {
-    const updated = customers.map((c) => (c.id === id ? { ...c, ...partial } : c));
-    setCustomers(updated);
-    saveToStorage('yg_customers', updated);
+    setCustomers((prev) => {
+      const updated = prev.map((c) => (c.id === id ? { ...c, ...partial } : c));
+      saveToStorage('yg_customers', updated);
+      return updated;
+    });
 
     try {
       const payload: Record<string, unknown> = {};
@@ -91,9 +95,11 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
 
   const deleteCustomer = (id: string) => {
     const cust = customers.find((c) => c.id === id);
-    const updated = customers.filter((c) => c.id !== id);
-    setCustomers(updated);
-    saveToStorage('yg_customers', updated);
+    setCustomers((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      saveToStorage('yg_customers', updated);
+      return updated;
+    });
 
     try {
       supabase.from('customers').delete().eq('id', id).then();

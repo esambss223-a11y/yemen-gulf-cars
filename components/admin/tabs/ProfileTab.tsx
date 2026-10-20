@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Crown, 
@@ -44,6 +44,13 @@ export default function ProfileTab({
   const [phoneInput, setPhoneInput] = useState(currentStaff.phone);
   const [passwordInput, setPasswordInput] = useState(currentStaff.password || '');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+
+  useEffect(() => {
+    if (!isEditing) {
+      setNameInput(currentStaff.name);
+      setPhoneInput(currentStaff.phone);
+    }
+  }, [currentStaff, isEditing]);
 
   // استخراج سجل النشاطات الخاص بالموظف الحالي فقط
   const myAuditLogs = auditLogs.filter(

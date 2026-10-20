@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { 
   Car, 
   Booking, 
@@ -122,36 +122,72 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     currentStaffName: auth.currentStaff?.name,
   });
 
-  // مزامنة السحابة عند بدء التشغيل
-  const loadCloudData = useCallback(async () => {
-    try {
-      // جلب السيارات
-      const { data: cloudCars, error: carsErr } = await supabase.from('cars').select('*');
-      if (!carsErr && cloudCars && cloudCars.length > 0) {
-        misc.setIsCloudConnected(true);
-        fleetCars.setCars(cloudCars.map(fleetCars.mapCloudCar));
-      }
-
-      // جلب الحجوزات
-      const { data: cloudBookings, error: bkErr } = await supabase.from('bookings').select('*');
-      if (!bkErr && cloudBookings && cloudBookings.length > 0) {
-        fleetBookings.setBookings(cloudBookings.map(fleetBookings.mapCloudBooking));
-      }
-
-      // جلب الملاك
-      const { data: cloudOwners, error: ownersErr } = await supabase.from('owners').select('*');
-      if (!ownersErr && cloudOwners && cloudOwners.length > 0) {
-        fleetOwners.setOwners(cloudOwners.map(fleetOwners.mapCloudOwner));
-      }
-    } catch (err) {
-      console.warn('Supabase cloud fetch fallback:', err);
-    }
-  }, [fleetCars, fleetBookings, fleetOwners, misc]);
+  // قفل التهيئة الأولية لمنع أي تكرار أو تعليق في المتصفح نهائياً
+  const isInitializedRef = useRef(false);
 
   useEffect(() => {
+    if (isInitializedRef.current) return;
+    isInitializedRef.current = true;
+
     misc.trackAndLoadVisits();
-    loadCloudData();
-  }, [misc, loadCloudData]);
+
+    const fetchInitialData = async () => {
+      try {
+        const [
+          { data: cloudCars, error: carsErr },
+          { data: cloudBookings, error: bkErr },
+          { data: cloudOwners, error: ownersErr },
+          { data: cloudCustomers, error: custErr },
+        ] = await Promise.all([
+          supabase.from('cars').select('*'),
+          supabase.from('bookings').select('*'),
+          supabase.from('owners').select('*'),
+          supabase.from('customers').select('*'),
+        ]);
+
+        if (!carsErr && cloudCars && cloudCars.length > 0) {
+          misc.setIsCloudConnected(true);
+          fleetCars.setCars(cloudCars.map(fleetCars.mapCloudCar));
+        }
+
+        if (!bkErr && cloudBookings && cloudBookings.length > 0) {
+          fleetBookings.setBookings(cloudBookings.map(fleetBookings.mapCloudBooking));
+        }
+
+        if (!ownersErr && cloudOwners && cloudOwners.length > 0) {
+          fleetOwners.setOwners(cloudOwners.map(fleetOwners.mapCloudOwner));
+        }
+
+        if (!custErr && cloudCustomers && cloudCustomers.length > 0) {
+          fleetCustomers.setCustomers(cloudCustomers.map((c: any) => ({
+            id: c.id,
+            fullName: c.full_name,
+            phone: c.phone,
+            whatsapp: c.whatsapp,
+            nationalId: c.national_id,
+            licenseNumber: c.license_number,
+            nationality: c.nationality || 'مصري',
+            tier: c.tier || 'regular',
+            riskStatus: c.risk_status || 'safe',
+            trustScore: Number(c.trust_score ?? 85),
+            starRating: Number(c.star_rating ?? 5),
+            ratingCount: Number(c.rating_count ?? 1),
+            cleanlinessScore: c.cleanliness_score || 'clean',
+            damagesCount: Number(c.damages_count ?? 0),
+            loyaltyPoints: Number(c.loyalty_points ?? 0),
+            totalRentalsCount: Number(c.total_rentals_count ?? 0),
+            totalSpentEGP: Number(c.total_spent_egp ?? 0),
+            notes: c.notes,
+            createdAt: c.created_at,
+          })));
+        }
+      } catch (err) {
+        console.warn('Initial data load notice:', err);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
 
   // دالة إعادة ضبط المصنع
   const resetToDefault = misc.createResetFunction(

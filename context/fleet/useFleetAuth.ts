@@ -160,6 +160,25 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     const updated = staffList.map((s) => (s.id === id ? { ...s, ...partial } : s));
     setStaffList(updated);
     saveToStorage('yg_staff', updated);
+
+    // تحديث بيانات الموظف النشط حالياً في الجلسة فوراً
+    if (currentStaff && (currentStaff.id === id || currentStaff.username === id)) {
+      const updatedCurrent = { ...currentStaff, ...partial };
+      setCurrentStaff(updatedCurrent);
+      saveToStorage('yg_current_staff', updatedCurrent);
+    }
+
+    try {
+      const payload: Record<string, unknown> = {};
+      if (partial.name !== undefined) payload.name = partial.name;
+      if (partial.phone !== undefined) payload.phone = partial.phone;
+      if (partial.role !== undefined) payload.role = partial.role;
+      if (partial.active !== undefined) payload.active = partial.active;
+      supabase.from('staff').update(payload).eq('id', id).then();
+    } catch {
+      // ignore
+    }
+
     logAction('تعديل حساب موظف', `تم تعديل بيانات الموظف ID: ${id}`);
   };
 

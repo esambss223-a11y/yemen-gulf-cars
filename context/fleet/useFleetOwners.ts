@@ -34,9 +34,11 @@ export function useFleetOwners({ logAction }: UseFleetOwnersProps) {
       ...ownerData,
       id: `owner-${Date.now()}`,
     };
-    const updated = [...owners, newOwner];
-    setOwners(updated);
-    saveToStorage('yg_owners', updated);
+    setOwners((prev) => {
+      const updated = [...prev, newOwner];
+      saveToStorage('yg_owners', updated);
+      return updated;
+    });
 
     try {
       await supabase.from('owners').insert({
@@ -60,9 +62,11 @@ export function useFleetOwners({ logAction }: UseFleetOwnersProps) {
   };
 
   const updateOwner = async (id: string, partial: Partial<VehicleOwner>) => {
-    const updated = owners.map((o) => (o.id === id ? { ...o, ...partial } : o));
-    setOwners(updated);
-    saveToStorage('yg_owners', updated);
+    setOwners((prev) => {
+      const updated = prev.map((o) => (o.id === id ? { ...o, ...partial } : o));
+      saveToStorage('yg_owners', updated);
+      return updated;
+    });
 
     try {
       const payload: Record<string, unknown> = {};
@@ -87,9 +91,11 @@ export function useFleetOwners({ logAction }: UseFleetOwnersProps) {
 
   const deleteOwner = async (id: string) => {
     const owner = owners.find((o) => o.id === id);
-    const updated = owners.filter((o) => o.id !== id);
-    setOwners(updated);
-    saveToStorage('yg_owners', updated);
+    setOwners((prev) => {
+      const updated = prev.filter((o) => o.id !== id);
+      saveToStorage('yg_owners', updated);
+      return updated;
+    });
 
     try {
       await supabase.from('owners').delete().eq('id', id);
