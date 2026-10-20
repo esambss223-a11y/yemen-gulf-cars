@@ -291,10 +291,10 @@ export default function AdminDashboardPage() {
   };
 
   // معالجات المودال - الموظفين
-  const handleStaffFormSubmit = (e: React.FormEvent) => {
+  const handleStaffFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingStaff) {
-      updateStaff(editingStaff.id, {
+      await updateStaff(editingStaff.id, {
         name: staffForm.name,
         username: staffForm.username,
         role: staffForm.role,
@@ -302,10 +302,10 @@ export default function AdminDashboardPage() {
         ...(staffForm.password ? { password: staffForm.password } : {})
       });
     } else {
-      addStaff({
+      await addStaff({
         name: staffForm.name,
         username: staffForm.username,
-        password: staffForm.password || '123456',
+        password: staffForm.password || 'admin123',
         role: staffForm.role,
         phone: staffForm.phone,
         active: true,

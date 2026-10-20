@@ -213,10 +213,10 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
       saveToStorage('yg_current_staff', updatedCurrent);
     }
 
-    // 2. مزامنة سحابية مؤكدة عبر مسار الخادم update-profile
+    // 2. مزامنة سحابية مؤكدة عبر مسار الخادم staff (PUT)
     try {
-      await fetch('/api/admin/update-profile', {
-        method: 'POST',
+      await fetch('/api/admin/staff', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id,
@@ -231,7 +231,7 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
       // ignore
     }
 
-    // 3. محاولة ثانوية عبر عميل Supabase المباشر
+    // 3. محاولة ثانوية لتحديث بيانات الجلسة في حال كان الموظف نفسه
     try {
       if (partial.password && partial.password.trim().length >= 6) {
         await supabase.auth.updateUser({ password: partial.password });
@@ -256,20 +256,23 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
       alert('لا يمكن حذف الموظف الوحيد في النظام');
       return;
     }
-    const staff = staffList.find((s) => s.id === id);
+    const staff = staffList.find((s) => s.id === id || s.username === id);
     setStaffList((prev) => {
-      const updated = prev.filter((s) => s.id !== id);
+      const updated = prev.filter((s) => s.id !== id && s.username !== id);
       saveToStorage('yg_staff', updated);
       return updated;
     });
 
     try {
-      await fetch(`/api/admin/staff?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const params = new URLSearchParams();
+      if (id) params.set('id', id);
+      if (staff?.username) params.set('username', staff.username);
+      await fetch(`/api/admin/staff?${params.toString()}`, { method: 'DELETE' });
     } catch {
       // ignore
     }
 
-    logAction('حذف موظف', `تم حذف حساب الموظف: ${staff?.name}`);
+    logAction('حذف موظف', `تم حذف حساب الموظف: ${staff?.name || id}`);
   };
 
   return {

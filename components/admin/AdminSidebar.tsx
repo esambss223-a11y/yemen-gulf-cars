@@ -67,7 +67,7 @@ export default function AdminSidebar({
     return () => clearInterval(interval);
   }, []);
 
-  const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number | string }[] = [
+  const allNavItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number | string }[] = [
     { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard },
     { id: 'cars', label: 'السيارات', icon: CarIcon, badge: totalCarsCount },
     { id: 'bookings', label: 'الحجوزات والعقود', icon: Calendar, badge: activeBookingsCount },
@@ -77,6 +77,24 @@ export default function AdminSidebar({
     { id: 'audit', label: 'التقارير وسجل الرقابة', icon: BarChart3 },
     { id: 'profile', label: 'الإعدادات وحسابي', icon: Settings },
   ];
+
+  // تصفية القوائم حسب صلاحية الرتبة الوظيفية
+  const allowedTabsByRole: Record<string, AdminTab[]> = {
+    super_admin: ['overview', 'cars', 'bookings', 'customers', 'owners', 'staff', 'audit', 'profile'],
+    rental_agent: ['overview', 'cars', 'bookings', 'customers', 'profile'],
+    accountant: ['overview', 'bookings', 'cars', 'customers', 'owners', 'profile'],
+  };
+
+  const userRole = currentStaff.role || 'rental_agent';
+  const allowed = allowedTabsByRole[userRole] || allowedTabsByRole.rental_agent;
+  const navItems = allNavItems.filter((item) => allowed.includes(item.id));
+
+  // نصوص وألوان الرتبة في ترويسة القائمة
+  const roleDisplay = {
+    super_admin: { label: '👑 مدير عام', color: 'text-amber-400' },
+    rental_agent: { label: '👤 موظف تأجير', color: 'text-blue-400' },
+    accountant: { label: '💼 محاسب مالي', color: 'text-emerald-400' },
+  }[userRole] || { label: '👤 موظف', color: 'text-slate-400' };
 
   return (
     <>
@@ -111,7 +129,7 @@ export default function AdminSidebar({
                 {currentStaff.name.charAt(0)}
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] text-slate-400 font-medium">أهلاً بك</div>
+                <div className={`text-[11px] font-bold ${roleDisplay.color}`}>{roleDisplay.label}</div>
                 <div className="text-xs font-black text-white truncate group-hover:text-[#c5a059] transition-colors">
                   {currentStaff.name}
                 </div>
