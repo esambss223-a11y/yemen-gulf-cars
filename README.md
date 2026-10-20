@@ -20,7 +20,7 @@ cp .env.example .env.local
 
 تسجيل دخول اللوحة موثّق عبر Supabase Auth، ولا يمكن الدخول إلا لمن يوجد له سجل في جدول `staff`:
 
-1. أنشئ حساب الموظف في لوحة Supabase: **Authentication → Users → Add user** (بريد الموظف + كلمة مرور، مع تفعيل Auto-confirm).
+1. أنشئ حساب الموظف في لوحة Supabase: **Authentication → Users → Add user**. استخدم اسم الموظف بالإنجليزية متبوعاً بـ `@` ثم اسم المضيف في `NEXT_PUBLIC_SUPABASE_URL` كمعرّف Auth داخلي (مثال: `ahmed@<project-host>`)، وحدد كلمة المرور وفعّل Auto-confirm. الموظف يدخل إلى الموقع باسم المستخدم وكلمة المرور فقط.
 2. انسخ الـ UUID الخاص بالمستخدم وأضف سجله في جدول staff بتشغيل:
 
 ```sql
@@ -28,7 +28,7 @@ INSERT INTO public.staff (id, name, username, role, phone, active)
 VALUES ('<USER_UUID>', 'اسم الموظف', 'username', 'super_admin', '+20 100 000 0000', true);
 ```
 
-3. سجّل الدخول من `/admin` ببريد الموظف وكلمة المرور.
+3. سجّل الدخول من `/admin` باسم الموظف بالإنجليزية وكلمة المرور.
 
 > ملاحظة: تبويب "فريق العمل" يدير النسخة المحلية من الدليل (localStorage) حالياً؛ الربط الكامل لإنشاء الموظفين مع جدول staff السحابي يأتي في مرحلة لاحقة.
 

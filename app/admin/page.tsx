@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useFleet } from '@/context/FleetContext';
-import { Car, Booking, UserRole, VehicleOwner, StaffUser } from '@/types/fleet';
+import { Car, Booking, UserRole, VehicleOwner, StaffUser, OwnerCompensationType, Customer, ReturnInspectionPayload } from '@/types/fleet';
 
 // Modular UI Components
 import AdminLogin from '@/components/admin/AdminLogin';
@@ -14,15 +14,17 @@ import AdminFooter from '@/components/admin/AdminFooter';
 import OverviewTab from '@/components/admin/tabs/OverviewTab';
 import CarsTab from '@/components/admin/tabs/CarsTab';
 import BookingsTab from '@/components/admin/tabs/BookingsTab';
+import CustomersTab from '@/components/admin/tabs/CustomersTab';
 import StaffTab from '@/components/admin/tabs/StaffTab';
 import OwnersTab from '@/components/admin/tabs/OwnersTab';
 import AuditTab from '@/components/admin/tabs/AuditTab';
 import ProfileTab from '@/components/admin/tabs/ProfileTab';
 
 // Modular Modals
-import CarFormModal from '@/components/admin/modals/CarFormModal';
+import CarFormModal, { CarFormState } from '@/components/admin/modals/CarFormModal';
 import StaffFormModal from '@/components/admin/modals/StaffFormModal';
-import OwnerFormModal from '@/components/admin/modals/OwnerFormModal';
+import OwnerFormModal, { OwnerFormState } from '@/components/admin/modals/OwnerFormModal';
+import CustomerFormModal from '@/components/admin/modals/CustomerFormModal';
 import AddBookingModal from '@/components/admin/modals/AddBookingModal';
 import ReturnCarModal from '@/components/admin/modals/ReturnCarModal';
 import RentalContractModal from '@/components/admin/RentalContractModal';
@@ -39,6 +41,10 @@ export default function AdminDashboardPage() {
     addStaff,
     updateStaff,
     deleteStaff,
+    customers,
+    addCustomer,
+    updateCustomer,
+    deleteCustomer,
     cars, 
     addCar, 
     updateCar, 
@@ -62,7 +68,7 @@ export default function AdminDashboardPage() {
   // حماية اللوحة وتسجيل الدخول وتفادي Hydration Mismatch
   const [isMounted, setIsMounted] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [loginEmail, setLoginEmail] = useState('admin');
+  const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
@@ -77,10 +83,13 @@ export default function AdminDashboardPage() {
   const [editingOwner, setEditingOwner] = useState<VehicleOwner | null>(null);
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffUser | null>(null);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [returnKmInput, setReturnKmInput] = useState('');
 
   // Form states - Car
-  const [carForm, setCarForm] = useState({
+  const [carForm, setCarForm] = useState<CarFormState>({
+    carCode: '',
     make: '',
     model: '',
     year: 2024,
@@ -88,6 +97,15 @@ export default function AdminDashboardPage() {
     plateNumber: '',
     color: 'أسود ملكي',
     currentKm: 0,
+    initialHandoverKm: 0,
+    fleetEntryDate: new Date().toISOString().split('T')[0],
+    contractStartDate: new Date().toISOString().split('T')[0],
+    contractEndDate: '',
+    licenseExpiryDate: '',
+    licenseRenewalDate: '',
+    nextServiceKm: 10000,
+    nextServiceDate: '',
+    serviceResponsibleParty: 'company' as 'company' | 'owner',
     dailyPriceEGP: 5000,
     weeklyPriceEGP: 32000,
     securityDepositEGP: 10000,
@@ -99,6 +117,8 @@ export default function AdminDashboardPage() {
     ownership: 'company' as Car['ownership'],
     ownerId: '',
     ownerName: 'شركة يمن الخليج',
+    ownerCompensationType: 'fixed_monthly' as OwnerCompensationType,
+    ownerAgreedRateEGP: 35000,
     features: ['مكيف فائق', 'شاشات لمس', 'مقاعد جلد فاخرة']
   });
 
@@ -112,12 +132,16 @@ export default function AdminDashboardPage() {
   });
 
   // Form states - Owner
-  const [ownerForm, setOwnerForm] = useState({
+  const [ownerForm, setOwnerForm] = useState<OwnerFormState>({
     name: '',
     phone: '',
+    nationalId: '',
     bankAccount: '',
-    commissionModel: 'percentage' as VehicleOwner['commissionModel'],
+    commissionModel: 'fixed_monthly' as VehicleOwner['commissionModel'],
     ownerSharePercent: 75,
+    fixedMonthlyRateEGP: 35000,
+    fixedDailyRateEGP: 1200,
+    monthlyPayoutDay: 1,
     notes: '',
   });
 
@@ -128,6 +152,9 @@ export default function AdminDashboardPage() {
     customerPhone: '',
     nationalId: '',
     licenseNumber: '',
+    nationality: 'مصري',
+    loyaltyPointsRedeemed: 0,
+    loyaltyDiscountEGP: 0,
     startDate: '2026-10-14',
     startTime: '14:00',
     endDate: '2026-10-17',
@@ -149,7 +176,7 @@ export default function AdminDashboardPage() {
     setLoginError('');
     setIsLoggingIn(true);
     try {
-      await signIn(loginEmail.trim(), loginPassword);
+      await signIn(loginUsername.trim(), loginPassword);
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : 'حدث خطأ أثناء تسجيل الدخول');
     } finally {
@@ -173,6 +200,7 @@ export default function AdminDashboardPage() {
   const openEditCarModal = (car: Car) => {
     setEditingCar(car);
     setCarForm({
+      carCode: car.carCode || '',
       make: car.make,
       model: car.model,
       year: car.year,
@@ -180,6 +208,15 @@ export default function AdminDashboardPage() {
       plateNumber: car.plateNumber,
       color: car.color,
       currentKm: car.currentKm,
+      initialHandoverKm: car.initialHandoverKm ?? 0,
+      fleetEntryDate: car.fleetEntryDate || '',
+      contractStartDate: car.contractStartDate || '',
+      contractEndDate: car.contractEndDate || '',
+      licenseExpiryDate: car.licenseExpiryDate || '',
+      licenseRenewalDate: car.licenseRenewalDate || '',
+      nextServiceKm: car.nextServiceKm ?? 10000,
+      nextServiceDate: car.nextServiceDate || '',
+      serviceResponsibleParty: car.serviceResponsibleParty || 'company',
       dailyPriceEGP: car.dailyPriceEGP,
       weeklyPriceEGP: car.weeklyPriceEGP || car.dailyPriceEGP * 6,
       securityDepositEGP: car.securityDepositEGP,
@@ -188,9 +225,11 @@ export default function AdminDashboardPage() {
       transmission: car.transmission,
       fuelType: car.fuelType,
       seats: car.seats,
-      ownership: car.ownership,
+      ownership: car.ownership || 'company',
       ownerId: car.ownerId || '',
       ownerName: car.ownerName || 'شركة يمن الخليج',
+      ownerCompensationType: car.ownerCompensationType || 'fixed_monthly',
+      ownerAgreedRateEGP: car.ownerAgreedRateEGP || 35000,
       features: car.features || ['مكيف فائق', 'مقاعد جلد']
     });
     setIsAddCarOpen(true);
@@ -199,6 +238,7 @@ export default function AdminDashboardPage() {
   const openAddCarModal = () => {
     setEditingCar(null);
     setCarForm({
+      carCode: '',
       make: '',
       model: '',
       year: 2024,
@@ -206,6 +246,15 @@ export default function AdminDashboardPage() {
       plateNumber: '',
       color: 'أسود ملكي',
       currentKm: 0,
+      initialHandoverKm: 0,
+      fleetEntryDate: new Date().toISOString().split('T')[0],
+      contractStartDate: new Date().toISOString().split('T')[0],
+      contractEndDate: '',
+      licenseExpiryDate: '',
+      licenseRenewalDate: '',
+      nextServiceKm: 10000,
+      nextServiceDate: '',
+      serviceResponsibleParty: 'company',
       dailyPriceEGP: 5000,
       weeklyPriceEGP: 32000,
       securityDepositEGP: 10000,
@@ -217,6 +266,8 @@ export default function AdminDashboardPage() {
       ownership: 'company',
       ownerId: '',
       ownerName: 'شركة يمن الخليج',
+      ownerCompensationType: 'fixed_monthly',
+      ownerAgreedRateEGP: 35000,
       features: ['مكيف فائق', 'شاشات لمس']
     });
     setIsAddCarOpen(true);
@@ -290,6 +341,10 @@ export default function AdminDashboardPage() {
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const daysCount = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
+    const baseRent = selectedCar.dailyPriceEGP * daysCount;
+    const loyaltyDiscount = newBooking.loyaltyDiscountEGP || 0;
+    const finalTotal = Math.max(0, baseRent - loyaltyDiscount);
+
     const bookingPayload = {
       carId: selectedCar.id,
       carName: `${selectedCar.make} ${selectedCar.model}`,
@@ -299,7 +354,8 @@ export default function AdminDashboardPage() {
         fullName: newBooking.customerName,
         phone: newBooking.customerPhone,
         nationalId: newBooking.nationalId || '29508140102555',
-        licenseNumber: newBooking.licenseNumber || '99882231'
+        licenseNumber: newBooking.licenseNumber || '99882231',
+        nationality: newBooking.nationality || 'مصري',
       },
       startDate: newBooking.startDate,
       startTime: newBooking.startTime,
@@ -307,9 +363,11 @@ export default function AdminDashboardPage() {
       endTime: newBooking.endTime,
       daysCount,
       dailyRateEGP: selectedCar.dailyPriceEGP,
-      totalRentEGP: selectedCar.dailyPriceEGP * daysCount,
-      discountAmountEGP: 0,
-      finalTotalEGP: selectedCar.dailyPriceEGP * daysCount,
+      totalRentEGP: baseRent,
+      discountAmountEGP: loyaltyDiscount,
+      loyaltyPointsRedeemed: newBooking.loyaltyPointsRedeemed,
+      loyaltyDiscountEGP: loyaltyDiscount,
+      finalTotalEGP: finalTotal,
       securityDepositEGP: selectedCar.securityDepositEGP,
       depositStatus: 'held' as const,
       startKm: selectedCar.currentKm,
@@ -324,12 +382,18 @@ export default function AdminDashboardPage() {
     setIsAddBookingOpen(false);
   };
 
-  // إنهاء حجز واستلام السيارة
-  const handleReturnCarSubmit = (e: React.FormEvent) => {
+  // إنهاء حجز واستلام السيارة والفحص الشامل
+  const handleReturnCarSubmit = (
+    e: React.FormEvent,
+    inspectionData?: ReturnInspectionPayload
+  ) => {
     e.preventDefault();
     if (!selectedBookingForReturn) return;
     const km = parseInt(returnKmInput) || selectedBookingForReturn.startKm;
-    updateBookingStatus(selectedBookingForReturn.id, 'completed', km);
+    updateBookingStatus(selectedBookingForReturn.id, 'completed', km, {
+      ...inspectionData,
+      staffName: currentStaff?.name,
+    });
     setSelectedBookingForReturn(null);
     setReturnKmInput('');
   };
@@ -360,8 +424,8 @@ export default function AdminDashboardPage() {
   if (!currentStaff) {
     return (
       <AdminLogin
-        loginEmail={loginEmail}
-        setLoginEmail={setLoginEmail}
+        loginUsername={loginUsername}
+        setLoginUsername={setLoginUsername}
         loginPassword={loginPassword}
         setLoginPassword={setLoginPassword}
         loginError={loginError}
@@ -384,6 +448,8 @@ export default function AdminDashboardPage() {
         currentStaff={currentStaff}
         totalCarsCount={cars.length}
         activeBookingsCount={activeBookings.length}
+        customersCount={customers.length}
+        ownerCarsCount={cars.filter(c => c.ownership === 'investor' || (c.ownerId && c.ownerId !== 'owner-1')).length}
         staffCount={staffList.length}
         ownersCount={owners.length}
         isMobileOpen={isMobileMenuOpen}
@@ -461,15 +527,96 @@ export default function AdminDashboardPage() {
           {activeTab === 'bookings' && (
             <BookingsTab
               bookings={bookings}
+              currentStaff={currentStaff}
               onOpenContract={(bk) => setSelectedBookingForContract(bk)}
               onReturnCar={(bk) => {
                 setSelectedBookingForReturn(bk);
                 setReturnKmInput(String(bk.startKm + 300));
               }}
+              onApproveBooking={async (bk) => {
+                if (confirm(`هل قمت بفحص رخصة وهوية العميل "${bk.customer.fullName}" والتأكد من استلام العربون؟`)) {
+                  await updateBookingStatus(bk.id, 'active', undefined, { staffName: currentStaff.name });
+                }
+              }}
             />
           )}
 
-          {/* TAB 4: فريق العمل والموظفين */}
+          {/* TAB 4: دليل العملاء وإدارة العلاقات (CRM) */}
+          {activeTab === 'customers' && (
+            <CustomersTab
+              customers={customers}
+              onOpenAddCustomer={() => {
+                setEditingCustomer(null);
+                setIsCustomerModalOpen(true);
+              }}
+              onOpenEditCustomer={(cust) => {
+                setEditingCustomer(cust);
+                setIsCustomerModalOpen(true);
+              }}
+              onDeleteCustomer={(id, name) => {
+                if (confirm(`هل أنت متأكد من حذف العميل "${name}" من الدليل؟`)) {
+                  deleteCustomer(id);
+                }
+              }}
+              onNewBookingForCustomer={(cust) => {
+                setNewBooking(prev => ({
+                  ...prev,
+                  customerName: cust.fullName,
+                  customerPhone: cust.phone,
+                  nationalId: cust.nationalId,
+                  licenseNumber: cust.licenseNumber,
+                }));
+                setIsAddBookingOpen(true);
+              }}
+            />
+          )}
+
+          {/* TAB 5: الملاك والشركاء (حسابات وأسطول العقود) */}
+          {activeTab === 'owners' && (currentStaff.role === 'super_admin' || currentStaff.role === 'accountant') && (
+            <OwnersTab
+              owners={owners}
+              cars={cars}
+              bookings={bookings}
+              currentStaff={currentStaff}
+              onOpenAddOwner={() => {
+                setEditingOwner(null);
+                setOwnerForm({
+                  name: '',
+                  phone: '',
+                  nationalId: '',
+                  bankAccount: '',
+                  commissionModel: 'fixed_monthly',
+                  ownerSharePercent: 75,
+                  fixedMonthlyRateEGP: 35000,
+                  fixedDailyRateEGP: 1200,
+                  monthlyPayoutDay: 1,
+                  notes: ''
+                });
+                setIsAddOwnerOpen(true);
+              }}
+              onOpenEditOwner={(owner) => {
+                setEditingOwner(owner);
+                setOwnerForm({
+                  name: owner.name,
+                  phone: owner.phone,
+                  nationalId: owner.nationalId || '',
+                  bankAccount: owner.bankAccount || '',
+                  commissionModel: owner.commissionModel || 'fixed_monthly',
+                  ownerSharePercent: owner.ownerSharePercent || 75,
+                  fixedMonthlyRateEGP: owner.fixedMonthlyRateEGP || 35000,
+                  fixedDailyRateEGP: owner.fixedDailyRateEGP || 1200,
+                  monthlyPayoutDay: owner.monthlyPayoutDay || 1,
+                  notes: owner.notes || '',
+                });
+                setIsAddOwnerOpen(true);
+              }}
+              onOpenSettlement={(owner) => setSelectedOwnerForSettlement(owner)}
+              onOpenAddCar={openAddCarModal}
+              onOpenEditCar={openEditCarModal}
+            />
+          )}
+
+          {/* TAB 6: فريق العمل والموظفين */}
           {activeTab === 'staff' && currentStaff.role === 'super_admin' && (
             <StaffTab
               staffList={staffList}
@@ -494,33 +641,6 @@ export default function AdminDashboardPage() {
                   deleteStaff(id);
                 }
               }}
-            />
-          )}
-
-          {/* TAB 5: الملاك ونسب الأرباح */}
-          {activeTab === 'owners' && (currentStaff.role === 'super_admin' || currentStaff.role === 'accountant') && (
-            <OwnersTab
-              owners={owners}
-              cars={cars}
-              currentStaff={currentStaff}
-              onOpenAddOwner={() => {
-                setEditingOwner(null);
-                setOwnerForm({ name: '', phone: '', bankAccount: '', commissionModel: 'percentage', ownerSharePercent: 75, notes: '' });
-                setIsAddOwnerOpen(true);
-              }}
-              onOpenEditOwner={(owner) => {
-                setEditingOwner(owner);
-                setOwnerForm({
-                  name: owner.name,
-                  phone: owner.phone,
-                  bankAccount: owner.bankAccount || '',
-                  commissionModel: owner.commissionModel,
-                  ownerSharePercent: owner.ownerSharePercent,
-                  notes: owner.notes || '',
-                });
-                setIsAddOwnerOpen(true);
-              }}
-              onOpenSettlement={(owner) => setSelectedOwnerForSettlement(owner)}
             />
           )}
 
@@ -584,9 +704,25 @@ export default function AdminDashboardPage() {
         isOpen={isAddBookingOpen}
         onClose={() => setIsAddBookingOpen(false)}
         cars={cars}
+        customers={customers}
         newBooking={newBooking}
         setNewBooking={setNewBooking}
         onSubmit={handleAddBookingSubmit}
+      />
+
+      {/* نافذة منبثقة: تسجيل / تعديل عميل */}
+      <CustomerFormModal
+        isOpen={isCustomerModalOpen}
+        onClose={() => setIsCustomerModalOpen(false)}
+        editingCustomer={editingCustomer}
+        onSubmit={(data) => {
+          if (editingCustomer) {
+            updateCustomer(editingCustomer.id, data);
+          } else {
+            addCustomer(data);
+          }
+          setIsCustomerModalOpen(false);
+        }}
       />
 
       <ReturnCarModal

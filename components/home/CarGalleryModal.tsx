@@ -84,8 +84,8 @@ export default function CarGalleryModal({ car, onClose, onBookNow }: CarGalleryM
         </div>
 
         {/* شريط الصور المصغرة بالأسفل */}
-        <div className="p-3 bg-[#0a1224] border-t border-white/10 flex items-center justify-between gap-3 overflow-x-auto">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="p-3 bg-[#0a1224] border-t border-white/10 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
             {images.map((img, i) => (
               <button
                 key={i}

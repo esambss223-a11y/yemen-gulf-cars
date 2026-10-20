@@ -20,11 +20,20 @@ export default function OwnerSettlementModal({ owner, cars, bookings, onClose }:
   // تصفية الحجوزات المرتبطة بسيارات هذا المالك
   const ownerBookings = bookings.filter(b => ownerCarIds.includes(b.carId));
 
-  // الحسابات المالية
+  // الحسابات المالية وفق نموذج محاسبة المالك (الخيار ج)
   const totalRevenueEGP = ownerBookings.reduce((sum, b) => sum + b.finalTotalEGP, 0);
-  const ownerPayoutEGP = Math.round((totalRevenueEGP * owner.ownerSharePercent) / 100);
-  const companyCommissionEGP = totalRevenueEGP - ownerPayoutEGP;
   const totalRentalDays = ownerBookings.reduce((sum, b) => sum + b.daysCount, 0);
+
+  let ownerPayoutEGP = 0;
+  if (owner.commissionModel === 'fixed_monthly') {
+    ownerPayoutEGP = owner.fixedMonthlyRateEGP || 35000;
+  } else if (owner.commissionModel === 'fixed_daily') {
+    ownerPayoutEGP = totalRentalDays * (owner.fixedDailyRateEGP || 1200);
+  } else {
+    ownerPayoutEGP = Math.round((totalRevenueEGP * (owner.ownerSharePercent || 75)) / 100);
+  }
+
+  const companyCommissionEGP = Math.max(0, totalRevenueEGP - ownerPayoutEGP);
 
   const handlePrint = () => {
     window.print();
@@ -85,18 +94,26 @@ export default function OwnerSettlementModal({ owner, cars, bookings, onClose }:
             </div>
 
             {/* بيانات المالك */}
-            <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-lg grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-lg grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <span className="text-[10px] text-slate-500 block">اسم المالك / المستثمر:</span>
                 <strong className="text-slate-900 text-[11px]">{owner.name}</strong>
               </div>
               <div>
-                <span className="text-[10px] text-slate-500 block">رقم الهاتف:</span>
+                <span className="text-[10px] text-slate-500 block">الرقم القومي / الجواز:</span>
+                <strong className="text-slate-900 font-mono text-[11px]">{owner.nationalId || 'غير مسجل'}</strong>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-500 block">رقم الهاتف / الواتساب:</span>
                 <strong className="text-slate-900 font-mono text-[11px]">{owner.phone}</strong>
               </div>
               <div>
-                <span className="text-[10px] text-slate-500 block">نسبة مشاركة الأرباح:</span>
-                <strong className="text-[#8a6d3b] font-mono text-[11px]">{owner.ownerSharePercent}% للمالك / {100 - owner.ownerSharePercent}% للشركة</strong>
+                <span className="text-[10px] text-slate-500 block">نظام عقد المالك:</span>
+                <strong className="text-[#8a6d3b] font-mono text-[11px]">
+                  {owner.commissionModel === 'fixed_monthly' ? `إيجار شهري: ${(owner.fixedMonthlyRateEGP || 35000).toLocaleString()} ج.م (يوم ${owner.monthlyPayoutDay || 1})` :
+                   owner.commissionModel === 'fixed_daily' ? `إيجار يومي: ${(owner.fixedDailyRateEGP || 1200).toLocaleString()} ج.م / يوم` :
+                   `نسبة مشاركة: ${owner.ownerSharePercent || 75}%`}
+                </strong>
               </div>
             </div>
 

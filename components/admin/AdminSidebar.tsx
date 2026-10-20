@@ -7,17 +7,20 @@ import {
   Car as CarIcon, 
   Calendar, 
   Users, 
+  UserCheck,
+  Briefcase,
   FileText, 
   Truck, 
   BarChart3, 
   Settings,
   LogOut,
   ExternalLink,
-  ChevronLeft
+  ChevronLeft,
+  Key
 } from 'lucide-react';
 import { StaffUser } from '@/types/fleet';
 
-export type AdminTab = 'overview' | 'cars' | 'bookings' | 'staff' | 'owners' | 'coupons' | 'audit' | 'profile';
+export type AdminTab = 'overview' | 'cars' | 'bookings' | 'customers' | 'owners' | 'staff' | 'coupons' | 'audit' | 'profile';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -25,6 +28,8 @@ interface AdminSidebarProps {
   currentStaff: StaffUser;
   totalCarsCount: number;
   activeBookingsCount: number;
+  customersCount?: number;
+  ownerCarsCount?: number;
   staffCount: number;
   ownersCount: number;
   isMobileOpen?: boolean;
@@ -39,6 +44,8 @@ export default function AdminSidebar({
   currentStaff,
   totalCarsCount,
   activeBookingsCount,
+  customersCount = 0,
+  ownerCarsCount = 0,
   staffCount,
   ownersCount,
   isMobileOpen = false,
@@ -63,9 +70,10 @@ export default function AdminSidebar({
   const navItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number | string }[] = [
     { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard },
     { id: 'cars', label: 'السيارات', icon: CarIcon, badge: totalCarsCount },
-    { id: 'bookings', label: 'الحجوزات', icon: Calendar, badge: activeBookingsCount },
-    { id: 'staff', label: 'العملاء وفريق العمل', icon: Users, badge: staffCount },
-    { id: 'owners', label: 'المبيعات والموردين', icon: Truck, badge: ownersCount },
+    { id: 'bookings', label: 'الحجوزات والعقود', icon: Calendar, badge: activeBookingsCount },
+    { id: 'customers', label: 'دليل العملاء (CRM)', icon: Users, badge: customersCount },
+    { id: 'owners', label: 'الملاك والشركاء', icon: Key, badge: ownersCount },
+    { id: 'staff', label: 'فريق العمل والصلاحيات', icon: UserCheck, badge: staffCount },
     { id: 'audit', label: 'التقارير وسجل الرقابة', icon: BarChart3 },
     { id: 'profile', label: 'الإعدادات وحسابي', icon: Settings },
   ];

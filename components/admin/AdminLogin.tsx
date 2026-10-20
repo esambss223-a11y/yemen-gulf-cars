@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 
 interface AdminLoginProps {
-  loginEmail: string;
-  setLoginEmail: (val: string) => void;
+  loginUsername: string;
+  setLoginUsername: (val: string) => void;
   loginPassword: string;
   setLoginPassword: (val: string) => void;
   loginError: string;
@@ -23,8 +23,8 @@ interface AdminLoginProps {
 }
 
 export default function AdminLogin({
-  loginEmail,
-  setLoginEmail,
+  loginUsername,
+  setLoginUsername,
   loginPassword,
   setLoginPassword,
   loginError,
@@ -101,18 +101,18 @@ export default function AdminLogin({
           {/* نموذج تسجيل الدخول النظيف والآمن */}
           <form onSubmit={handleLoginSubmit} className="space-y-4 text-right">
             
-            {/* اسم المستخدم */}
+            {/* اسم المستخدم أو البريد الإلكتروني */}
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                اسم المستخدم أو البريد:
+                اسم المستخدم أو البريد الإلكتروني:
               </label>
               <div className="relative group">
                 <input
                   type="text"
                   required
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="اسم المستخدم"
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
+                  placeholder="admin أو بريدك الإلكتروني"
                   autoComplete="username"
                   className="w-full bg-[#060b16]/90 border border-slate-700/80 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-xs font-mono focus:outline-none focus:border-[#c5a059] focus:ring-1 focus:ring-[#c5a059] transition-all text-right"
                 />
