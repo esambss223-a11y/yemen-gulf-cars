@@ -131,10 +131,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
     const fetchInitialData = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const carsQuery = session
-          ? supabase.from('cars').select('*')
-          : supabase.from('cars').select(PUBLIC_CAR_FIELDS);
+        const carsQuery = supabase.from('cars').select('*');
         const [
           { data: cloudCars, error: carsErr },
           { data: cloudBookings, error: bkErr },

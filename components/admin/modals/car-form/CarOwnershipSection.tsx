@@ -41,7 +41,8 @@ export default function CarOwnershipSection({
               name="ownershipType"
               checked={carForm.ownership === 'investor'}
               onChange={() => {
-                const firstOwner = owners[0];
+                const externalOwners = owners.filter(o => o.id !== 'owner-1');
+                const firstOwner = externalOwners[0] || owners[0];
                 setCarForm({
                   ...carForm,
                   ownership: 'investor',
@@ -79,7 +80,7 @@ export default function CarOwnershipSection({
               }}
               className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
             >
-              {owners.map(o => (
+              {(owners.some(o => o.id !== 'owner-1') ? owners.filter(o => o.id !== 'owner-1') : owners).map(o => (
                 <option key={o.id} value={o.id}>{o.name}</option>
               ))}
               {owners.length === 0 && (
