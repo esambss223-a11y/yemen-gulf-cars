@@ -68,12 +68,16 @@ export default function CarFormModal({
   // 1. Hooks (جميع الهوكس في البداية دوماً)
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [suggestedImages, setSuggestedImages] = useState<string[]>([]);
 
   // توليد كود تلقائي أولي إذا كانت سيارة جديدة والكود فارغ
   useEffect(() => {
     if (isOpen && !editingCar && !carForm.carCode) {
       const randomNum = Math.floor(Math.random() * 899) + 101;
       setCarForm((prev) => ({ ...prev, carCode: `YG-${randomNum}` }));
+    }
+    if (!isOpen) {
+      setSuggestedImages([]);
     }
   }, [isOpen, editingCar, carForm.carCode, setCarForm]);
 
@@ -173,11 +177,12 @@ export default function CarFormModal({
         {/* جسم الاستمارة القابل للتمرير الانسيابي الفاخر */}
         <form id="car-form-modal" onSubmit={onSubmit} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-4 text-xs">
           
-          {/* 1. قسم بيانات المركبة الأساسية والكود */}
+          {/* 1. قسم بيانات المركبة الأساسية والكود مع البحث السريع والاقتراحات الذكية */}
           <CarBasicInfoSection
             carForm={carForm}
             setCarForm={setCarForm}
             onGenerateCode={handleGenerateCode}
+            onSelectCarPreset={(_specs, images) => setSuggestedImages(images)}
           />
 
           {/* 2. قسم أسعار التأجير والتأمين */}
@@ -199,7 +204,7 @@ export default function CarFormModal({
             setCarForm={setCarForm}
           />
 
-          {/* 5. قسم ألبوم الصور العصري والسلس مع اختيار الغلاف الرئيسي */}
+          {/* 5. قسم ألبوم الصور العصري والسلس مع اختيار الغلاف الرئيسي واقتراحات الكتالوج */}
           <CarImagesSection
             carForm={carForm}
             setCarForm={setCarForm}
@@ -207,6 +212,7 @@ export default function CarFormModal({
             onFileUpload={handleFileUpload}
             isUploading={isUploading}
             uploadMessage={uploadMessage}
+            suggestedImages={suggestedImages}
           />
         </form>
 

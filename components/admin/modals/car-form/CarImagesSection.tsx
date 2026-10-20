@@ -8,10 +8,11 @@ import {
   Link as LinkIcon, 
   CheckCircle2, 
   ChevronRight, 
-  ChevronLeft,
-  Camera,
-  Layers,
-  Check
+  ChevronLeft, 
+  Camera, 
+  Layers, 
+  Check,
+  Plus
 } from 'lucide-react';
 import { CarFormState } from '../CarFormModal';
 
@@ -22,6 +23,7 @@ interface CarImagesSectionProps {
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isUploading: boolean;
   uploadMessage: string | null;
+  suggestedImages?: string[];
 }
 
 export default function CarImagesSection({
@@ -31,6 +33,7 @@ export default function CarImagesSection({
   onFileUpload,
   isUploading,
   uploadMessage,
+  suggestedImages = [],
 }: CarImagesSectionProps) {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInput, setUrlInput] = useState('');
@@ -72,6 +75,36 @@ export default function CarImagesSection({
     }));
     setUrlInput('');
     setShowUrlInput(false);
+  };
+
+  // إضافة صورة مقترحة مفردة
+  const handleAddSuggestedImage = (imgUrl: string) => {
+    setCarForm((prev) => {
+      const filtered = prev.images.filter((img) => img !== '/car-mercedes.jpg');
+      if (filtered.includes(imgUrl)) return prev;
+      return {
+        ...prev,
+        images: [...filtered, imgUrl],
+      };
+    });
+  };
+
+  // إضافة كل الصور المقترحة بنقرة واحدة
+  const handleAddAllSuggested = () => {
+    if (!suggestedImages || suggestedImages.length === 0) return;
+    setCarForm((prev) => {
+      const filtered = prev.images.filter((img) => img !== '/car-mercedes.jpg');
+      const newImages = [...filtered];
+      for (const img of suggestedImages) {
+        if (!newImages.includes(img)) {
+          newImages.push(img);
+        }
+      }
+      return {
+        ...prev,
+        images: newImages,
+      };
+    });
   };
 
   const imagesCount = carForm.images?.length || 0;
@@ -122,6 +155,57 @@ export default function CarImagesSection({
           </label>
         </div>
       </div>
+
+      {/* شريط صور الكتالوج الرسمية المقترحة للموديل */}
+      {suggestedImages && suggestedImages.length > 0 && (
+        <div className="p-3 bg-[#0b1426] border border-[#c5a059]/30 rounded-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+              <Camera className="w-3.5 h-3.5 text-[#c5a059]" />
+              صور الكتالوج المقترحة لهذا الموديل:
+            </span>
+            <button
+              type="button"
+              onClick={handleAddAllSuggested}
+              className="text-[10px] text-amber-300 hover:text-white underline cursor-pointer"
+            >
+              + إضافة جميع الصور المقترحة ({suggestedImages.length})
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1">
+            {suggestedImages.map((sImg, sIdx) => {
+              const alreadyAdded = carForm.images.includes(sImg);
+              return (
+                <div
+                  key={sIdx}
+                  className={`relative w-28 h-18 rounded-lg overflow-hidden shrink-0 border transition-all group ${
+                    alreadyAdded ? 'border-emerald-500/60 opacity-80' : 'border-slate-700 hover:border-[#c5a059]'
+                  }`}
+                >
+                  <Image src={sImg} alt={`صورة مقترحة ${sIdx + 1}`} fill className="object-cover" sizes="120px" />
+                  
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    {alreadyAdded ? (
+                      <span className="text-[9px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                        <Check className="w-2.5 h-2.5" /> مضافة
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleAddSuggestedImage(sImg)}
+                        className="text-[9px] bg-gradient-to-r from-[#d4af37] to-[#c5a059] text-black px-2 py-1 rounded-md font-black flex items-center gap-1 shadow-md cursor-pointer hover:scale-105 transition-transform"
+                      >
+                        <Plus className="w-3 h-3 stroke-[3]" /> إضافة
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* حقل إدخال الرابط إن تم فتحه */}
       {showUrlInput && (
