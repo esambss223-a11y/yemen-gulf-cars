@@ -101,10 +101,10 @@ export default function AdminLogin({
           {/* نموذج تسجيل الدخول النظيف والآمن */}
           <form onSubmit={handleLoginSubmit} className="space-y-4 text-right">
             
-            {/* اسم المستخدم أو البريد الإلكتروني */}
+            {/* اسم المستخدم */}
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                اسم المستخدم أو البريد الإلكتروني:
+                اسم الموظف بالإنجليزية:
               </label>
               <div className="relative group">
                 <input

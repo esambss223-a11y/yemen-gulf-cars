@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StaffUser, UserRole } from '@/types/fleet';
 import { INITIAL_STAFF } from '@/lib/initial-data';
-import { supabase, usernameToAuthEmail } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { saveToStorage, loadFromStorage } from './fleetStorage';
 
 interface UseFleetAuthProps {
@@ -27,7 +27,7 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     active: Boolean(row.active),
   }), []);
 
-  const fetchStaffData = useCallback(async (userId: string, userMeta?: Record<string, unknown>): Promise<Record<string, unknown> | null> => {
+  const fetchStaffData = useCallback(async (userId: string): Promise<Record<string, unknown> | null> => {
     try {
       const { data, error } = await supabase
         .from('staff')
@@ -39,35 +39,27 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
       // ignore
     }
 
-    // استعلام الخادم الموثق لتجاوز أي قيود RLS
+    // قراءة الملف عبر الخادم بعد التحقق من جلسة الموظف، عند تعذر RLS مباشرةً.
     try {
-      const res = await fetch(`/api/auth/staff-profile?userId=${encodeURIComponent(userId)}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json?.staff) return json.staff;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+      const response = await fetch(`/api/auth/staff-profile?userId=${encodeURIComponent(userId)}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result?.staff) return result.staff;
       }
     } catch {
       // ignore
     }
 
-    // بيانات المستخدم الوصفية المخزنة في Supabase Auth
-    if (userMeta?.name && userMeta?.username) {
-      return {
-        id: userId,
-        name: userMeta.name,
-        username: userMeta.username,
-        role: userMeta.role || 'super_admin',
-        phone: userMeta.phone || '+20 100 000 0001',
-        active: true,
-      };
-    }
-
     return null;
   }, []);
 
-  const loadStaffProfile = useCallback(async (userId: string, userMeta?: Record<string, unknown>) => {
+  const loadStaffProfile = useCallback(async (userId: string) => {
     try {
-      const staffRow = await fetchStaffData(userId, userMeta);
+      const staffRow = await fetchStaffData(userId);
       if (staffRow) {
         const staff = mapStaffRow(staffRow);
         setCurrentStaff(staff.active ? staff : null);
@@ -84,7 +76,7 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        loadStaffProfile(session.user.id, session.user.user_metadata as Record<string, unknown>);
+        loadStaffProfile(session.user.id);
         if (event === 'SIGNED_IN' && onSignedIn) {
           onSignedIn();
         }
@@ -102,31 +94,25 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
   }, [loadStaffProfile, onSignedIn]);
 
   const signIn = async (identifier: string, password: string): Promise<StaffUser> => {
-    const rawInput = identifier.trim().toLowerCase();
-    const isEmail = rawInput.includes('@');
-    if (!isEmail && !/^[a-z0-9._-]+$/.test(rawInput)) {
-      throw new Error('أدخل اسم الموظف أو البريد الإلكتروني بالإنجليزية');
+    const username = identifier.trim().toLowerCase();
+    if (!/^[a-z0-9._-]{1,64}$/.test(username)) {
+      throw new Error('أدخل اسم الموظف بالإنجليزية');
     }
 
-    const authEmail = usernameToAuthEmail(rawInput);
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: authEmail,
-      password,
+    const response = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
     });
-    if (error || !data.user) {
-      throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
+    const result = await response.json();
+    if (!response.ok || !result.session || !result.staff?.active) {
+      throw new Error(result.error || 'اسم الموظف أو كلمة المرور غير صحيحة');
     }
 
-    const staffRow = await fetchStaffData(data.user.id, data.user.user_metadata as Record<string, unknown>);
+    const { data, error } = await supabase.auth.setSession(result.session);
+    if (error || !data.user) throw new Error('تعذر إنشاء جلسة الموظف');
 
-    if (!staffRow || !staffRow.active) {
-      await supabase.auth.signOut();
-      setCurrentStaff(null);
-      throw new Error('هذا الحساب غير مفعّل كموظف في النظام');
-    }
-
-    const staff = mapStaffRow(staffRow);
+    const staff = mapStaffRow(result.staff);
     setCurrentStaff(staff);
     return staff;
   };
