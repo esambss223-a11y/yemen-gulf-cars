@@ -68,40 +68,40 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
     try {
       await supabase.from('cars').insert({
         id: newCar.id,
-        car_code: newCar.carCode,
+        car_code: newCar.carCode || null,
         make: newCar.make,
         model: newCar.model,
-        year: newCar.year,
+        year: Number(newCar.year),
         category: newCar.category,
         plate_number: newCar.plateNumber,
-        vin: newCar.vin,
+        vin: newCar.vin || null,
         color: newCar.color,
-        current_km: newCar.currentKm,
-        initial_handover_km: newCar.initialHandoverKm,
-        fleet_entry_date: newCar.fleetEntryDate,
-        contract_start_date: newCar.contractStartDate,
-        contract_end_date: newCar.contractEndDate,
-        license_expiry_date: newCar.licenseExpiryDate,
-        license_renewal_date: newCar.licenseRenewalDate,
-        next_service_km: newCar.nextServiceKm,
-        next_service_date: newCar.nextServiceDate,
-        service_responsible_party: newCar.serviceResponsibleParty,
-        daily_price_egp: newCar.dailyPriceEGP,
-        weekly_price_egp: newCar.weeklyPriceEGP,
-        monthly_price_egp: newCar.monthlyPriceEGP,
-        security_deposit_egp: newCar.securityDepositEGP,
-        status: newCar.status,
-        images: newCar.images,
-        cover_image: newCar.coverImage,
-        transmission: newCar.transmission,
-        fuel_type: newCar.fuelType,
-        seats: newCar.seats,
-        ownership: newCar.ownership,
-        owner_id: newCar.ownerId,
-        owner_name: newCar.ownerName,
-        owner_compensation_type: newCar.ownerCompensationType,
-        owner_agreed_rate_egp: newCar.ownerAgreedRateEGP,
-        features: newCar.features,
+        current_km: Number(newCar.currentKm || 0),
+        initial_handover_km: Number(newCar.initialHandoverKm || 0),
+        fleet_entry_date: newCar.fleetEntryDate || null,
+        contract_start_date: newCar.contractStartDate || null,
+        contract_end_date: newCar.contractEndDate || null,
+        license_expiry_date: newCar.licenseExpiryDate || null,
+        license_renewal_date: newCar.licenseRenewalDate || null,
+        next_service_km: newCar.nextServiceKm ? Number(newCar.nextServiceKm) : null,
+        next_service_date: newCar.nextServiceDate || null,
+        service_responsible_party: newCar.serviceResponsibleParty || 'company',
+        daily_price_egp: Number(newCar.dailyPriceEGP),
+        weekly_price_egp: newCar.weeklyPriceEGP ? Number(newCar.weeklyPriceEGP) : null,
+        monthly_price_egp: newCar.monthlyPriceEGP ? Number(newCar.monthlyPriceEGP) : null,
+        security_deposit_egp: Number(newCar.securityDepositEGP || 0),
+        status: newCar.status || 'available',
+        images: newCar.images || ['/car-mercedes.jpg'],
+        cover_image: newCar.coverImage || '/car-mercedes.jpg',
+        transmission: newCar.transmission || 'automatic',
+        fuel_type: newCar.fuelType || 'petrol',
+        seats: Number(newCar.seats || 5),
+        ownership: newCar.ownership || 'company',
+        owner_id: newCar.ownerId && newCar.ownerId.trim() !== '' ? newCar.ownerId : null,
+        owner_name: newCar.ownerName || null,
+        owner_compensation_type: newCar.ownerCompensationType || null,
+        owner_agreed_rate_egp: newCar.ownerAgreedRateEGP ? Number(newCar.ownerAgreedRateEGP) : null,
+        features: newCar.features || [],
       });
     } catch (e) {
       console.warn('Cloud car insert warning:', e);
@@ -129,13 +129,13 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       if (partial.status !== undefined) payload.status = partial.status;
       if (partial.currentKm !== undefined) payload.current_km = partial.currentKm;
       if (partial.initialHandoverKm !== undefined) payload.initial_handover_km = partial.initialHandoverKm;
-      if (partial.fleetEntryDate !== undefined) payload.fleet_entry_date = partial.fleetEntryDate;
-      if (partial.contractStartDate !== undefined) payload.contract_start_date = partial.contractStartDate;
-      if (partial.contractEndDate !== undefined) payload.contract_end_date = partial.contractEndDate;
-      if (partial.licenseExpiryDate !== undefined) payload.license_expiry_date = partial.licenseExpiryDate;
-      if (partial.licenseRenewalDate !== undefined) payload.license_renewal_date = partial.licenseRenewalDate;
-      if (partial.nextServiceKm !== undefined) payload.next_service_km = partial.nextServiceKm;
-      if (partial.nextServiceDate !== undefined) payload.next_service_date = partial.nextServiceDate;
+      if (partial.fleetEntryDate !== undefined) payload.fleet_entry_date = partial.fleetEntryDate || null;
+      if (partial.contractStartDate !== undefined) payload.contract_start_date = partial.contractStartDate || null;
+      if (partial.contractEndDate !== undefined) payload.contract_end_date = partial.contractEndDate || null;
+      if (partial.licenseExpiryDate !== undefined) payload.license_expiry_date = partial.licenseExpiryDate || null;
+      if (partial.licenseRenewalDate !== undefined) payload.license_renewal_date = partial.licenseRenewalDate || null;
+      if (partial.nextServiceKm !== undefined) payload.next_service_km = partial.nextServiceKm || null;
+      if (partial.nextServiceDate !== undefined) payload.next_service_date = partial.nextServiceDate || null;
       if (partial.serviceResponsibleParty !== undefined) payload.service_responsible_party = partial.serviceResponsibleParty;
       if (partial.dailyPriceEGP !== undefined) payload.daily_price_egp = partial.dailyPriceEGP;
       if (partial.weeklyPriceEGP !== undefined) payload.weekly_price_egp = partial.weeklyPriceEGP;
@@ -148,7 +148,7 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       if (partial.seats !== undefined) payload.seats = partial.seats;
       if (partial.features !== undefined) payload.features = partial.features;
       if (partial.ownership !== undefined) payload.ownership = partial.ownership;
-      if (partial.ownerId !== undefined) payload.owner_id = partial.ownerId;
+      if (partial.ownerId !== undefined) payload.owner_id = partial.ownerId && partial.ownerId.trim() !== '' ? partial.ownerId : null;
       if (partial.ownerName !== undefined) payload.owner_name = partial.ownerName;
       if (partial.ownerCompensationType !== undefined) payload.owner_compensation_type = partial.ownerCompensationType;
       if (partial.ownerAgreedRateEGP !== undefined) payload.owner_agreed_rate_egp = partial.ownerAgreedRateEGP;
