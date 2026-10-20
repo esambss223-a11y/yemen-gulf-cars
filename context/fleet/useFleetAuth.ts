@@ -35,6 +35,18 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
 
   // ========== مراقبة الجلسة والتحقق من حالة المصادقة ==========
   useEffect(() => {
+    // تحميل قائمة الموظفين السحابية المعتمدة
+    fetch('/api/admin/staff')
+      .then(r => r.json())
+      .then(d => {
+        if (d?.staff && Array.isArray(d.staff) && d.staff.length > 0) {
+          const mapped = d.staff.map(mapStaffRow);
+          setStaffList(mapped);
+          saveToStorage('yg_staff', mapped);
+        }
+      })
+      .catch(() => {});
+
     // 1. استعادة الجلسة عند بدء تشغيل التطبيق
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -65,7 +77,7 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     });
 
     return () => listener.subscription.unsubscribe();
-  }, [onSignedIn]);
+  }, [mapStaffRow, onSignedIn]);
 
   // ========== تسجيل الدخول ==========
   const signIn = async (identifier: string, password: string): Promise<StaffUser> => {
@@ -157,13 +169,33 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
   };
 
   // ========== إدارة الموظفين ==========
-  const addStaff = (staffData: Omit<StaffUser, 'id'>) => {
-    const newStaff: StaffUser = { ...staffData, id: `staff-${Date.now()}` };
+  const addStaff = async (staffData: Omit<StaffUser, 'id'>) => {
+    const tempId = `staff-${Date.now()}`;
+    const newStaff: StaffUser = { ...staffData, id: tempId };
     setStaffList((prev) => {
       const updated = [...prev, newStaff];
       saveToStorage('yg_staff', updated);
       return updated;
     });
+
+    try {
+      const res = await fetch('/api/admin/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(staffData),
+      });
+      const data = await res.json();
+      if (res.ok && data?.staff) {
+        setStaffList((prev) => {
+          const updated = prev.map((s) => s.id === tempId ? data.staff : s);
+          saveToStorage('yg_staff', updated);
+          return updated;
+        });
+      }
+    } catch {
+      // ignore
+    }
+
     logAction('إضافة موظف جديد', `تمت إضافة الموظف ${newStaff.name} بدور ${newStaff.role}`);
   };
 
@@ -219,7 +251,7 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     logAction('تعديل حساب موظف', `تم تعديل بيانات: ${partial.name || partial.username || id}`);
   };
 
-  const deleteStaff = (id: string) => {
+  const deleteStaff = async (id: string) => {
     if (staffList.length <= 1) {
       alert('لا يمكن حذف الموظف الوحيد في النظام');
       return;
@@ -230,6 +262,13 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
       saveToStorage('yg_staff', updated);
       return updated;
     });
+
+    try {
+      await fetch(`/api/admin/staff?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch {
+      // ignore
+    }
+
     logAction('حذف موظف', `تم حذف حساب الموظف: ${staff?.name}`);
   };
 
