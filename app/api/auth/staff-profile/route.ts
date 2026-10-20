@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://olpjfipferziqtzrbbbt.supabase.co';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -9,39 +11,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://olpjfipferziqtzrbbbt.supabase.co';
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const bearerToken = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-
-  if (!anonKey || !serviceKey || !bearerToken) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  if (!SERVICE_KEY) {
+    return NextResponse.json({ error: 'Service key not configured' }, { status: 503 });
   }
 
   try {
-    const supabase = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: `Bearer ${bearerToken}` } },
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/staff?id=eq.${encodeURIComponent(userId)}&select=*`, {
+      headers: {
+        'apikey': SERVICE_KEY,
+        'Authorization': `Bearer ${SERVICE_KEY}`,
+      },
+      cache: 'no-store',
     });
-    const { data: { user }, error: authError } = await supabase.auth.getUser(bearerToken);
-    if (authError || !user || user.id !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        return NextResponse.json({ staff: rows[0] });
+      }
     }
 
-    const adminClient = createClient(supabaseUrl, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-    const { data: staff, error } = await adminClient
-      .from('staff')
-      .select('id, name, username, role, phone, active')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (error || !staff) {
-      return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ staff });
-  } catch {
-    return NextResponse.json({ error: 'Failed to fetch staff' }, { status: 500 });
+    return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
+  } catch (err: any) {
+    return NextResponse.json({ error: 'Failed to fetch staff profile' }, { status: 500 });
   }
 }

@@ -229,7 +229,7 @@ export default function FeaturedFleet() {
                   {/* العداد الفعلي */}
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] text-slate-400">عداد الكيلومترات الفعلي:</span>
-                    <span className="text-xs font-bold text-slate-200 font-mono">{car.odometer}</span>
+                    <span className="text-xs font-bold text-slate-200 font-mono" suppressHydrationWarning>{car.odometer}</span>
                   </div>
 
                   {/* خيار المدة — tabs بسيطة بلمسة هادئة */}

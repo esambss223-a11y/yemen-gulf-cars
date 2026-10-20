@@ -139,16 +139,24 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       if (partial.serviceResponsibleParty !== undefined) payload.service_responsible_party = partial.serviceResponsibleParty;
       if (partial.dailyPriceEGP !== undefined) payload.daily_price_egp = partial.dailyPriceEGP;
       if (partial.weeklyPriceEGP !== undefined) payload.weekly_price_egp = partial.weeklyPriceEGP;
+      if (partial.monthlyPriceEGP !== undefined) payload.monthly_price_egp = partial.monthlyPriceEGP;
       if (partial.securityDepositEGP !== undefined) payload.security_deposit_egp = partial.securityDepositEGP;
       if (partial.images !== undefined) payload.images = partial.images;
       if (partial.coverImage !== undefined) payload.cover_image = partial.coverImage;
+      if (partial.transmission !== undefined) payload.transmission = partial.transmission;
+      if (partial.fuelType !== undefined) payload.fuel_type = partial.fuelType;
+      if (partial.seats !== undefined) payload.seats = partial.seats;
+      if (partial.features !== undefined) payload.features = partial.features;
       if (partial.ownership !== undefined) payload.ownership = partial.ownership;
       if (partial.ownerId !== undefined) payload.owner_id = partial.ownerId;
       if (partial.ownerName !== undefined) payload.owner_name = partial.ownerName;
       if (partial.ownerCompensationType !== undefined) payload.owner_compensation_type = partial.ownerCompensationType;
       if (partial.ownerAgreedRateEGP !== undefined) payload.owner_agreed_rate_egp = partial.ownerAgreedRateEGP;
 
-      await supabase.from('cars').update(payload).eq('id', id);
+      const { data, error } = await supabase.from('cars').update(payload).eq('id', id).select();
+      if (!error && (!data || data.length === 0)) {
+        await supabase.from('cars').upsert({ id, ...payload });
+      }
     } catch {
       // ignore
     }

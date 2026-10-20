@@ -81,7 +81,10 @@ export function useFleetOwners({ logAction }: UseFleetOwnersProps) {
       if (partial.monthlyPayoutDay !== undefined) payload.monthly_payout_day = partial.monthlyPayoutDay;
       if (partial.notes !== undefined) payload.notes = partial.notes;
 
-      await supabase.from('owners').update(payload).eq('id', id);
+      const { data, error } = await supabase.from('owners').update(payload).eq('id', id).select();
+      if (!error && (!data || data.length === 0)) {
+        await supabase.from('owners').upsert({ id, ...payload });
+      }
     } catch {
       // ignore
     }

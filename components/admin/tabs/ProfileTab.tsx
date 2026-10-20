@@ -41,6 +41,7 @@ export default function ProfileTab({
 }: ProfileTabProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [nameInput, setNameInput] = useState(currentStaff.name);
+  const [usernameInput, setUsernameInput] = useState(currentStaff.username);
   const [phoneInput, setPhoneInput] = useState(currentStaff.phone);
   const [passwordInput, setPasswordInput] = useState(currentStaff.password || '');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
@@ -48,6 +49,7 @@ export default function ProfileTab({
   useEffect(() => {
     if (!isEditing) {
       setNameInput(currentStaff.name);
+      setUsernameInput(currentStaff.username);
       setPhoneInput(currentStaff.phone);
     }
   }, [currentStaff, isEditing]);
@@ -69,13 +71,15 @@ export default function ProfileTab({
   // حفظ التعديلات
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanUsername = usernameInput.trim().toLowerCase();
     onUpdateStaff(currentStaff.id, {
-      name: nameInput,
-      phone: phoneInput,
-      password: passwordInput || currentStaff.password,
+      name: nameInput.trim(),
+      username: cleanUsername,
+      phone: phoneInput.trim(),
+      ...(passwordInput ? { password: passwordInput } : {}),
     });
     setIsEditing(false);
-    setSaveSuccessMsg('تم حفظ وتحديث بيانات حسابك بنجاح ✓');
+    setSaveSuccessMsg('تم حفظ وتحديث بيانات حسابك واسم المستخدم بنجاح ✓');
     setTimeout(() => setSaveSuccessMsg(''), 4000);
   };
 
@@ -199,7 +203,7 @@ export default function ProfileTab({
               <span className="text-[11px] text-slate-400">تحديث فوري ينعكس على حسابك</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 mb-1">الاسم الكامل:</label>
                 <input
@@ -208,6 +212,17 @@ export default function ProfileTab({
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   className="w-full bg-[#141f36] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">اسم المستخدم (للدخول):</label>
+                <input
+                  type="text"
+                  required
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                  className="w-full bg-[#141f36] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-amber-400"
                 />
               </div>
 
