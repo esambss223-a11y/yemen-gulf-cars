@@ -1,0 +1,48 @@
+import 'server-only';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+export type StaffRole = 'super_admin' | 'rental_agent' | 'accountant';
+
+export function createServiceClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+export async function authorizeStaffRequest(request: Request, requireAdmin = false) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const admin = createServiceClient();
+  const token = request.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1];
+
+  if (!url || !anonKey || !admin || !token) {
+    return { ok: false as const, status: 401, error: 'Authentication required' };
+  }
+
+  const authClient = createClient(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+  if (authError || !user) {
+    return { ok: false as const, status: 401, error: 'Authentication required' };
+  }
+
+  const { data: staff, error } = await admin
+    .from('staff')
+    .select('id, name, username, role, phone, active')
+    .eq('id', user.id)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (error || !staff) {
+    return { ok: false as const, status: 403, error: 'Active staff access required' };
+  }
+  if (requireAdmin && staff.role !== 'super_admin') {
+    return { ok: false as const, status: 403, error: 'Administrator access required' };
+  }
+
+  return { ok: true as const, admin, user, staff };
+}

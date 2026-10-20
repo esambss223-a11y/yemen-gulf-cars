@@ -112,7 +112,7 @@ export default function AdminLogin({
                   required
                   value={loginUsername}
                   onChange={(e) => setLoginUsername(e.target.value)}
-                  placeholder="admin أو بريدك الإلكتروني"
+                  placeholder="مثال: admin"
                   autoComplete="username"
                   className="w-full bg-[#060b16]/90 border border-slate-700/80 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-xs font-mono focus:outline-none focus:border-[#c5a059] focus:ring-1 focus:ring-[#c5a059] transition-all text-right"
                 />

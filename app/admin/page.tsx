@@ -38,8 +38,10 @@ export default function AdminDashboardPage() {
     isAuthReady,
     isCloudConnected,
     staffList,
+    staffListError,
     addStaff,
     updateStaff,
+    updateMyProfile,
     deleteStaff,
     customers,
     addCustomer,
@@ -129,6 +131,7 @@ export default function AdminDashboardPage() {
     password: '',
     role: 'rental_agent' as UserRole,
     phone: '',
+    active: true,
   });
 
   // Form states - Owner
@@ -293,26 +296,36 @@ export default function AdminDashboardPage() {
   // معالجات المودال - الموظفين
   const handleStaffFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingStaff) {
-      await updateStaff(editingStaff.id, {
-        name: staffForm.name,
-        username: staffForm.username,
-        role: staffForm.role,
-        phone: staffForm.phone,
-        ...(staffForm.password ? { password: staffForm.password } : {})
-      });
-    } else {
-      await addStaff({
-        name: staffForm.name,
-        username: staffForm.username,
-        password: staffForm.password || 'admin123',
-        role: staffForm.role,
-        phone: staffForm.phone,
-        active: true,
-      });
+    try {
+      if (editingStaff) {
+        await updateStaff(editingStaff.id, {
+          name: staffForm.name,
+          username: staffForm.username,
+          role: staffForm.role,
+          phone: staffForm.phone,
+          active: staffForm.active,
+          ...(staffForm.password ? { password: staffForm.password } : {})
+        });
+      } else {
+        await addStaff({
+          name: staffForm.name,
+          username: staffForm.username,
+          password: staffForm.password,
+          role: staffForm.role,
+          phone: staffForm.phone,
+          active: true,
+        });
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'تعذر حفظ بيانات الموظف');
+      return;
     }
     setIsAddStaffOpen(false);
     setEditingStaff(null);
+    if (!editingStaff) {
+      alert(`تم إنشاء الموظف بنجاح. اسم الدخول: ${staffForm.username.trim().toLowerCase()} — استخدم كلمة المرور التي أدخلتها.`);
+      setStaffForm({ name: '', username: '', password: '', role: 'rental_agent', phone: '', active: true });
+    }
   };
 
   // معالجات المودال - الملاك
@@ -620,9 +633,11 @@ export default function AdminDashboardPage() {
           {activeTab === 'staff' && currentStaff.role === 'super_admin' && (
             <StaffTab
               staffList={staffList}
+              staffListError={staffListError}
+              currentStaffId={currentStaff.id}
               onOpenAddStaff={() => {
                 setEditingStaff(null);
-                setStaffForm({ name: '', username: '', password: '', role: 'rental_agent', phone: '' });
+                setStaffForm({ name: '', username: '', password: '', role: 'rental_agent', phone: '', active: true });
                 setIsAddStaffOpen(true);
               }}
               onOpenEditStaff={(staff) => {
@@ -633,12 +648,17 @@ export default function AdminDashboardPage() {
                   password: '',
                   role: staff.role,
                   phone: staff.phone,
+                  active: staff.active,
                 });
                 setIsAddStaffOpen(true);
               }}
-              onDeleteStaff={(id, name) => {
+              onDeleteStaff={async (id, name) => {
                 if (confirm(`هل أنت متأكد من حذف حساب الموظف ${name}؟`)) {
-                  deleteStaff(id);
+                  try {
+                    await deleteStaff(id);
+                  } catch (error) {
+                    alert(error instanceof Error ? error.message : 'تعذر حذف الموظف');
+                  }
                 }
               }}
             />
@@ -655,7 +675,7 @@ export default function AdminDashboardPage() {
               currentStaff={currentStaff}
               bookings={bookings}
               auditLogs={auditLogs}
-              onUpdateStaff={updateStaff}
+              onUpdateStaff={updateMyProfile}
               onLogout={handleLogout}
             />
           )}

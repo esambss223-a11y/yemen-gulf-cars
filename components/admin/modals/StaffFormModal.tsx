@@ -10,6 +10,7 @@ export interface StaffFormState {
   password: string;
   role: UserRole;
   phone: string;
+  active: boolean;
 }
 
 interface StaffFormModalProps {
@@ -61,6 +62,8 @@ export default function StaffFormModal({
             <input
               type="text"
               required
+              autoComplete="off"
+              spellCheck={false}
               value={staffForm.username}
               onChange={(e) => setStaffForm({ ...staffForm, username: e.target.value })}
               placeholder="مثال: mohamed"
@@ -72,9 +75,12 @@ export default function StaffFormModal({
             <label className="block text-slate-300 font-semibold mb-1">كلمة المرور:</label>
             <input
               type="password"
+              required={!editingStaff}
+              minLength={8}
+              autoComplete="new-password"
               value={staffForm.password || ''}
               onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
-              placeholder={editingStaff ? 'اتركها فارغة إذا لم ترغب بتغييرها' : 'كلمة المرور'}
+              placeholder={editingStaff ? 'اتركها فارغة إذا لم ترغب بتغييرها' : '8 أحرف على الأقل'}
               className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-blue-400"
             />
           </div>
@@ -102,6 +108,18 @@ export default function StaffFormModal({
               className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-400"
             />
           </div>
+
+          {editingStaff && (
+            <label className="flex items-center gap-2 text-slate-300 font-semibold cursor-pointer">
+              <input
+                type="checkbox"
+                checked={staffForm.active}
+                onChange={(e) => setStaffForm({ ...staffForm, active: e.target.checked })}
+                className="accent-emerald-500"
+              />
+              الحساب نشط ويمكنه تسجيل الدخول
+            </label>
+          )}
 
           <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
             <button

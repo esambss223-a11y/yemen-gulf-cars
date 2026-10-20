@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { 
   Car, 
   Booking, 
@@ -33,8 +33,10 @@ export interface FleetContextType {
 
   // إدارة الموظفين
   staffList: StaffUser[];
+  staffListError: string;
   addStaff: (staff: Omit<StaffUser, 'id'>) => void;
   updateStaff: (id: string, partial: Partial<StaffUser>) => void;
+  updateMyProfile: (partial: Partial<StaffUser>) => Promise<void>;
   deleteStaff: (id: string) => void;
 
   // إدارة العملاء وسجل CRM
@@ -86,6 +88,8 @@ export interface FleetContextType {
 
 const FleetContext = createContext<FleetContextType | undefined>(undefined);
 
+const PUBLIC_CAR_FIELDS = 'id, make, model, year, category, plate_number, color, daily_price_egp, weekly_price_egp, monthly_price_egp, security_deposit_egp, status, images, cover_image, transmission, fuel_type, seats, ownership, features';
+
 export function FleetProvider({ children }: { children: React.ReactNode }) {
   // 1. الوحدة المساعدة: السجلات، الفواتير، الزيارات، وإحصائيات السحابة
   const misc = useFleetMisc({});
@@ -122,24 +126,22 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     currentStaffName: auth.currentStaff?.name,
   });
 
-  // قفل التهيئة الأولية لمنع أي تكرار أو تعليق في المتصفح نهائياً
-  const isInitializedRef = useRef(false);
-
   useEffect(() => {
-    if (isInitializedRef.current) return;
-    isInitializedRef.current = true;
-
     misc.trackAndLoadVisits();
 
     const fetchInitialData = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const carsQuery = session
+          ? supabase.from('cars').select('*')
+          : supabase.from('cars').select(PUBLIC_CAR_FIELDS);
         const [
           { data: cloudCars, error: carsErr },
           { data: cloudBookings, error: bkErr },
           { data: cloudOwners, error: ownersErr },
           { data: cloudCustomers, error: custErr },
         ] = await Promise.all([
-          supabase.from('cars').select('*'),
+          carsQuery,
           supabase.from('bookings').select('*'),
           supabase.from('owners').select('*'),
           supabase.from('customers').select('*'),
@@ -187,7 +189,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     };
 
     fetchInitialData();
-  }, []);
+  }, [auth.currentStaff?.id]);
 
   // دالة إعادة ضبط المصنع
   const resetToDefault = misc.createResetFunction(
@@ -207,8 +209,10 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         signOut: auth.signOut,
         isCloudConnected: misc.isCloudConnected,
         staffList: auth.staffList,
+        staffListError: auth.staffListError,
         addStaff: auth.addStaff,
         updateStaff: auth.updateStaff,
+        updateMyProfile: auth.updateMyProfile,
         deleteStaff: auth.deleteStaff,
         customers: fleetCustomers.customers,
         addCustomer: fleetCustomers.addCustomer,

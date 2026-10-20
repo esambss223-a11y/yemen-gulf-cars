@@ -1,6 +1,7 @@
 -- ========================================================
 -- سكربت قاعدة بيانات يمن الخليج لتأجير السيارات (Supabase Schema)
 -- ========================================================
+BEGIN;
 
 -- 1. جدول ملاك السيارات والشركاء (owners)
 CREATE TABLE IF NOT EXISTS public.owners (
@@ -185,9 +186,31 @@ RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
+SET search_path = public
 AS $$
-  SELECT true;
+  SELECT EXISTS (
+    SELECT 1 FROM public.staff
+    WHERE id = auth.uid() AND active = true
+  );
 $$;
+
+CREATE OR REPLACE FUNCTION public.has_staff_role(allowed_roles TEXT[])
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.staff
+    WHERE id = auth.uid() AND active = true AND role = ANY(allowed_roles)
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_active_staff() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.has_staff_role(TEXT[]) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.is_active_staff() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.has_staff_role(TEXT[]) TO authenticated;
 
 ALTER TABLE public.owners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cars ENABLE ROW LEVEL SECURITY;
@@ -197,34 +220,160 @@ ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_visits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.staff ENABLE ROW LEVEL SECURITY;
 
--- تصاريح متكاملة وسلسة للوحة التحكم والواجهة (قراءة وكتابة تماتيكية)
-DROP POLICY IF EXISTS "Allow all on cars" ON public.cars;
-CREATE POLICY "Allow all on cars" ON public.cars FOR ALL TO public USING (true) WITH CHECK (true);
+-- استبدال كل السياسات الموجودة على جداول التطبيق بسياسات أدوار محددة.
+-- الوصول الإداري للجدول staff يتم عبر Route Handlers باستخدام مفتاح الخادم فقط.
+DO $$
+DECLARE
+  target_table TEXT;
+  existing_policy RECORD;
+BEGIN
+  FOREACH target_table IN ARRAY ARRAY[
+    'cars', 'owners', 'bookings', 'invoices', 'coupons',
+    'audit_logs', 'customers', 'site_visits', 'staff'
+  ] LOOP
+    FOR existing_policy IN
+      SELECT policyname FROM pg_policies
+      WHERE schemaname = 'public' AND tablename = target_table
+    LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', existing_policy.policyname, target_table);
+    END LOOP;
+  END LOOP;
+END $$;
 
-DROP POLICY IF EXISTS "Allow all on owners" ON public.owners;
-CREATE POLICY "Allow all on owners" ON public.owners FOR ALL TO public USING (true) WITH CHECK (true);
+REVOKE ALL ON TABLE public.cars, public.owners, public.bookings, public.invoices,
+  public.coupons, public.audit_logs, public.customers, public.site_visits, public.staff
+  FROM PUBLIC, anon, authenticated;
 
-DROP POLICY IF EXISTS "Allow all on bookings" ON public.bookings;
-CREATE POLICY "Allow all on bookings" ON public.bookings FOR ALL TO public USING (true) WITH CHECK (true);
+-- الموظفون الموثقون يمرون إلى RLS؛ سياسات كل جدول تحدد دورهم المسموح.
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.cars, public.owners,
+  public.bookings, public.invoices, public.coupons, public.audit_logs,
+  public.customers, public.site_visits TO authenticated;
+GRANT SELECT (id, name, username, role, phone, active, created_at)
+  ON TABLE public.staff TO authenticated;
+CREATE POLICY "Staff read own profile" ON public.staff
+  FOR SELECT TO authenticated USING (id = auth.uid());
 
-DROP POLICY IF EXISTS "Allow all on customers" ON public.customers;
-CREATE POLICY "Allow all on customers" ON public.customers FOR ALL TO public USING (true) WITH CHECK (true);
+-- صلاحيات الموقع العام: عرض السيارات المتاحة فقط، وإنشاء طلب حجز/عميل وزيارة.
+-- لا توجد صلاحية عامة لقراءة الحجوزات أو بيانات العملاء أو الملاك أو الفواتير.
+GRANT SELECT (id, make, model, year, category, plate_number, color,
+  daily_price_egp, weekly_price_egp, monthly_price_egp, security_deposit_egp,
+  status, images, cover_image, transmission, fuel_type, seats, ownership, features)
+  ON TABLE public.cars TO anon;
+GRANT INSERT (id, booking_number, car_id, car_name, car_plate, customer,
+  start_date, start_time, end_date, end_time, days_count, daily_rate_egp,
+  total_rent_egp, discount_code, discount_amount_egp, final_total_egp,
+  security_deposit_egp, deposit_status, start_km, status, staff_id, staff_name, notes)
+  ON TABLE public.bookings TO anon;
+GRANT INSERT (id, full_name, phone, whatsapp, national_id, license_number,
+  nationality, tier, risk_status, trust_score, star_rating, rating_count,
+  cleanliness_score, damages_count, loyalty_points, total_rentals_count,
+  total_spent_egp, notes) ON TABLE public.customers TO anon;
+GRANT INSERT (page_path, device_type, session_id) ON TABLE public.site_visits TO anon;
 
-DROP POLICY IF EXISTS "Allow all on invoices" ON public.invoices;
-CREATE POLICY "Allow all on invoices" ON public.invoices FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Public read available cars" ON public.cars
+  FOR SELECT TO anon USING (status = 'available');
+CREATE POLICY "Staff read cars" ON public.cars
+  FOR SELECT TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
+CREATE POLICY "Managers create cars" ON public.cars
+  FOR INSERT TO authenticated
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin']));
+CREATE POLICY "Managers update cars" ON public.cars
+  FOR UPDATE TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin']))
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin']));
+CREATE POLICY "Managers delete cars" ON public.cars
+  FOR DELETE TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
 
-DROP POLICY IF EXISTS "Allow all on coupons" ON public.coupons;
-CREATE POLICY "Allow all on coupons" ON public.coupons FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Staff read bookings" ON public.bookings
+  FOR SELECT TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
+CREATE POLICY "Staff create bookings" ON public.bookings
+  FOR INSERT TO authenticated
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent']));
+CREATE POLICY "Staff update bookings" ON public.bookings
+  FOR UPDATE TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin', 'rental_agent']))
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent']));
+CREATE POLICY "Managers delete bookings" ON public.bookings
+  FOR DELETE TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
+CREATE POLICY "Public submit booking request" ON public.bookings
+  FOR INSERT TO anon
+  WITH CHECK (
+    status = 'active' AND deposit_status = 'pending'
+    AND staff_id = 'online-portal' AND staff_name = 'بوابة الحجز الإلكتروني'
+  );
 
-DROP POLICY IF EXISTS "Allow all on audit_logs" ON public.audit_logs;
-CREATE POLICY "Allow all on audit_logs" ON public.audit_logs FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Staff read customers" ON public.customers
+  FOR SELECT TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
+CREATE POLICY "Staff create customers" ON public.customers
+  FOR INSERT TO authenticated
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent']));
+CREATE POLICY "Staff update customers" ON public.customers
+  FOR UPDATE TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin', 'rental_agent']))
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent']));
+CREATE POLICY "Managers delete customers" ON public.customers
+  FOR DELETE TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
+CREATE POLICY "Public submit booking customer" ON public.customers
+  FOR INSERT TO anon
+  WITH CHECK (national_id = 'طلب حجز إلكتروني' AND license_number = 'طلب حجز إلكتروني');
 
-DROP POLICY IF EXISTS "Allow all on site_visits" ON public.site_visits;
-CREATE POLICY "Allow all on site_visits" ON public.site_visits FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Accountants and managers read owners" ON public.owners
+  FOR SELECT TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin', 'accountant']));
+CREATE POLICY "Managers create owners" ON public.owners
+  FOR INSERT TO authenticated WITH CHECK (public.has_staff_role(ARRAY['super_admin']));
+CREATE POLICY "Managers update owners" ON public.owners
+  FOR UPDATE TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin']))
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin']));
+CREATE POLICY "Managers delete owners" ON public.owners
+  FOR DELETE TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
 
-DROP POLICY IF EXISTS "Allow all on staff" ON public.staff;
-CREATE POLICY "Allow all on staff" ON public.staff FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Accountants and managers read invoices" ON public.invoices
+  FOR SELECT TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin', 'accountant']));
+CREATE POLICY "Staff create invoices" ON public.invoices
+  FOR INSERT TO authenticated
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
+CREATE POLICY "Accountants update invoices" ON public.invoices
+  FOR UPDATE TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin', 'accountant']))
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'accountant']));
+CREATE POLICY "Managers delete invoices" ON public.invoices
+  FOR DELETE TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
+
+CREATE POLICY "Staff read coupons" ON public.coupons
+  FOR SELECT TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
+CREATE POLICY "Public read active coupons" ON public.coupons
+  FOR SELECT TO anon USING (active = true);
+CREATE POLICY "Managers create coupons" ON public.coupons
+  FOR INSERT TO authenticated WITH CHECK (public.has_staff_role(ARRAY['super_admin']));
+CREATE POLICY "Managers update coupons" ON public.coupons
+  FOR UPDATE TO authenticated
+  USING (public.has_staff_role(ARRAY['super_admin']))
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin']));
+CREATE POLICY "Managers delete coupons" ON public.coupons
+  FOR DELETE TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
+
+CREATE POLICY "Managers read audit logs" ON public.audit_logs
+  FOR SELECT TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
+CREATE POLICY "Staff append audit logs" ON public.audit_logs
+  FOR INSERT TO authenticated
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
+
+CREATE POLICY "Managers read site visits" ON public.site_visits
+  FOR SELECT TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
+CREATE POLICY "Public append site visits" ON public.site_visits
+  FOR INSERT TO anon WITH CHECK (length(session_id) BETWEEN 8 AND 128);
+CREATE POLICY "Staff append site visits" ON public.site_visits
+  FOR INSERT TO authenticated
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
 
 -- ========================================================
 -- بيانات أولية افتراضية للمشروع (Seed Data)
@@ -247,3 +396,5 @@ VALUES
   ('cp-1', 'VIP2026', 'fixed_egp', 5000, '2026-12-31', 50, 7, true),
   ('cp-2', 'GULF10', 'percentage', 10, '2026-11-30', 100, 14, true)
 ON CONFLICT (id) DO NOTHING;
+
+COMMIT;

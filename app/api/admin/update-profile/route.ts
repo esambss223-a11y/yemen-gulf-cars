@@ -1,53 +1,58 @@
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://olpjfipferziqtzrbbbt.supabase.co';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { authorizeStaffRequest } from '@/lib/server/staff-auth';
 
 export async function POST(request: Request) {
   try {
+    const auth = await authorizeStaffRequest(request);
+    if (!auth.ok) return Response.json({ error: auth.error }, { status: auth.status });
+
     const body = await request.json();
-    const { id, name, username, phone, role, password } = body;
-
-    if (!id && !username) {
-      return Response.json({ error: 'معرف الموظف غير محدد' }, { status: 400 });
+    if (body.id && body.id !== auth.user.id) {
+      return Response.json({ error: 'لا يمكنك تعديل حساب موظف آخر من هذه الخدمة' }, { status: 403 });
     }
 
-    if (SERVICE_KEY) {
-      const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-
-      const payload: Record<string, unknown> = {};
-      if (name) payload.name = name.trim();
-      if (username) payload.username = username.trim().toLowerCase();
-      if (phone) payload.phone = phone.trim();
-      if (role) payload.role = role;
-
-      // تحديث في جدول staff
-      if (Object.keys(payload).length > 0) {
-        if (id) {
-          await admin.from('staff').update(payload).eq('id', id);
-        } else if (username) {
-          await admin.from('staff').update(payload).eq('username', username);
-        }
+    const updates: Record<string, string> = {};
+    if (typeof body.name === 'string') {
+      const name = body.name.trim();
+      if (!name) return Response.json({ error: 'الاسم مطلوب' }, { status: 400 });
+      updates.name = name;
+    }
+    if (typeof body.username === 'string') {
+      const username = body.username.trim().toLowerCase();
+      if (!/^[a-z0-9._-]{1,64}$/.test(username)) {
+        return Response.json({ error: 'اسم المستخدم يجب أن يكون بالإنجليزية' }, { status: 400 });
       }
+      const { data: duplicate } = await auth.admin
+        .from('staff')
+        .select('id')
+        .eq('username', username)
+        .neq('id', auth.user.id)
+        .maybeSingle();
+      if (duplicate) return Response.json({ error: 'اسم المستخدم مستخدم بالفعل' }, { status: 409 });
+      updates.username = username;
+    }
+    if (typeof body.phone === 'string') updates.phone = body.phone.trim();
 
-      // تحديث كلمة المرور في Supabase Auth إذا تم تمريرها
-      if (id && password && password.trim().length >= 6) {
-        try {
-          await admin.auth.admin.updateUserById(id, {
-            password: password.trim(),
-            user_metadata: { name: payload.name, username: payload.username, phone: payload.phone }
-          });
-        } catch (authErr) {
-          console.warn('Auth password update notice:', authErr);
-        }
-      }
+    if (Object.keys(updates).length) {
+      const { error } = await auth.admin.from('staff').update(updates).eq('id', auth.user.id);
+      if (error) return Response.json({ error: 'تعذر تحديث بيانات الحساب' }, { status: 500 });
     }
 
-    return Response.json({ success: true });
-  } catch (err: any) {
-    console.error('Update profile error:', err);
+    if (typeof body.password === 'string' && body.password.length > 0) {
+      if (body.password.length < 8 || body.password.length > 256) {
+        return Response.json({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' }, { status: 400 });
+      }
+      const { error } = await auth.admin.auth.admin.updateUserById(auth.user.id, { password: body.password });
+      if (error) return Response.json({ error: 'تعذر تغيير كلمة المرور' }, { status: 400 });
+    }
+
+    const { data: staff, error } = await auth.admin
+      .from('staff')
+      .select('id, name, username, role, phone, active')
+      .eq('id', auth.user.id)
+      .single();
+    if (error || !staff) return Response.json({ error: 'تعذر تحميل بيانات الحساب' }, { status: 500 });
+    return Response.json({ success: true, staff });
+  } catch {
     return Response.json({ error: 'تعذر حفظ التعديلات' }, { status: 500 });
   }
 }

@@ -1,203 +1,282 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { authorizeStaffRequest } from '@/lib/server/staff-auth';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://olpjfipferziqtzrbbbt.supabase.co';
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ttzLa9vmYT9Ym0eGckMY_w_yDEjmXZb';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const STAFF_FIELDS = 'id, name, username, role, phone, active, created_at';
+const VALID_ROLES = new Set(['super_admin', 'rental_agent', 'accountant']);
 
-function getSupabase() {
-  return createClient(SUPABASE_URL, SERVICE_KEY || ANON_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+function describeAuthCreateError(error: { code?: string; status?: number; message?: string }) {
+  const code = error.code || 'AUTH_CREATE_FAILED';
+  const message = error.message?.toLowerCase() || '';
+  if (message.includes('already') || message.includes('registered') || code.toLowerCase().includes('already')) {
+    return { code: 'AUTH_USER_ALREADY_EXISTS', error: 'تعذر إنشاء الحساب: يوجد حساب دخول سابق مرتبط باسم المستخدم هذا. جرّب اسم مستخدم مختلفًا؛ لم يتم تغيير كلمة مرور الحساب السابق.' };
+  }
+  if (message.includes('password') && (message.includes('weak') || message.includes('short') || message.includes('characters'))) {
+    return { code: 'AUTH_PASSWORD_REJECTED', error: 'رفض Supabase كلمة المرور. اختر كلمة مرور أقوى وأطول، ثم أعد المحاولة.' };
+  }
+  if (message.includes('email') || message.includes('provider')) {
+    return { code: 'AUTH_PROVIDER_OR_EMAIL_ERROR', error: 'رفض Supabase إنشاء حساب الدخول. تحقّق من تفعيل مزوّد Email في إعدادات Authentication بالمشروع.' };
+  }
+  if (message.includes('database error') || code.toLowerCase() === 'unexpected_failure') {
+    return { code: 'AUTH_DATABASE_WRITE_FAILED', error: 'وصل طلب إنشاء الحساب إلى Supabase Auth، لكن حفظه في قاعدة بيانات المصادقة فشل. هذا غالبًا خطأ داخلي أو trigger في auth.users؛ راجع سجل Auth في Supabase، ولا تعدّل جدول staff.' };
+  }
+  if ((error.status || 0) >= 500) {
+    return { code: 'AUTH_PROVIDER_INTERNAL_ERROR', error: `أعاد Supabase Authentication خطأً داخليًا (HTTP ${error.status}, ${code}). لم يُنشأ الموظف. هذا لا يعني بالضرورة أن الخدمة متوقفة؛ راجع سجل Auth في Supabase.` };
+  }
+  return { code, error: 'رفض Supabase إنشاء حساب الموظف. راجع إعدادات Authentication؛ لم يُضف الموظف.' };
 }
 
-// 1. استرجاع قائمة جميع الموظفين من جدول staff
-export async function GET() {
+function authFailure(result: Extract<Awaited<ReturnType<typeof authorizeStaffRequest>>, { ok: false }>) {
+  return NextResponse.json({ error: result.error }, { status: result.status });
+}
+
+export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabase();
-    const { data: staffList, error } = await supabase
+    const auth = await authorizeStaffRequest(request, true);
+    if (!auth.ok) return authFailure(auth);
+
+    const { data, error } = await auth.admin
       .from('staff')
-      .select('id, name, username, role, phone, active, created_at, password')
+      .select(STAFF_FIELDS)
       .order('created_at', { ascending: true });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ staff: staffList || [] });
-  } catch (err: any) {
-    return NextResponse.json({ error: 'Failed to fetch staff list' }, { status: 500 });
+    if (error) return NextResponse.json({ error: 'تعذر تحميل قائمة الموظفين' }, { status: 500 });
+    return NextResponse.json({ staff: data || [] });
+  } catch {
+    return NextResponse.json({ error: 'تعذر تحميل قائمة الموظفين' }, { status: 500 });
   }
 }
 
-// 2. إضافة موظف جديد
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json();
-    const { id, name, username, password, role, phone } = body;
+    const auth = await authorizeStaffRequest(request, true);
+    if (!auth.ok) return authFailure(auth);
 
-    const cleanUsername = (username || '').trim().toLowerCase();
-    const cleanName = (name || '').trim();
-    const cleanPhone = (phone || '').trim();
-    const cleanRole = role || 'rental_agent';
-    const cleanPassword = password && password.length >= 6 ? password : 'admin123';
-    const finalId = (id && id.length > 20) ? id : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined);
+    const body = await request.json();
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : '';
+    const password = typeof body.password === 'string' ? body.password : '';
+    const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
+    const role = typeof body.role === 'string' ? body.role : 'rental_agent';
 
-    if (!cleanUsername || !cleanName) {
-      return NextResponse.json({ error: 'اسم الموظف واسم المستخدم مطلوبان' }, { status: 400 });
+    if (!name || !/^[a-z0-9._-]{1,64}$/.test(username) || password.length < 8 || password.length > 256 || !VALID_ROLES.has(role)) {
+      return NextResponse.json({ error: 'أدخل الاسم واسم مستخدم إنجليزيًا وكلمة مرور من 8 أحرف على الأقل ودورًا صالحًا' }, { status: 400 });
     }
 
-    const supabase = getSupabase();
-
-    // 1. إذا كان مفتاح الخدمة متوفراً، أنشئ حساب Auth للموظف
-    if (SERVICE_KEY) {
-      try {
-        const authDomain = new URL(SUPABASE_URL).hostname;
-        const authEmail = `${cleanUsername}@${authDomain}`;
-        await supabase.auth.admin.createUser({
-          email: authEmail,
-          password: cleanPassword,
-          email_confirm: true,
-          user_metadata: {
-            name: cleanName,
-            username: cleanUsername,
-            role: cleanRole,
-            phone: cleanPhone,
-          },
-        });
-      } catch (authErr) {
-        // الحساب قد يكون موجوداً مسبقاً، نتابع الإدراج في جدول staff
-      }
-    }
-
-    // 2. إدراج أو تحديث في جدول staff
-    const { data: staffRow, error: staffErr } = await supabase
+    const { data: existing, error: existingError } = await auth.admin
       .from('staff')
-      .upsert({
-        id: finalId,
-        name: cleanName,
-        username: cleanUsername,
-        role: cleanRole,
-        phone: cleanPhone,
-        password: cleanPassword,
-        active: true,
-      })
-      .select()
+      .select('id')
+      .eq('username', username)
       .maybeSingle();
+    if (existingError) return NextResponse.json({ error: 'تعذر التحقق من اسم المستخدم' }, { status: 500 });
+    if (existing) return NextResponse.json({ error: 'اسم المستخدم مستخدم بالفعل' }, { status: 409 });
 
-    if (staffErr) {
-      console.warn('Insert staff DB warning:', staffErr);
-    }
-
-    return NextResponse.json({
-      staff: staffRow || {
-        id: finalId || `staff-${Date.now()}`,
-        name: cleanName,
-        username: cleanUsername,
-        role: cleanRole,
-        phone: cleanPhone,
-        active: true,
-      }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const internalEmail = `${username}@${new URL(supabaseUrl).hostname}`;
+    const userMetadata = { name, username, role, phone };
+    const { data: created, error: createError } = await auth.admin.auth.admin.createUser({
+      email: internalEmail,
+      password,
+      email_confirm: true,
+      user_metadata: userMetadata,
     });
-  } catch (err: any) {
-    console.error('Create staff error:', err);
-    return NextResponse.json({ error: 'تعذر إنشاء حساب الموظف' }, { status: 500 });
-  }
-}
-
-// 3. تعديل موظف وصلاحيته
-export async function PUT(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { id, name, username, password, role, phone } = body;
-
-    const cleanUsername = (username || '').trim().toLowerCase();
-    const cleanName = (name || '').trim();
-    const cleanPhone = (phone || '').trim();
-    const cleanRole = role;
-
-    const supabase = getSupabase();
-
-    const payload: Record<string, unknown> = {};
-    if (cleanName) payload.name = cleanName;
-    if (cleanUsername) payload.username = cleanUsername;
-    if (cleanPhone) payload.phone = cleanPhone;
-    if (cleanRole) payload.role = cleanRole;
-    if (password && password.length >= 6) payload.password = password;
-
-    // تحديث جدول staff بالمعرف أو باسم المستخدم
-    let matchedId = id;
-    if (id && id.length > 20) {
-      await supabase.from('staff').update(payload).eq('id', id);
-    } else if (cleanUsername) {
-      const { data: matched } = await supabase
-        .from('staff')
-        .update(payload)
-        .eq('username', cleanUsername)
-        .select()
-        .maybeSingle();
-      if (matched?.id) matchedId = matched.id;
-    }
-
-    // إذا كانت هناك كلمة مرور جديدة ومفتاح الخدمة متوفر، نحدث Auth
-    if (SERVICE_KEY && password && password.length >= 6 && matchedId && matchedId.length > 20) {
-      try {
-        await supabase.auth.admin.updateUserById(matchedId, {
-          password,
-          user_metadata: { name: cleanName, username: cleanUsername, role: cleanRole, phone: cleanPhone }
-        });
-      } catch (authErr) {
-        console.warn('Update password notice:', authErr);
+    let authUserId = created.user?.id;
+    let createdAuthUser = Boolean(authUserId);
+    if (createError || !created.user) {
+      if (createError) {
+        const errorMessage = createError.message.toLowerCase();
+        const isExistingAuthUser = errorMessage.includes('already') || errorMessage.includes('registered') ||
+          createError.code?.toLowerCase().includes('already');
+        if (isExistingAuthUser) {
+          // Repair accounts left behind by the old endpoint, which could create Auth users
+          // while silently failing to insert the matching staff row.
+          let orphanUser: { id: string; email?: string } | undefined;
+          for (let page = 1; page <= 20 && !orphanUser; page += 1) {
+            const { data, error } = await auth.admin.auth.admin.listUsers({ page, perPage: 1000 });
+            if (error) break;
+            orphanUser = data.users.find((user) => user.email?.toLowerCase() === internalEmail);
+            if (data.users.length < 1000) break;
+          }
+          if (orphanUser) {
+            const { data: linkedStaff, error: linkedStaffError } = await auth.admin
+              .from('staff')
+              .select('id')
+              .eq('id', orphanUser.id)
+              .maybeSingle();
+            if (!linkedStaffError && !linkedStaff) {
+              const { error: repairError } = await auth.admin.auth.admin.updateUserById(orphanUser.id, {
+                password,
+                email_confirm: true,
+                user_metadata: userMetadata,
+              });
+              if (!repairError) {
+                authUserId = orphanUser.id;
+                createdAuthUser = false;
+              }
+            }
+          }
+        }
+        if (authUserId) {
+          // The orphan account has been recovered; continue by linking it below.
+        } else {
+        console.error('[admin-staff:AUTH_CREATE_FAILED]', createError.code || 'unknown', createError.status || 'unknown', createError.message.slice(0, 200));
+        const diagnosis = describeAuthCreateError(createError);
+        return NextResponse.json(diagnosis, { status: createError.status === 429 ? 429 : 400 });
+        }
+      } else {
+        return NextResponse.json({ code: 'AUTH_USER_MISSING', error: 'لم يُرجع Supabase حساب دخول بعد الإنشاء؛ لم يُضف الموظف.' }, { status: 502 });
       }
     }
 
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    console.error('Update staff error:', err);
-    return NextResponse.json({ error: 'تعذر تحديث بيانات الموظف' }, { status: 500 });
+    if (!authUserId) {
+      return NextResponse.json({ code: 'AUTH_USER_MISSING', error: 'لم يُرجع Supabase حساب دخول بعد الإنشاء؛ لم يُضف الموظف.' }, { status: 502 });
+    }
+    const staff = {
+      id: authUserId,
+      name,
+      username,
+      role,
+      phone,
+      active: true,
+    };
+    const { data: inserted, error: insertError } = await auth.admin
+      .from('staff')
+      .upsert(staff, { onConflict: 'id' })
+      .select(STAFF_FIELDS)
+      .single();
+
+    if (insertError || !inserted) {
+      const { error: rollbackError } = createdAuthUser
+        ? await auth.admin.auth.admin.deleteUser(authUserId)
+        : { error: null };
+      console.error('[admin-staff:DIRECTORY_INSERT_FAILED]', insertError?.code || 'unknown', rollbackError?.code || 'rollback-ok');
+      return NextResponse.json({ code: createdAuthUser ? 'STAFF_DIRECTORY_SAVE_FAILED' : 'STAFF_DIRECTORY_REPAIR_FAILED', error: 'تعذر حفظ الموظف في جدول staff. لم يكتمل الإصلاح؛ افحص إعدادات قاعدة البيانات وصلاحية الخدمة.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ staff: inserted }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: 'تعذر إنشاء الموظف' }, { status: 500 });
   }
 }
 
-// 4. حذف موظف
-export async function DELETE(req: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    const username = searchParams.get('username')?.trim().toLowerCase();
+    const auth = await authorizeStaffRequest(request, true);
+    if (!auth.ok) return authFailure(auth);
 
-    if (!id && !username) {
-      return NextResponse.json({ error: 'معرف الموظف أو اسم المستخدم مطلوب' }, { status: 400 });
+    const body = await request.json();
+    const id = typeof body.id === 'string' ? body.id : '';
+    if (!id) return NextResponse.json({ error: 'معرف الموظف مطلوب' }, { status: 400 });
+
+    const { data: target, error: targetError } = await auth.admin
+      .from('staff')
+      .select('id, role, active')
+      .eq('id', id)
+      .maybeSingle();
+    if (targetError || !target) return NextResponse.json({ error: 'الموظف غير موجود' }, { status: 404 });
+
+    const name = typeof body.name === 'string' ? body.name.trim() : undefined;
+    const username = typeof body.username === 'string' ? body.username.trim().toLowerCase() : undefined;
+    const phone = typeof body.phone === 'string' ? body.phone.trim() : undefined;
+    const role = typeof body.role === 'string' ? body.role : undefined;
+    const active = typeof body.active === 'boolean' ? body.active : undefined;
+    const password = typeof body.password === 'string' ? body.password : '';
+    if (username !== undefined && !/^[a-z0-9._-]{1,64}$/.test(username)) {
+      return NextResponse.json({ error: 'اسم المستخدم يجب أن يكون بالإنجليزية' }, { status: 400 });
+    }
+    if (role !== undefined && !VALID_ROLES.has(role)) {
+      return NextResponse.json({ error: 'الدور المحدد غير صالح' }, { status: 400 });
+    }
+    if (password && password.length < 8) {
+      return NextResponse.json({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' }, { status: 400 });
     }
 
-    const supabase = getSupabase();
-    let staffIdToDelete = id;
+    if (target.id === auth.user.id && active === false) {
+      return NextResponse.json({ error: 'لا يمكنك تعطيل الحساب الذي تستخدمه الآن' }, { status: 409 });
+    }
 
-    // إذا كان المعرف ليس UUID، نجلب الموظف بالاسم
-    if ((!staffIdToDelete || staffIdToDelete.startsWith('staff-')) && username) {
-      const { data: found } = await supabase
+    if (target.role === 'super_admin' && target.active && ((role !== undefined && role !== 'super_admin') || active === false)) {
+      const { count } = await auth.admin
+        .from('staff')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'super_admin')
+        .eq('active', true);
+      if ((count || 0) <= 1) {
+        return NextResponse.json({ error: 'لا يمكن خفض صلاحية آخر مدير عام' }, { status: 409 });
+      }
+    }
+
+    if (username) {
+      const { data: duplicate } = await auth.admin
         .from('staff')
         .select('id')
         .eq('username', username)
+        .neq('id', id)
         .maybeSingle();
-      if (found?.id) staffIdToDelete = found.id;
+      if (duplicate) return NextResponse.json({ error: 'اسم المستخدم مستخدم بالفعل' }, { status: 409 });
     }
 
-    // حذف من جدول staff
-    if (staffIdToDelete && staffIdToDelete.length > 20) {
-      await supabase.from('staff').delete().eq('id', staffIdToDelete);
-      if (SERVICE_KEY) {
-        try {
-          await supabase.auth.admin.deleteUser(staffIdToDelete);
-        } catch {
-          // ignore
-        }
-      }
-    } else if (username) {
-      await supabase.from('staff').delete().eq('username', username);
+    if (password) {
+      const { error } = await auth.admin.auth.admin.updateUserById(id, { password });
+      if (error) return NextResponse.json({ error: 'تعذر تغيير كلمة مرور الموظف' }, { status: 400 });
     }
 
+    const updates: Record<string, string | boolean> = {};
+    if (name !== undefined) updates.name = name;
+    if (username !== undefined) updates.username = username;
+    if (phone !== undefined) updates.phone = phone;
+    if (role !== undefined) updates.role = role;
+    if (active !== undefined) updates.active = active;
+
+    let updated;
+    let updateError;
+    if (Object.keys(updates).length) {
+      const result = await auth.admin.from('staff').update(updates).eq('id', id).select(STAFF_FIELDS).single();
+      updated = result.data;
+      updateError = result.error;
+    } else {
+      const result = await auth.admin.from('staff').select(STAFF_FIELDS).eq('id', id).single();
+      updated = result.data;
+      updateError = result.error;
+    }
+    if (updateError || !updated) return NextResponse.json({ error: 'تعذر تحديث بيانات الموظف' }, { status: 500 });
+
+    return NextResponse.json({ staff: updated });
+  } catch {
+    return NextResponse.json({ error: 'تعذر تحديث الموظف' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await authorizeStaffRequest(request, true);
+    if (!auth.ok) return authFailure(auth);
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id') || '';
+    const username = searchParams.get('username')?.trim().toLowerCase() || '';
+    const query = auth.admin.from('staff').select('id, role, active');
+    const { data: target, error: targetError } = await (id ? query.eq('id', id) : query.eq('username', username)).maybeSingle();
+    if (targetError || !target) return NextResponse.json({ error: 'الموظف غير موجود' }, { status: 404 });
+    if (target.id === auth.user.id) return NextResponse.json({ error: 'لا يمكنك حذف حسابك أثناء تسجيل الدخول' }, { status: 409 });
+
+    if (target.role === 'super_admin' && target.active) {
+      const { count } = await auth.admin
+        .from('staff')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'super_admin')
+        .eq('active', true);
+      if ((count || 0) <= 1) return NextResponse.json({ error: 'لا يمكن حذف آخر مدير عام' }, { status: 409 });
+    }
+
+    const { error: dbError } = await auth.admin.from('staff').delete().eq('id', target.id);
+    if (dbError) return NextResponse.json({ error: 'تعذر حذف الموظف من قاعدة البيانات' }, { status: 500 });
+
+    try {
+      await auth.admin.auth.admin.deleteUser(target.id);
+    } catch {
+      // ignore if not present in auth.users
+    }
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ error: 'تعذر حذف الموظف' }, { status: 500 });
   }
 }

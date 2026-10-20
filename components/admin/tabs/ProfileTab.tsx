@@ -28,7 +28,7 @@ interface ProfileTabProps {
   currentStaff: StaffUser;
   bookings: Booking[];
   auditLogs: AuditLogItem[];
-  onUpdateStaff: (id: string, partial: Partial<StaffUser>) => void;
+  onUpdateStaff: (partial: Partial<StaffUser>) => Promise<void>;
   onLogout: () => void;
 }
 
@@ -45,6 +45,8 @@ export default function ProfileTab({
   const [phoneInput, setPhoneInput] = useState(currentStaff.phone);
   const [passwordInput, setPasswordInput] = useState(currentStaff.password || '');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  const [saveErrorMsg, setSaveErrorMsg] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!isEditing) {
@@ -69,18 +71,27 @@ export default function ProfileTab({
   const totalHandledRevenue = myHandledBookings.reduce((sum, b) => sum + b.finalTotalEGP, 0);
 
   // حفظ التعديلات
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUsername = usernameInput.trim().toLowerCase();
-    onUpdateStaff(currentStaff.id, {
-      name: nameInput.trim(),
-      username: cleanUsername,
-      phone: phoneInput.trim(),
-      ...(passwordInput ? { password: passwordInput } : {}),
-    });
-    setIsEditing(false);
-    setSaveSuccessMsg('تم حفظ وتحديث بيانات حسابك واسم المستخدم بنجاح ✓');
-    setTimeout(() => setSaveSuccessMsg(''), 4000);
+    setIsSaving(true);
+    setSaveErrorMsg('');
+    try {
+      await onUpdateStaff({
+        name: nameInput.trim(),
+        username: cleanUsername,
+        phone: phoneInput.trim(),
+        ...(passwordInput ? { password: passwordInput } : {}),
+      });
+      setIsEditing(false);
+      setPasswordInput('');
+      setSaveSuccessMsg('تم حفظ بيانات حسابك بنجاح ✓');
+      setTimeout(() => setSaveSuccessMsg(''), 4000);
+    } catch (error) {
+      setSaveErrorMsg(error instanceof Error ? error.message : 'تعذر حفظ التعديلات');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // رمز وألوان الرتبة الوظيفية
@@ -203,6 +214,12 @@ export default function ProfileTab({
               <span className="text-[11px] text-slate-400">تحديث فوري ينعكس على حسابك</span>
             </div>
 
+            {saveErrorMsg && (
+              <div role="alert" className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold">
+                {saveErrorMsg}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 mb-1">الاسم الكامل:</label>
@@ -241,6 +258,8 @@ export default function ProfileTab({
                 <label className="block text-[11px] font-bold text-slate-300 mb-1">كلمة المرور الجديدة:</label>
                 <input
                   type="password"
+                  minLength={8}
+                  autoComplete="new-password"
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
                   placeholder="اتركها فارغة للاحتفاظ بالقديمة"
@@ -259,10 +278,11 @@ export default function ProfileTab({
               </button>
               <button
                 type="submit"
+                disabled={isSaving}
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
               >
                 <Save className="w-4 h-4" />
-                <span>حفظ التعديلات</span>
+                <span>{isSaving ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}</span>
               </button>
             </div>
           </form>

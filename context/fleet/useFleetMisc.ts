@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Invoice, PromoCoupon, AuditLogItem, VisitorStats } from '@/types/fleet';
+import { Invoice, PromoCoupon, AuditLogItem, VisitorStats, StaffUser } from '@/types/fleet';
 import {
   INITIAL_INVOICES,
   INITIAL_COUPONS,
@@ -9,7 +9,6 @@ import {
   INITIAL_CARS,
   INITIAL_BOOKINGS,
   INITIAL_OWNERS,
-  INITIAL_STAFF,
   INITIAL_CUSTOMERS,
 } from '@/lib/initial-data';
 import { supabase } from '@/lib/supabase';
@@ -168,7 +167,7 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
     setCars: (c: typeof INITIAL_CARS) => void,
     setBookings: (b: typeof INITIAL_BOOKINGS) => void,
     setOwners: (o: typeof INITIAL_OWNERS) => void,
-    setStaffList: (s: typeof INITIAL_STAFF) => void,
+    setStaffList: (staff: StaffUser[]) => void,
     setCustomers: (cust: typeof INITIAL_CUSTOMERS) => void
   ) => {
     return () => {
@@ -178,7 +177,7 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
       setOwners(INITIAL_OWNERS);
       setCoupons(INITIAL_COUPONS);
       setAuditLogs(INITIAL_AUDIT_LOGS);
-      setStaffList(INITIAL_STAFF);
+      setStaffList([]);
       setCustomers(INITIAL_CUSTOMERS);
       if (typeof window !== 'undefined') {
         localStorage.clear();

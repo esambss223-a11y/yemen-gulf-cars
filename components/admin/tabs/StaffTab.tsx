@@ -6,6 +6,8 @@ import { StaffUser } from '@/types/fleet';
 
 interface StaffTabProps {
   staffList: StaffUser[];
+  staffListError: string;
+  currentStaffId: string;
   onOpenAddStaff: () => void;
   onOpenEditStaff: (staff: StaffUser) => void;
   onDeleteStaff: (staffId: string, staffName: string) => void;
@@ -13,6 +15,8 @@ interface StaffTabProps {
 
 export default function StaffTab({
   staffList,
+  staffListError,
+  currentStaffId,
   onOpenAddStaff,
   onOpenEditStaff,
   onDeleteStaff,
@@ -20,6 +24,11 @@ export default function StaffTab({
   return (
     <div className="space-y-4 animate-fadeIn">
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
+        {staffListError && (
+          <div role="alert" className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+            {staffListError} تم إخفاء القائمة المحلية القديمة.
+          </div>
+        )}
         
         {/* الترويسة */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-5 border-b border-slate-100 pb-4">
@@ -38,6 +47,9 @@ export default function StaffTab({
         </div>
 
         {/* بطاقات الموظفين */}
+        {staffList.length === 0 && !staffListError ? (
+          <p className="py-8 text-center text-sm text-slate-500">لا يوجد موظفون مسجلون في قاعدة البيانات.</p>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {staffList.map((staff) => (
             <div 
@@ -55,8 +67,9 @@ export default function StaffTab({
                      staff.role === 'rental_agent' ? '👤 موظف تأجير' : '💼 محاسب مالي'}
                   </span>
 
-                  <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> نشط
+                  <span className={`text-[10px] font-bold flex items-center gap-1 ${staff.active ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${staff.active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    {staff.active ? 'نشط' : 'غير نشط'}
                   </span>
                 </div>
 
@@ -84,7 +97,7 @@ export default function StaffTab({
                   <Edit3 className="w-3.5 h-3.5" /> تعديل الصلاحية
                 </button>
 
-                {staff.role !== 'super_admin' && (
+                {staff.id !== currentStaffId && (
                   <button
                     onClick={() => onDeleteStaff(staff.id, staff.name)}
                     className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
@@ -97,6 +110,7 @@ export default function StaffTab({
             </div>
           ))}
         </div>
+        )}
       </div>
     </div>
   );
