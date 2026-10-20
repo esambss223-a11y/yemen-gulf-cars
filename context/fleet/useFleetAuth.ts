@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { StaffUser, UserRole } from '@/types/fleet';
 import { INITIAL_STAFF } from '@/lib/initial-data';
 import { supabase } from '@/lib/supabase';
@@ -12,7 +12,6 @@ interface UseFleetAuthProps {
 }
 
 export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
-  // تحميل الموظف الحالي فوراً من التخزين المحلي لتفادي أي وميض أو تأخير في التحميل
   const [currentStaff, setCurrentStaff] = useState<StaffUser | null>(() =>
     loadFromStorage('yg_current_staff', null)
   );
@@ -20,6 +19,9 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
   const [staffList, setStaffList] = useState<StaffUser[]>(() =>
     loadFromStorage('yg_staff', INITIAL_STAFF)
   );
+
+  // ========== قفل حاسم: يمنع onAuthStateChange من التدخل أثناء signIn ==========
+  const signInLockRef = useRef(false);
 
   const mapStaffRow = useCallback((row: Record<string, unknown>): StaffUser => ({
     id: String(row.id),
@@ -30,179 +32,165 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     active: Boolean(row.active),
   }), []);
 
-  const fetchStaffData = useCallback(async (userId: string): Promise<Record<string, unknown> | null> => {
-    // 1. محاولة القراءة المباشرة من Supabase
-    try {
-      const { data, error } = await supabase
-        .from('staff')
-        .select('id, name, username, role, phone, active')
-        .eq('id', userId)
-        .maybeSingle();
-      if (!error && data) return data;
-    } catch {
-      // ignore
-    }
-
-    // 2. قراءة الملف عبر مسار الخادم السريع
-    try {
-      const response = await fetch(`/api/auth/staff-profile?userId=${encodeURIComponent(userId)}`);
-      if (response.ok) {
-        const result = await response.json();
-        if (result?.staff) return result.staff;
-      }
-    } catch {
-      // ignore
-    }
-
-    return null;
-  }, []);
-
-  const loadStaffProfile = useCallback(async (userId: string) => {
-    try {
-      const staffRow = await fetchStaffData(userId);
-      if (staffRow) {
-        const staff = mapStaffRow(staffRow);
-        if (staff.active) {
-          setCurrentStaff(staff);
-          saveToStorage('yg_current_staff', staff);
-        } else {
-          setCurrentStaff(null);
-          try {
-            localStorage.removeItem('yg_current_staff');
-          } catch {
-            // ignore
-          }
-        }
-      }
-    } catch {
-      // في حالة حدوث خطأ في الشبكة، لا نحذف الموظف الحالي المسجل
-    } finally {
-      setIsAuthReady(true);
-    }
-  }, [fetchStaffData, mapStaffRow]);
-
+  // ========== useEffect: استعادة الجلسة ومراقبة التغييرات ==========
   useEffect(() => {
-    // فحص الجلسة الأولية عند التحميل
+    // 1. فحص الجلسة المخزنة عند التحميل
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        loadStaffProfile(session.user.id);
-      } else {
+      if (session?.user && !signInLockRef.current) {
+        // جلسة موجودة: حاول تحديث بيانات الموظف من السحابة
+        // لكن لا تمسح الموظف المحلي إذا فشل الاستعلام
+        (async () => {
+          try {
+            const { data } = await supabase
+              .from('staff')
+              .select('id, name, username, role, phone, active')
+              .eq('id', session.user.id)
+              .maybeSingle();
+            if (data) {
+              const staff = mapStaffRow(data);
+              if (staff.active) {
+                setCurrentStaff(staff);
+                saveToStorage('yg_current_staff', staff);
+              }
+            }
+            // إذا data == null: لا تفعل شيء، أبقِ الموظف المحلي كما هو
+          } catch {
+            // فشل الشبكة: لا تمسح الموظف
+          } finally {
+            setIsAuthReady(true);
+          }
+        })();
+      } else if (!signInLockRef.current) {
+        // لا يوجد جلسة وليس هناك عملية دخول جارية
+        // إذا كان هناك موظف محلي، أبقِه (ربما فقط انقطع الاتصال)
         setIsAuthReady(true);
       }
     });
 
+    // 2. مراقبة تغييرات حالة المصادقة
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        loadStaffProfile(session.user.id);
-        if (event === 'SIGNED_IN' && onSignedIn) {
-          onSignedIn();
-        }
-      } else if (event === 'SIGNED_OUT') {
-        try {
-          localStorage.removeItem('yg_current_staff');
-        } catch {
-          // ignore
-        }
-        setCurrentStaff(null);
-        setIsAuthReady(true);
-      }
-    });
-    return () => listener.subscription.unsubscribe();
-  }, [loadStaffProfile, onSignedIn]);
+      // ===== إذا signIn قيد التنفيذ، تجاهل كل شيء =====
+      if (signInLockRef.current) return;
 
+      if (event === 'SIGNED_OUT') {
+        // فقط SIGNED_OUT الصريح يمسح الموظف
+        setCurrentStaff(null);
+        try { localStorage.removeItem('yg_current_staff'); } catch { /* */ }
+        setIsAuthReady(true);
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        if (onSignedIn) onSignedIn();
+        // لا نستدعي loadStaffProfile هنا — signIn() تعاملت مع كل شيء
+      }
+      // TOKEN_REFRESHED, INITIAL_SESSION, USER_UPDATED: لا نتدخل
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, [mapStaffRow, onSignedIn]);
+
+  // ========== signIn: تسجيل الدخول الموثق ==========
   const signIn = async (identifier: string, password: string): Promise<StaffUser> => {
     const rawInput = identifier.trim().toLowerCase();
     if (!rawInput) {
-      throw new Error('يرجى إدخال اسم المستخدم أو البريد الإلكتروني');
+      throw new Error('يرجى إدخال اسم المستخدم');
     }
 
-    // 1. المحاولة عبر مسار الخادم الموثق (Server-side API)
+    // ===== تفعيل القفل: لا يتدخل onAuthStateChange =====
+    signInLockRef.current = true;
+
     try {
-      const response = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: rawInput, password }),
-      });
-      const result = await response.json();
-      if (response.ok && result.session && result.staff?.active) {
-        await supabase.auth.setSession(result.session);
-        const staff = mapStaffRow(result.staff);
-        setCurrentStaff(staff);
-        saveToStorage('yg_current_staff', staff);
-        return staff;
-      } else if (!response.ok && result.error && !result.error.includes('الخادم')) {
-        throw new Error(result.error);
-      }
-    } catch (e: any) {
-      if (e.message && !e.message.includes('fetch') && !e.message.includes('الخادم')) {
-        throw e;
-      }
-    }
+      // 1. المحاولة عبر مسار الخادم
+      let staff: StaffUser | null = null;
 
-    // 2. بديل فوري ومباشر عبر عميل Supabase Client (Direct fallback)
-    const isEmail = rawInput.includes('@');
-    const candidateEmails = isEmail
-      ? [rawInput]
-      : [
-          `${rawInput}@olpjfipferziqtzrbbbt.supabase.co`,
-          rawInput === 'esam' ? 'esambss223@gmail.com' : `${rawInput}@yemen-gulf-cars.com`,
-          `${rawInput}@admin.com`
-        ];
-
-    let lastError: string | null = null;
-    for (const email of candidateEmails) {
       try {
+        const response = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: rawInput, password }),
+        });
+        const result = await response.json();
+
+        if (response.ok && result.session && result.staff) {
+          // حفظ بيانات الموظف أولاً قبل أي شيء
+          staff = mapStaffRow(result.staff);
+          setCurrentStaff(staff);
+          saveToStorage('yg_current_staff', staff);
+          setIsAuthReady(true);
+
+          // ثم تعيين الجلسة (هذا يطلق onAuthStateChange لكن القفل يمنعه)
+          await supabase.auth.setSession({
+            access_token: result.session.access_token,
+            refresh_token: result.session.refresh_token,
+          });
+
+          return staff;
+        } else if (!response.ok && result.error) {
+          throw new Error(result.error);
+        }
+      } catch (e: any) {
+        // إذا كان خطأ مصادقة صريح (ليس خطأ شبكة)، أعِده للمستخدم
+        if (e.message && !e.message.includes('fetch') && !e.message.includes('Failed')) {
+          throw e;
+        }
+        // خطأ شبكة: نجرب البديل المباشر
+      }
+
+      // 2. بديل مباشر عبر عميل Supabase (إذا فشل مسار الخادم)
+      const authDomain = new URL(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://olpjfipferziqtzrbbbt.supabase.co'
+      ).hostname;
+
+      const candidateEmails = rawInput.includes('@')
+        ? [rawInput]
+        : [
+            `${rawInput}@${authDomain}`,
+            rawInput === 'esam' ? 'esambss223@gmail.com' : null,
+          ].filter(Boolean) as string[];
+
+      for (const email of candidateEmails) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (!error && data?.user) {
-          const staffRow = await fetchStaffData(data.user.id);
-          const staff: StaffUser = staffRow ? mapStaffRow(staffRow) : {
+          staff = {
             id: data.user.id,
             name: (data.user.user_metadata?.name as string) || 'المدير العام',
             username: rawInput,
-            role: 'super_admin',
-            phone: '+20 100 000 0001',
+            role: 'super_admin' as UserRole,
+            phone: (data.user.user_metadata?.phone as string) || '+20 100 000 0001',
             active: true,
           };
           setCurrentStaff(staff);
           saveToStorage('yg_current_staff', staff);
+          setIsAuthReady(true);
           return staff;
         }
-        if (error) lastError = error.message;
-      } catch (err: any) {
-        lastError = err?.message;
       }
-    }
 
-    throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
+      throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
+    } finally {
+      // ===== فك القفل بعد تأخير قصير لضمان انتهاء كل أحداث Auth =====
+      setTimeout(() => { signInLockRef.current = false; }, 2000);
+    }
   };
 
+  // ========== signOut ==========
   const signOut = async () => {
     setCurrentStaff(null);
-    try {
-      localStorage.removeItem('yg_current_staff');
-    } catch {
-      // ignore
-    }
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // ignore
-    }
+    try { localStorage.removeItem('yg_current_staff'); } catch { /* */ }
+    try { await supabase.auth.signOut(); } catch { /* */ }
   };
 
+  // ========== إدارة الموظفين ==========
   const addStaff = (staffData: Omit<StaffUser, 'id'>) => {
-    const newStaff: StaffUser = {
-      ...staffData,
-      id: `staff-${Date.now()}`,
-    };
-    const updated = [...staffList, newStaff];
-    setStaffList(updated);
-    saveToStorage('yg_staff', updated);
+    const newStaff: StaffUser = { ...staffData, id: `staff-${Date.now()}` };
+    setStaffList((prev) => {
+      const updated = [...prev, newStaff];
+      saveToStorage('yg_staff', updated);
+      return updated;
+    });
     logAction('إضافة موظف جديد', `تمت إضافة الموظف ${newStaff.name} بدور ${newStaff.role}`);
   };
 
   const updateStaff = async (id: string, partial: Partial<StaffUser>) => {
-    // 1. تحديث فوري في الحالة المحلية و LocalStorage
+    // 1. تحديث فوري في الحالة المحلية
     setStaffList((prev) => {
       const updated = prev.map((s) => (s.id === id || s.username === id ? { ...s, ...partial } : s));
       saveToStorage('yg_staff', updated);
@@ -215,7 +203,7 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
       saveToStorage('yg_current_staff', updatedCurrent);
     }
 
-    // 2. مزامنة التعديلات في جدول staff في Supabase
+    // 2. مزامنة سحابية (fire-and-forget، لا يعلّق الواجهة)
     try {
       const payload: Record<string, unknown> = {};
       if (partial.name !== undefined) payload.name = partial.name;
@@ -225,32 +213,26 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
       if (partial.active !== undefined) payload.active = partial.active;
 
       if (Object.keys(payload).length > 0) {
-        await supabase
-          .from('staff')
-          .update(payload)
-          .or(`id.eq.${id},username.eq.${id}`);
+        supabase.from('staff').update(payload).eq('id', id).then(() => {});
       }
 
-      // 3. تحديث كلمة المرور في Supabase Auth إذا تم إدخال كلمة مرور جديدة
       if (partial.password && partial.password.trim().length >= 6) {
-        await supabase.auth.updateUser({ password: partial.password });
+        supabase.auth.updateUser({ password: partial.password }).then(() => {});
       }
 
-      // 4. تحديث البيانات الوصفية لحساب المستخدم
-      if (partial.name || partial.username || partial.phone) {
-        await supabase.auth.updateUser({
+      if (partial.name || partial.phone) {
+        supabase.auth.updateUser({
           data: {
             name: partial.name ?? currentStaff?.name,
-            username: partial.username ?? currentStaff?.username,
             phone: partial.phone ?? currentStaff?.phone,
           }
-        });
+        }).then(() => {});
       }
-    } catch (err) {
-      console.warn('Update staff cloud sync notice:', err);
+    } catch {
+      // لا نعلّق الواجهة بسبب خطأ سحابي
     }
 
-    logAction('تعديل حساب موظف', `تم تعديل بيانات الموظف: ${partial.name || partial.username || id}`);
+    logAction('تعديل حساب موظف', `تم تعديل: ${partial.name || id}`);
   };
 
   const deleteStaff = (id: string) => {
@@ -259,9 +241,11 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
       return;
     }
     const staff = staffList.find((s) => s.id === id);
-    const updated = staffList.filter((s) => s.id !== id);
-    setStaffList(updated);
-    saveToStorage('yg_staff', updated);
+    setStaffList((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      saveToStorage('yg_staff', updated);
+      return updated;
+    });
     logAction('حذف موظف', `تم حذف حساب الموظف: ${staff?.name}`);
   };
 
