@@ -267,13 +267,17 @@ export async function DELETE(request: NextRequest) {
       if ((count || 0) <= 1) return NextResponse.json({ error: 'لا يمكن حذف آخر مدير عام' }, { status: 409 });
     }
 
-    const { error: dbError } = await auth.admin.from('staff').delete().eq('id', target.id);
-    if (dbError) return NextResponse.json({ error: 'تعذر حذف الموظف من قاعدة البيانات' }, { status: 500 });
+    const { error: authDeleteError } = await auth.admin.auth.admin.deleteUser(target.id);
+    if (authDeleteError && authDeleteError.code !== 'user_not_found' && authDeleteError.status !== 404) {
+      return NextResponse.json({ code: 'AUTH_DELETE_FAILED', error: 'تعذر حذف حساب الدخول؛ لم يُحذف سجل الموظف.' }, { status: 500 });
+    }
 
-    try {
-      await auth.admin.auth.admin.deleteUser(target.id);
-    } catch {
-      // ignore if not present in auth.users
+    // The staff row normally disappears through the auth.users FK cascade.
+    // Delete it explicitly as a checked fallback for older schema variants.
+    const { error: dbError } = await auth.admin.from('staff').delete().eq('id', target.id);
+    if (dbError) {
+      console.error('[admin-staff:DIRECTORY_DELETE_FAILED]', dbError.code || 'unknown');
+      return NextResponse.json({ code: 'STAFF_DIRECTORY_DELETE_FAILED', error: 'حُذف حساب الدخول لكن تعذر تأكيد حذف سجل الموظف.' }, { status: 500 });
     }
     return NextResponse.json({ success: true });
   } catch {

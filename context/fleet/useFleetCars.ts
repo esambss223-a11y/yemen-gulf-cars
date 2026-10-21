@@ -22,7 +22,7 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
     model: String(c.model),
     year: Number(c.year),
     category: c.category || 'vip',
-    plateNumber: String(c.plate_number),
+    plateNumber: String(c.plate_number || ''),
     vin: c.vin,
     color: c.color || 'أسود ملكي',
     currentKm: Number(c.current_km || 0),

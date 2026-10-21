@@ -228,6 +228,11 @@ export function useFleetBookings({
       return updated;
     });
 
+    // لا تُحجز السيارة فعليًا حتى تعتمد الإدارة الطلب العام.
+    if (status === 'active' && booking.status === 'pending_approval') {
+      await updateCar(booking.carId, { status: 'rented' });
+    }
+
     // تحديث حالة السيارة عند الإرجاع
     if (status === 'completed') {
       const nextCarStatus =

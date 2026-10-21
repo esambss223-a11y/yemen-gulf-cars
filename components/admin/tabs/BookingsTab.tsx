@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   FileText, 
   CheckCircle2, 
@@ -17,7 +17,14 @@ import {
   Check,
   XCircle,
   Building,
-  DollarSign
+  DollarSign,
+  Archive,
+  Layers,
+  CalendarCheck,
+  ArrowRight,
+  TrendingUp,
+  Gauge,
+  Key
 } from 'lucide-react';
 import { Booking, BookingStatus, StaffUser } from '@/types/fleet';
 
@@ -29,6 +36,8 @@ interface BookingsTabProps {
   onApproveBooking?: (booking: Booking) => void;
 }
 
+type ViewSection = 'active' | 'completed' | 'all';
+
 export default function BookingsTab({
   bookings,
   currentStaff,
@@ -36,31 +45,56 @@ export default function BookingsTab({
   onReturnCar,
   onApproveBooking,
 }: BookingsTabProps) {
+  // التبويب الافتراضي: العقود الحالية والنشطة فقط لمنع اللخبطة
+  const [activeSection, setActiveSection] = useState<ViewSection>('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | BookingStatus>('all');
 
-  // تصفية الحجوزات
-  const filteredBookings = bookings.filter(bk => {
-    const matchesStatus = statusFilter === 'all' || bk.status === statusFilter;
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return matchesStatus;
+  // فرز العقود حسب حالتها (الحالية vs المستلمة)
+  const activeBookings = useMemo(() => {
+    return bookings.filter(b => b.status === 'active' || b.status === 'pending_approval' || b.status === 'confirmed');
+  }, [bookings]);
 
-    const matchesSearch = 
-      bk.bookingNumber.toLowerCase().includes(term) ||
-      bk.carName.toLowerCase().includes(term) ||
-      bk.carPlate.includes(term) ||
-      bk.customer.fullName.toLowerCase().includes(term) ||
-      bk.customer.phone.includes(term) ||
-      bk.customer.nationalId.includes(term) ||
-      bk.staffName.toLowerCase().includes(term);
+  const completedBookings = useMemo(() => {
+    return bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
+  }, [bookings]);
 
-    return matchesStatus && matchesSearch;
-  });
-
-  // إحصائيات سريعة
+  // إحصائيات عامة
   const pendingCount = bookings.filter(b => b.status === 'pending_approval').length;
-  const activeCount = bookings.filter(b => b.status === 'active').length;
-  const completedCount = bookings.filter(b => b.status === 'completed').length;
+  const runningCount = bookings.filter(b => b.status === 'active').length;
+  const deliveredCount = bookings.filter(b => b.status === 'completed').length;
+  const totalHeldDeposits = activeBookings.reduce((sum, b) => sum + (b.securityDepositEGP || 0), 0);
+  const totalActiveRevenue = activeBookings.reduce((sum, b) => sum + (b.finalTotalEGP || 0), 0);
+  const totalCompletedRevenue = completedBookings.reduce((sum, b) => sum + (b.finalTotalEGP || 0), 0);
+
+  // دالة البحث الشامل
+  const matchesSearch = (bk: Booking, term: string) => {
+    if (!term) return true;
+    const clean = term.toLowerCase().trim();
+    return (
+      bk.bookingNumber.toLowerCase().includes(clean) ||
+      bk.carName.toLowerCase().includes(clean) ||
+      bk.carPlate.includes(clean) ||
+      bk.customer.fullName.toLowerCase().includes(clean) ||
+      bk.customer.phone.includes(clean) ||
+      (bk.customer.nationalId && bk.customer.nationalId.includes(clean)) ||
+      (bk.staffName && bk.staffName.toLowerCase().includes(clean))
+    );
+  };
+
+  const filteredActive = useMemo(() => {
+    return activeBookings.filter(bk => {
+      const matchStatus = statusFilter === 'all' || bk.status === statusFilter;
+      return matchStatus && matchesSearch(bk, searchTerm);
+    });
+  }, [activeBookings, statusFilter, searchTerm]);
+
+  const filteredCompleted = useMemo(() => {
+    return completedBookings.filter(bk => {
+      const matchStatus = statusFilter === 'all' || bk.status === statusFilter;
+      return matchStatus && matchesSearch(bk, searchTerm);
+    });
+  }, [completedBookings, statusFilter, searchTerm]);
 
   const getStatusBadge = (status: BookingStatus) => {
     switch (status) {
@@ -73,13 +107,19 @@ export default function BookingsTab({
       case 'active':
         return (
           <span className="px-2.5 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1 bg-blue-100 text-blue-900 border border-blue-200">
-            <CheckCircle2 className="w-3 h-3 text-blue-600" /> ساري بالتشغيل
+            <CheckCircle2 className="w-3 h-3 text-blue-600" /> ساري بالتشغيل (بالشارع)
           </span>
         );
       case 'completed':
         return (
           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 bg-emerald-100 text-emerald-900 border border-emerald-200">
-            ✓ تم الاستلام والإغلاق
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> تم الاستلام والتسوية
+          </span>
+        );
+      case 'cancelled':
+        return (
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 bg-rose-100 text-rose-900 border border-rose-200">
+            <XCircle className="w-3 h-3 text-rose-600" /> ملغي
           </span>
         );
       default:
@@ -91,146 +131,194 @@ export default function BookingsTab({
     }
   };
 
-  return (
-    <div className="space-y-4 animate-fadeIn font-arabic">
-      
-      {/* 1. الترويسة الرئيسية + مؤشرات الحجوزات */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-          <div>
-            <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-amber-500" /> إدارة الصفقات والعقود المعتمدة (Secure Contracts)
-            </h4>
-            <p className="text-xs text-slate-500 mt-0.5">
-              لا يتم اعتماد أي صفقة إلا عبر موظف مسؤول، مع توثيق العداد، التأمين، وشروط التأخير المعتمدة
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">إجمالي العقود: <strong className="font-mono text-slate-900">{bookings.length}</strong></span>
-          </div>
+  // جدول العقود السارية (الحالية)
+  const renderActiveTable = (items: Booking[]) => (
+    <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+      <div className="p-4 bg-gradient-to-r from-blue-50/80 via-white to-white border-b border-blue-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full bg-blue-600 animate-ping" />
+          <h5 className="font-black text-slate-900 text-sm flex items-center gap-2">
+            <Key className="w-4 h-4 text-blue-600" /> العقود الحالية والسارية بالتشغيل
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-blue-100 text-blue-800 font-bold">
+              {items.length} عقود نشطة
+            </span>
+          </h5>
         </div>
-
-        {/* كروت سريعة للمراحل */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
-          <button
-            onClick={() => setStatusFilter(statusFilter === 'pending_approval' ? 'all' : 'pending_approval')}
-            className={`p-3 rounded-xl border text-right transition-all cursor-pointer ${
-              statusFilter === 'pending_approval'
-                ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-sm'
-                : 'bg-amber-50/70 border-amber-200/80 hover:bg-amber-100/70 text-amber-900'
-            }`}
-          >
-            <span className="text-[11px] font-bold block">1. بانتظار فحص وتأكيد الموظف</span>
-            <strong className="text-xl font-black font-mono block mt-0.5">{pendingCount} صفقات</strong>
-          </button>
-
-          <button
-            onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
-            className={`p-3 rounded-xl border text-right transition-all cursor-pointer ${
-              statusFilter === 'active'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                : 'bg-blue-50/70 border-blue-200/80 hover:bg-blue-100/70 text-blue-900'
-            }`}
-          >
-            <span className="text-[11px] font-bold block">2. عقود سارية في الشارع</span>
-            <strong className="text-xl font-black font-mono block mt-0.5">{activeCount} عقود</strong>
-          </button>
-
-          <button
-            onClick={() => setStatusFilter(statusFilter === 'completed' ? 'all' : 'completed')}
-            className={`p-3 rounded-xl border text-right transition-all cursor-pointer ${
-              statusFilter === 'completed'
-                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                : 'bg-emerald-50/70 border-emerald-200/80 hover:bg-emerald-100/70 text-emerald-900'
-            }`}
-          >
-            <span className="text-[11px] font-bold block">3. عقود مكتملة ومستلمة</span>
-            <strong className="text-xl font-black font-mono block mt-0.5">{completedCount} عقود</strong>
-          </button>
-        </div>
+        <span className="text-xs text-slate-500 font-arabic hidden sm:inline">
+          السيارات قيد التأجير في الشارع أو بانتظار خروجها
+        </span>
       </div>
 
-      {/* 2. شريط البحث والتصفية */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ابحث برقم العقد، اسم العميل، الهاتف، السيارة، أو الموظف المسؤول..."
-            className="w-full pl-4 pr-10 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-xs bg-slate-50/60 font-arabic"
-          />
-        </div>
-
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
-          <button
-            onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
-            }`}
-          >
-            الكل ({bookings.length})
-          </button>
-          <button
-            onClick={() => setStatusFilter('active')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'active' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-800'
-            }`}
-          >
-            السارية ({activeCount})
-          </button>
-          <button
-            onClick={() => setStatusFilter('completed')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'completed' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800'
-            }`}
-          >
-            المكتملة ({completedCount})
-          </button>
-        </div>
-      </div>
-
-      {/* 3. جدول الصفقات والعقود الاحترافي */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
-        <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-right text-xs">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold">
-                <th className="py-3.5 pr-4">العقد والمسؤول</th>
-                <th className="py-3.5">السيارة واللوحة</th>
-                <th className="py-3.5">العميل والهاتف</th>
-                <th className="py-3.5">المدة وموعد الإرجاع</th>
-                <th className="py-3.5">قيمة الإيجار</th>
-                <th className="py-3.5">التأمين المسترد</th>
-                <th className="py-3.5">الحالة</th>
-                <th className="py-3.5 pl-4 text-center">الإجراءات</th>
+      <div className="overflow-x-auto no-scrollbar">
+        <table className="w-full text-right text-xs">
+          <thead>
+            <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold">
+              <th className="py-3.5 pr-4">رقم العقد والمسؤول</th>
+              <th className="py-3.5">السيارة واللوحة</th>
+              <th className="py-3.5">العميل ورقم الهاتف</th>
+              <th className="py-3.5">تاريخ البداية وموعد الإرجاع</th>
+              <th className="py-3.5">قيمة الإيجار</th>
+              <th className="py-3.5">التأمين المحتجز</th>
+              <th className="py-3.5">الحالة</th>
+              <th className="py-3.5 pl-4 text-center">الإجراء الفوري</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="py-12 text-center text-slate-400">
+                  لا توجد عقود سارية حالياً تطابق بحثك
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredBookings.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
-                    لا توجد عقود أو صفقات مطابقة لبحثك
+            ) : (
+              items.map((bk) => (
+                <tr key={bk.id} className="hover:bg-blue-50/30 transition-colors">
+                  {/* رقم العقد والموظف المسؤول */}
+                  <td className="py-3.5 pr-4">
+                    <span className="font-mono font-bold text-amber-700 block text-xs">{bk.bookingNumber}</span>
+                    <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                      <UserCheck className="w-3 h-3 text-slate-400" /> المسؤول: {bk.staffName}
+                    </span>
+                  </td>
+
+                  {/* السيارة */}
+                  <td className="py-3.5">
+                    <strong className="text-slate-900 block text-xs">{bk.carName}</strong>
+                    <span className="font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-bold">
+                      {bk.carPlate}
+                    </span>
+                  </td>
+
+                  {/* العميل */}
+                  <td className="py-3.5">
+                    <strong className="text-slate-900 block text-xs">{bk.customer.fullName}</strong>
+                    <span className="text-[10px] text-slate-500 font-mono dir-ltr block text-right">{bk.customer.phone}</span>
+                  </td>
+
+                  {/* المدة والإرجاع */}
+                  <td className="py-3.5">
+                    <div className="font-medium text-slate-800">{bk.daysCount} أيام</div>
+                    <div className="text-[10px] text-blue-700 font-bold flex items-center gap-1 font-mono">
+                      <Clock className="w-3 h-3 text-blue-600" /> الإرجاع: {bk.endDate} ({bk.endTime || '14:00'})
+                    </div>
+                  </td>
+
+                  {/* الإجمالي */}
+                  <td className="py-3.5 font-mono font-bold text-slate-900 text-xs">
+                    {bk.finalTotalEGP.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">ج.م</span>
+                  </td>
+
+                  {/* التأمين */}
+                  <td className="py-3.5">
+                    <span className="font-mono font-bold text-slate-800 text-xs">{bk.securityDepositEGP.toLocaleString()} ج.م</span>
+                    <span className="block text-[10px] font-bold text-amber-600">● محجوز لدى الشركة</span>
+                  </td>
+
+                  {/* الحالة */}
+                  <td className="py-3.5">
+                    {getStatusBadge(bk.status)}
+                  </td>
+
+                  {/* الإجراءات */}
+                  <td className="py-3.5 pl-4 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      {/* اعتماد الحجز المعلق */}
+                      {bk.status === 'pending_approval' && onApproveBooking && (
+                        <button
+                          onClick={() => onApproveBooking(bk)}
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-xs transition-colors"
+                          title="اعتماد تسليم السيارة للعميل"
+                        >
+                          <Check className="w-3.5 h-3.5" /> اعتماد الصفقة
+                        </button>
+                      )}
+
+                      {/* زر استلام السيارة وفحصها - بارز ومباشر */}
+                      {bk.status === 'active' && (
+                        <button
+                          onClick={() => onReturnCar(bk)}
+                          className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-[11px] font-black flex items-center gap-1 cursor-pointer shadow-xs transition-all"
+                          title="استلام السيارة من العميل، فحص العداد، وتسوية التأمين"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> استلام وفحص
+                        </button>
+                      )}
+
+                      {/* زر طباعة العقد */}
+                      <button
+                        onClick={() => onOpenContract(bk)}
+                        className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-[#081225] text-slate-700 hover:text-amber-400 text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer border border-slate-200"
+                        title="عرض العقد وطباعة نسخة PDF"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> العقد
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                filteredBookings.map((bk) => (
-                  <tr key={bk.id} className="hover:bg-slate-50/80 transition-colors">
-                    
-                    {/* رقم العقد والموظف المسؤول */}
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  // جدول العقود المستلمة والمنتهية (الأرشيف)
+  const renderCompletedTable = (items: Booking[]) => (
+    <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+      <div className="p-4 bg-gradient-to-r from-emerald-50/80 via-white to-white border-b border-emerald-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+          <h5 className="font-black text-slate-900 text-sm flex items-center gap-2">
+            <Archive className="w-4 h-4 text-emerald-600" /> العقود التي تم تسليمها وإغلاقها (أرشيف العمليات)
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-emerald-100 text-emerald-800 font-bold">
+              {items.length} عقود مكتملة
+            </span>
+          </h5>
+        </div>
+        <span className="text-xs text-slate-500 font-arabic hidden sm:inline">
+          تم فحص العداد واسترجاع السيارات وتسوية التأمينات للعملاء
+        </span>
+      </div>
+
+      <div className="overflow-x-auto no-scrollbar">
+        <table className="w-full text-right text-xs">
+          <thead>
+            <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold">
+              <th className="py-3.5 pr-4">رقم العقد</th>
+              <th className="py-3.5">السيارة واللوحة</th>
+              <th className="py-3.5">العميل</th>
+              <th className="py-3.5">فترة الإيجار وتاريخ التسليم</th>
+              <th className="py-3.5">المسافة المستهلكة (كم)</th>
+              <th className="py-3.5">المبلغ المحصّل</th>
+              <th className="py-3.5">مصير التأمين</th>
+              <th className="py-3.5">الحالة</th>
+              <th className="py-3.5 pl-4 text-center">الوثائق</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="py-12 text-center text-slate-400">
+                  لا توجد عقود مستلمة مسجلة تطابق بحثك
+                </td>
+              </tr>
+            ) : (
+              items.map((bk) => {
+                const kmUsed = bk.returnKm && bk.startKm ? bk.returnKm - bk.startKm : null;
+
+                return (
+                  <tr key={bk.id} className="hover:bg-emerald-50/20 transition-colors">
+                    {/* رقم العقد */}
                     <td className="py-3.5 pr-4">
-                      <span className="font-mono font-bold text-amber-700 block text-xs">{bk.bookingNumber}</span>
-                      <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
-                        <UserCheck className="w-3 h-3 text-slate-400" /> المسؤول: {bk.staffName}
-                      </span>
+                      <span className="font-mono font-bold text-slate-800 block text-xs">{bk.bookingNumber}</span>
+                      <span className="text-[10px] text-slate-400">أُنشئ: {bk.createdAt?.split('T')[0] || bk.startDate}</span>
                     </td>
 
                     {/* السيارة */}
                     <td className="py-3.5">
                       <strong className="text-slate-900 block text-xs">{bk.carName}</strong>
-                      <span className="font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-bold">
+                      <span className="font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
                         {bk.carPlate}
                       </span>
                     </td>
@@ -241,29 +329,48 @@ export default function BookingsTab({
                       <span className="text-[10px] text-slate-500 font-mono dir-ltr block text-right">{bk.customer.phone}</span>
                     </td>
 
-                    {/* المدة والإرجاع */}
+                    {/* فترة الإيجار وتاريخ التسليم */}
                     <td className="py-3.5">
-                      <div className="font-medium text-slate-800">{bk.daysCount} أيام</div>
-                      <div className="text-[10px] text-slate-500 flex items-center gap-1 font-mono">
-                        <Clock className="w-3 h-3 text-slate-400" /> الإرجاع: {bk.endDate}
-                      </div>
+                      <span className="text-slate-700 font-bold block">{bk.daysCount} أيام إيجار</span>
+                      <span className="text-[10px] text-emerald-700 font-mono block">
+                        سلّمت بتاريخ: {bk.actualReturnDate || bk.endDate}
+                      </span>
                     </td>
 
-                    {/* الإجمالي */}
-                    <td className="py-3.5 font-mono font-bold text-slate-900 text-xs">
+                    {/* الكيلومترات */}
+                    <td className="py-3.5 font-mono text-xs">
+                      {kmUsed !== null ? (
+                        <div>
+                          <strong className="text-slate-900 block font-bold">{kmUsed.toLocaleString()} كم</strong>
+                          <span className="text-[10px] text-slate-400 block">من {bk.startKm.toLocaleString()} إلى {bk.returnKm?.toLocaleString()}</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">—</span>
+                      )}
+                    </td>
+
+                    {/* المبلغ النهائي */}
+                    <td className="py-3.5 font-mono font-bold text-emerald-800 text-xs">
                       {bk.finalTotalEGP.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">ج.م</span>
                     </td>
 
-                    {/* التأمين */}
+                    {/* مصير التأمين */}
                     <td className="py-3.5">
-                      <span className="font-mono font-bold text-slate-800 text-xs">{bk.securityDepositEGP.toLocaleString()} ج.م</span>
-                      <span className={`block text-[10px] font-bold ${
-                        bk.depositStatus === 'held' ? 'text-amber-600' :
-                        bk.depositStatus === 'refunded_partial' ? 'text-blue-600' : 'text-emerald-600'
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${
+                        bk.depositStatus === 'refunded_full'
+                          ? 'text-emerald-700'
+                          : bk.depositStatus === 'refunded_partial'
+                          ? 'text-blue-700'
+                          : 'text-slate-600'
                       }`}>
-                        {bk.depositStatus === 'held' ? '● محجوز' :
-                         bk.depositStatus === 'refunded_partial' ? '✓ تم خصم الغرامة' : '✓ مسترد'}
+                        {bk.depositStatus === 'refunded_full' ? '✓ مسترد بالكامل' :
+                         bk.depositStatus === 'refunded_partial' ? '✓ تم خصم تسوية' : '✓ مغلق'}
                       </span>
+                      {bk.latePenaltyFeeEGP ? (
+                        <span className="block text-[10px] text-rose-600 font-mono">
+                          غرامة تأخير: {bk.latePenaltyFeeEGP} ج.م
+                        </span>
+                      ) : null}
                     </td>
 
                     {/* الحالة */}
@@ -271,50 +378,200 @@ export default function BookingsTab({
                       {getStatusBadge(bk.status)}
                     </td>
 
-                    {/* الإجراءات */}
+                    {/* وثيقة العقد */}
                     <td className="py-3.5 pl-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        
-                        {/* زر اعتماد الحجز إن كان معلقاً */}
-                        {bk.status === 'pending_approval' && onApproveBooking && (
-                          <button
-                            onClick={() => onApproveBooking(bk)}
-                            className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-xs"
-                            title="فحص رخصة العميل واعتماد تسليم السيارة"
-                          >
-                            <Check className="w-3.5 h-3.5" /> اعتماد الصفقة
-                          </button>
-                        )}
-
-                        {/* زر لوحة العقد والطباعة */}
-                        <button
-                          onClick={() => onOpenContract(bk)}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-[#081225] text-slate-700 hover:text-amber-400 text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer border border-slate-200"
-                          title="عرض لوحة العقد والشروط وطباعة PDF"
-                        >
-                          <FileText className="w-3.5 h-3.5" /> العقد
-                        </button>
-
-                        {/* زر استلام السيارة وتدقيق التأخير */}
-                        {bk.status === 'active' && (
-                          <button
-                            onClick={() => onReturnCar(bk)}
-                            className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black flex items-center gap-1 cursor-pointer shadow-xs"
-                            title="فحص العداد وتدقيق التأخير واسترجاع التأمين"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" /> استلام وفحص
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => onOpenContract(bk)}
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold transition-all inline-flex items-center gap-1 cursor-pointer border border-slate-200"
+                        title="عرض العقد المغلق والمخالصة"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-amber-600" /> عرض العقد
+                      </button>
                     </td>
-
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4 animate-fadeIn font-arabic">
+      
+      {/* 1. الترويسة الرئيسية والبطاقات الإحصائية المنفصلة */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-amber-500" /> إدارة العقود والتشغيل المالي
+            </h4>
+            <p className="text-xs text-slate-500 mt-0.5">
+              فصل كامل بين العقود الحالية المفتوحة في الشارع وبين العقود المستلمة والمغلقة لسهولة المتابعة
+            </p>
+          </div>
+
+          {/* تبويبات التبديل الرئيسية البارزة (القسم الأول vs القسم الثاني) */}
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 w-full sm:w-auto">
+            <button
+              onClick={() => {
+                setActiveSection('active');
+                setStatusFilter('all');
+              }}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeSection === 'active'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>العقود الحالية بالشارع</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                activeSection === 'active' ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {activeBookings.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveSection('completed');
+                setStatusFilter('all');
+              }}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeSection === 'completed'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              <Archive className="w-3.5 h-3.5" />
+              <span>العقود التي تم تسليمها</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                activeSection === 'completed' ? 'bg-emerald-800 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {completedBookings.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveSection('all');
+                setStatusFilter('all');
+              }}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeSection === 'all'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+              title="عرض القسمين معاً في نفس الصفحة"
+            >
+              الكل ({bookings.length})
+            </button>
+          </div>
+        </div>
+
+        {/* كروت المؤشرات السريعة */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
+          <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-center justify-between">
+            <div>
+              <span className="text-xs text-blue-800 block font-bold">عقود سارية في الشارع</span>
+              <strong className="text-xl font-black font-mono text-blue-900 block mt-0.5">{runningCount} عقود</strong>
+              <span className="text-[10px] text-blue-600 font-mono mt-0.5 block">
+                إيراد التشغيل: {totalActiveRevenue.toLocaleString()} ج.م
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+              <Key className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-center justify-between">
+            <div>
+              <span className="text-xs text-amber-900 block font-bold">تأمينات محجوزة حالياً</span>
+              <strong className="text-xl font-black font-mono text-amber-900 block mt-0.5">
+                {totalHeldDeposits.toLocaleString()} ج.م
+              </strong>
+              <span className="text-[10px] text-amber-700 block mt-0.5">
+                {pendingCount > 0 ? `${pendingCount} صفقات بانتظار الاعتماد` : 'جميع الصفقات معتمدة'}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-between">
+            <div>
+              <span className="text-xs text-emerald-900 block font-bold">عقود مستلمة ومغلقة</span>
+              <strong className="text-xl font-black font-mono text-emerald-900 block mt-0.5">{deliveredCount} عقود</strong>
+              <span className="text-[10px] text-emerald-700 font-mono mt-0.5 block">
+                المحصّل الكلي: {totalCompletedRevenue.toLocaleString()} ج.م
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+              <Archive className="w-5 h-5" />
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* 2. شريط البحث والتصفية الموحد */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="ابحث برقم العقد، اسم العميل، رقم الهاتف، اسم السيارة، رقم اللوحة، أو الموظف المسؤول..."
+            className="w-full pl-4 pr-10 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-xs bg-slate-50/60 font-arabic"
+          />
+        </div>
+
+        {/* فلاتر إضافية حسب القسم المختار */}
+        {activeSection === 'active' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                statusFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              الكل ({activeBookings.length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('active')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                statusFilter === 'active' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-800'
+              }`}
+            >
+              سارية بالشارع ({runningCount})
+            </button>
+            {pendingCount > 0 && (
+              <button
+                onClick={() => setStatusFilter('pending_approval')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  statusFilter === 'pending_approval' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-amber-50 text-amber-800'
+                }`}
+              >
+                بانتظار الاعتماد ({pendingCount})
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 3. عرض الأقسام وفق التبويب المختار */}
+      {activeSection === 'active' && renderActiveTable(filteredActive)}
+      {activeSection === 'completed' && renderCompletedTable(filteredCompleted)}
+      {activeSection === 'all' && (
+        <div className="space-y-6">
+          {renderActiveTable(filteredActive)}
+          {renderCompletedTable(filteredCompleted)}
+        </div>
+      )}
 
     </div>
   );

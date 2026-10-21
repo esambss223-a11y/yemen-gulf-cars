@@ -23,6 +23,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { StaffUser, Booking, AuditLogItem } from '@/types/fleet';
+import { supabase } from '@/lib/supabase';
 
 interface ProfileTabProps {
   currentStaff: StaffUser;
@@ -47,6 +48,13 @@ export default function ProfileTab({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   const [saveErrorMsg, setSaveErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [requestedRole, setRequestedRole] = useState<'super_admin' | 'rental_agent' | 'accountant'>(
+    currentStaff.role === 'accountant' ? 'rental_agent' : 'accountant'
+  );
+  const [permissionReason, setPermissionReason] = useState('');
+  const [permissionMessage, setPermissionMessage] = useState('');
+  const [permissionRequestError, setPermissionRequestError] = useState(false);
+  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 
   useEffect(() => {
     if (!isEditing) {
@@ -69,6 +77,33 @@ export default function ProfileTab({
   );
 
   const totalHandledRevenue = myHandledBookings.reduce((sum, b) => sum + b.finalTotalEGP, 0);
+
+  const handlePermissionRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsRequestingPermission(true);
+    setPermissionMessage('');
+    setPermissionRequestError(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/admin/permission-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ requestedRole, reason: permissionReason }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'تعذر إرسال طلب الصلاحية.');
+      setPermissionReason('');
+      setPermissionMessage('تم إرسال طلبك إلى المدير للمراجعة.');
+    } catch (error) {
+      setPermissionRequestError(true);
+      setPermissionMessage(error instanceof Error ? error.message : 'تعذر إرسال طلب الصلاحية.');
+    } finally {
+      setIsRequestingPermission(false);
+    }
+  };
 
   // حفظ التعديلات
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -194,6 +229,27 @@ export default function ProfileTab({
           </div>
 
         </div>
+
+        {currentStaff.role !== 'super_admin' && (
+          <form onSubmit={handlePermissionRequest} className="mx-6 mb-5 p-4 rounded-2xl bg-[#0d1627] border border-sky-500/25 space-y-3">
+            <h3 className="text-sm font-black text-white flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-sky-400" />
+              طلب صلاحية إضافية من المدير
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_2fr_auto] gap-2">
+              <select value={requestedRole} onChange={(e) => setRequestedRole(e.target.value as typeof requestedRole)} className="bg-[#141f36] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+                {currentStaff.role !== 'rental_agent' && <option value="rental_agent">مسؤول تأجير</option>}
+                {currentStaff.role !== 'accountant' && <option value="accountant">محاسب</option>}
+                <option value="super_admin">مدير عام</option>
+              </select>
+              <input value={permissionReason} onChange={(e) => setPermissionReason(e.target.value)} minLength={5} maxLength={300} required placeholder="اكتب سبب طلب الصلاحية" className="bg-[#141f36] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500" />
+              <button disabled={isRequestingPermission} className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-xs font-bold">
+                {isRequestingPermission ? 'جارٍ الإرسال...' : 'إرسال الطلب'}
+              </button>
+            </div>
+            {permissionMessage && <p role={permissionRequestError ? 'alert' : 'status'} className={`text-xs font-bold ${permissionRequestError ? 'text-rose-300' : 'text-emerald-300'}`}>{permissionMessage}</p>}
+          </form>
+        )}
 
         {/* إشعار النجاح عند الحفظ */}
         {saveSuccessMsg && (

@@ -19,6 +19,7 @@ import StaffTab from '@/components/admin/tabs/StaffTab';
 import OwnersTab from '@/components/admin/tabs/OwnersTab';
 import AuditTab from '@/components/admin/tabs/AuditTab';
 import ProfileTab from '@/components/admin/tabs/ProfileTab';
+import CouponsTab from '@/components/admin/tabs/CouponsTab';
 
 // Modular Modals
 import CarFormModal, { CarFormState } from '@/components/admin/modals/CarFormModal';
@@ -57,6 +58,11 @@ export default function AdminDashboardPage() {
     owners, 
     addOwner,
     updateOwner,
+    coupons,
+    addCoupon,
+    updateCoupon,
+    toggleCouponActive,
+    deleteCoupon,
     auditLogs, 
     visitorStats,
     resetToDefault 
@@ -158,6 +164,7 @@ export default function AdminDashboardPage() {
     nationality: 'مصري',
     loyaltyPointsRedeemed: 0,
     loyaltyDiscountEGP: 0,
+    promoDiscountEGP: 0,
     startDate: '2026-10-14',
     startTime: '14:00',
     endDate: '2026-10-17',
@@ -356,7 +363,9 @@ export default function AdminDashboardPage() {
 
     const baseRent = selectedCar.dailyPriceEGP * daysCount;
     const loyaltyDiscount = newBooking.loyaltyDiscountEGP || 0;
-    const finalTotal = Math.max(0, baseRent - loyaltyDiscount);
+    const promoDiscount = newBooking.promoDiscountEGP || 0;
+    const totalDiscount = loyaltyDiscount + promoDiscount;
+    const finalTotal = Math.max(0, baseRent - totalDiscount);
 
     const bookingPayload = {
       carId: selectedCar.id,
@@ -377,7 +386,8 @@ export default function AdminDashboardPage() {
       daysCount,
       dailyRateEGP: selectedCar.dailyPriceEGP,
       totalRentEGP: baseRent,
-      discountAmountEGP: loyaltyDiscount,
+      discountCode: newBooking.discountCode || undefined,
+      discountAmountEGP: totalDiscount,
       loyaltyPointsRedeemed: newBooking.loyaltyPointsRedeemed,
       loyaltyDiscountEGP: loyaltyDiscount,
       finalTotalEGP: finalTotal,
@@ -465,6 +475,7 @@ export default function AdminDashboardPage() {
         ownerCarsCount={cars.filter(c => c.ownership === 'investor' || (c.ownerId && c.ownerId !== 'owner-1')).length}
         staffCount={staffList.length}
         ownersCount={owners.length}
+        couponsCount={coupons.length}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         resetToDefault={resetToDefault}
@@ -484,6 +495,7 @@ export default function AdminDashboardPage() {
           onOpenAddCar={openAddCarModal}
           onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
           onOpenProfile={() => setActiveTab('profile')}
+          onOpenTab={(tab) => setActiveTab(tab)}
         />
 
         {/* منطقة المحتوى التفاعلي (Tabs) */}
@@ -664,7 +676,19 @@ export default function AdminDashboardPage() {
             />
           )}
 
-          {/* TAB 6: سجل الرقابة والأمان */}
+          {/* TAB 7: العروض وأكواد الخصم */}
+          {activeTab === 'coupons' && (
+            <CouponsTab
+              coupons={coupons}
+              currentStaff={currentStaff}
+              onAddCoupon={addCoupon}
+              onUpdateCoupon={updateCoupon}
+              onToggleActive={toggleCouponActive}
+              onDeleteCoupon={deleteCoupon}
+            />
+          )}
+
+          {/* TAB 8: سجل الرقابة والأمان */}
           {activeTab === 'audit' && currentStaff.role === 'super_admin' && (
             <AuditTab auditLogs={auditLogs} />
           )}

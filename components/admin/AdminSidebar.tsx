@@ -16,7 +16,8 @@ import {
   LogOut,
   ExternalLink,
   ChevronLeft,
-  Key
+  Key,
+  Tag
 } from 'lucide-react';
 import { StaffUser } from '@/types/fleet';
 
@@ -32,6 +33,7 @@ interface AdminSidebarProps {
   ownerCarsCount?: number;
   staffCount: number;
   ownersCount: number;
+  couponsCount?: number;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
   resetToDefault: () => void;
@@ -48,6 +50,7 @@ export default function AdminSidebar({
   ownerCarsCount = 0,
   staffCount,
   ownersCount,
+  couponsCount = 0,
   isMobileOpen = false,
   onCloseMobile,
   resetToDefault,
@@ -74,15 +77,16 @@ export default function AdminSidebar({
     { id: 'customers', label: 'دليل العملاء (CRM)', icon: Users, badge: customersCount },
     { id: 'owners', label: 'الملاك والشركاء', icon: Key, badge: ownersCount },
     { id: 'staff', label: 'فريق العمل والصلاحيات', icon: UserCheck, badge: staffCount },
+    { id: 'coupons', label: 'العروض وأكواد الخصم', icon: Tag, badge: couponsCount },
     { id: 'audit', label: 'التقارير وسجل الرقابة', icon: BarChart3 },
     { id: 'profile', label: 'الإعدادات وحسابي', icon: Settings },
   ];
 
   // تصفية القوائم حسب صلاحية الرتبة الوظيفية
   const allowedTabsByRole: Record<string, AdminTab[]> = {
-    super_admin: ['overview', 'cars', 'bookings', 'customers', 'owners', 'staff', 'audit', 'profile'],
-    rental_agent: ['overview', 'cars', 'bookings', 'customers', 'profile'],
-    accountant: ['overview', 'bookings', 'cars', 'customers', 'owners', 'profile'],
+    super_admin: ['overview', 'cars', 'bookings', 'customers', 'owners', 'staff', 'coupons', 'audit', 'profile'],
+    rental_agent: ['overview', 'cars', 'bookings', 'customers', 'coupons', 'profile'],
+    accountant: ['overview', 'bookings', 'cars', 'customers', 'owners', 'coupons', 'profile'],
   };
 
   const userRole = currentStaff.role || 'rental_agent';

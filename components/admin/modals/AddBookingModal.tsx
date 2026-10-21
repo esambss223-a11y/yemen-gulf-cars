@@ -29,6 +29,7 @@ export interface NewBookingFormState {
   nationality: string;
   loyaltyPointsRedeemed: number;
   loyaltyDiscountEGP: number;
+  promoDiscountEGP: number;
   startDate: string;
   startTime: string;
   endDate: string;
@@ -70,6 +71,43 @@ export default function AddBookingModal({
 }: AddBookingModalProps) {
   const [matchedCustomer, setMatchedCustomer] = useState<Customer | null>(null);
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+  const [promoMessage, setPromoMessage] = useState<{ text: string; success: boolean } | null>(null);
+
+  const AVAILABLE_COUPONS = [
+    { code: 'YEMEN15', label: 'خصم 15% (يمن الخليج)', type: 'percentage', value: 15 },
+    { code: 'VIP2026', label: 'خصم 5,000 ج.م ثابت', type: 'fixed_egp', value: 5000 },
+    { code: 'GULF10', label: 'خصم 10% لعملاء الخليج', type: 'percentage', value: 10 },
+    { code: 'WELCOME', label: 'خصم ترحيبي 1,000 ج.م', type: 'fixed_egp', value: 1000 },
+    { code: 'VIP20', label: 'خصم VIP الخاص 20%', type: 'percentage', value: 20 },
+  ];
+
+  const handleApplyPromo = (codeToApply?: string) => {
+    const code = (codeToApply || newBooking.discountCode || '').trim().toUpperCase();
+    if (!code) {
+      setNewBooking(prev => ({ ...prev, discountCode: '', promoDiscountEGP: 0 }));
+      setPromoMessage(null);
+      return;
+    }
+
+    const found = AVAILABLE_COUPONS.find(c => c.code === code);
+    if (found) {
+      const discount = found.type === 'percentage'
+        ? Math.round((baseRentTotal * found.value) / 100)
+        : Math.min(found.value, baseRentTotal);
+      setNewBooking(prev => ({
+        ...prev,
+        discountCode: found.code,
+        promoDiscountEGP: discount
+      }));
+      setPromoMessage({
+        text: `تم تفعيل كود الخصم (${found.code}): خصم ${discount.toLocaleString()} ج.م ✓`,
+        success: true
+      });
+    } else {
+      setNewBooking(prev => ({ ...prev, promoDiscountEGP: 0 }));
+      setPromoMessage({ text: 'كود الخصم المدخل غير صالح أو غير معتمد', success: false });
+    }
+  };
 
   // الكشف الفوري التلقائي أثناء الكتابة (الجسد الواحد المتكامل)
   useEffect(() => {
@@ -136,7 +174,9 @@ export default function AddBookingModal({
   };
 
   const currentLoyaltyPoints = matchedCustomer?.loyaltyPoints || 0;
-  const finalPayable = Math.max(0, baseRentTotal - (newBooking.loyaltyDiscountEGP || 0));
+  const loyaltyDiscount = newBooking.loyaltyDiscountEGP || 0;
+  const promoDiscount = newBooking.promoDiscountEGP || 0;
+  const finalPayable = Math.max(0, baseRentTotal - loyaltyDiscount - promoDiscount);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-arabic">
@@ -362,12 +402,75 @@ export default function AddBookingModal({
             </div>
           </div>
 
+          {/* 3.1 كود الخصم الترويجي (Promo Code) */}
+          <div className="p-3 bg-[#070e1c] border border-amber-500/30 rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-slate-300 font-bold text-xs flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-amber-400" /> كود الخصم الترويجي (Promo Code):
+              </label>
+              {promoMessage && (
+                <span className={`text-[11px] font-bold ${promoMessage.success ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {promoMessage.text}
+                </span>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newBooking.discountCode}
+                onChange={(e) => {
+                  setNewBooking({ ...newBooking, discountCode: e.target.value.toUpperCase() });
+                  if (!e.target.value) {
+                    setNewBooking(prev => ({ ...prev, discountCode: '', promoDiscountEGP: 0 }));
+                    setPromoMessage(null);
+                  }
+                }}
+                placeholder="أدخل الرمز مثل YEMEN15 أو VIP2026..."
+                className="flex-1 bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono tracking-wider uppercase"
+              />
+              <button
+                type="button"
+                onClick={() => handleApplyPromo()}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-colors cursor-pointer"
+              >
+                تطبيق الخصم
+              </button>
+            </div>
+
+            {/* أزرار سريعة للأكواد المعتمدة */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+              <span className="text-[10px] text-slate-400">أكواد سريعة:</span>
+              {AVAILABLE_COUPONS.map(cp => (
+                <button
+                  key={cp.code}
+                  type="button"
+                  onClick={() => handleApplyPromo(cp.code)}
+                  className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                    newBooking.discountCode === cp.code
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500 font-bold'
+                      : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:border-amber-400/50'
+                  }`}
+                >
+                  {cp.code} ({cp.label})
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* 4. الحساب المالي المباشر ونقاط الخصم */}
           <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5 text-xs">
             <div className="flex justify-between text-slate-400">
               <span>مدة الإيجار ({calculatedDays} أيام × {(selectedCar?.dailyPriceEGP || 5000).toLocaleString()} ج.م):</span>
               <span className="font-mono text-white font-bold">{baseRentTotal.toLocaleString()} ج.م</span>
             </div>
+
+            {newBooking.promoDiscountEGP && newBooking.promoDiscountEGP > 0 ? (
+              <div className="flex justify-between text-emerald-400 font-bold">
+                <span>خصم كود البروموكود ({newBooking.discountCode}):</span>
+                <span className="font-mono">-{newBooking.promoDiscountEGP.toLocaleString()} ج.م</span>
+              </div>
+            ) : null}
 
             {newBooking.loyaltyDiscountEGP && newBooking.loyaltyDiscountEGP > 0 ? (
               <div className="flex justify-between text-emerald-400 font-bold">

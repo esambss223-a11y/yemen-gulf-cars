@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   deposit_status TEXT DEFAULT 'held', -- held, refunded_full, refunded_partial, pending
   start_km INTEGER NOT NULL DEFAULT 0,
   return_km INTEGER,
-  status TEXT DEFAULT 'active', -- confirmed, active, completed, cancelled
+  status TEXT DEFAULT 'active', -- pending_approval, confirmed, active, completed, cancelled
   staff_id TEXT DEFAULT 'online',
   staff_name TEXT DEFAULT 'النظام',
   notes TEXT,
@@ -178,6 +178,20 @@ CREATE TABLE IF NOT EXISTS public.staff (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- طلبات الموظفين للحصول على دور أو صلاحية إضافية، وتراجعها الإدارة.
+CREATE TABLE IF NOT EXISTS public.permission_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  staff_id UUID NOT NULL REFERENCES public.staff(id) ON DELETE CASCADE,
+  requested_role TEXT NOT NULL CHECK (requested_role IN ('super_admin', 'rental_agent', 'accountant')),
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  reviewed_by UUID REFERENCES public.staff(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS permission_requests_one_pending_per_staff
+  ON public.permission_requests (staff_id) WHERE status = 'pending';
+
 -- ========================================================
 -- سياسات الأمان وتصاريح الجداول (Row Level Security - RLS)
 -- دالة تفويض موحدة (تُنشأ أولاً لتفادي أي خطأ)
@@ -221,6 +235,7 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_visits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.permission_requests ENABLE ROW LEVEL SECURITY;
 
 -- استبدال كل السياسات الموجودة على جداول التطبيق بسياسات أدوار محددة.
 -- الوصول الإداري للجدول staff يتم عبر Route Handlers باستخدام مفتاح الخادم فقط.
@@ -231,7 +246,7 @@ DECLARE
 BEGIN
   FOREACH target_table IN ARRAY ARRAY[
     'cars', 'owners', 'bookings', 'invoices', 'coupons',
-    'audit_logs', 'customers', 'site_visits', 'staff'
+    'audit_logs', 'customers', 'site_visits', 'staff', 'permission_requests'
   ] LOOP
     FOR existing_policy IN
       SELECT policyname FROM pg_policies
@@ -242,9 +257,37 @@ BEGIN
   END LOOP;
 END $$;
 
-REVOKE ALL ON TABLE public.cars, public.owners, public.bookings, public.invoices,
-  public.coupons, public.audit_logs, public.customers, public.site_visits, public.staff
-  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.cars FROM PUBLIC;
+REVOKE ALL ON TABLE public.owners FROM PUBLIC;
+REVOKE ALL ON TABLE public.bookings FROM PUBLIC;
+REVOKE ALL ON TABLE public.invoices FROM PUBLIC;
+REVOKE ALL ON TABLE public.coupons FROM PUBLIC;
+REVOKE ALL ON TABLE public.audit_logs FROM PUBLIC;
+REVOKE ALL ON TABLE public.customers FROM PUBLIC;
+REVOKE ALL ON TABLE public.site_visits FROM PUBLIC;
+REVOKE ALL ON TABLE public.staff FROM PUBLIC;
+REVOKE ALL ON TABLE public.permission_requests FROM PUBLIC;
+REVOKE ALL ON TABLE public.cars FROM anon, authenticated;
+REVOKE ALL ON TABLE public.owners FROM anon, authenticated;
+REVOKE ALL ON TABLE public.bookings FROM anon, authenticated;
+REVOKE ALL ON TABLE public.invoices FROM anon, authenticated;
+REVOKE ALL ON TABLE public.coupons FROM anon, authenticated;
+REVOKE ALL ON TABLE public.audit_logs FROM anon, authenticated;
+REVOKE ALL ON TABLE public.customers FROM anon, authenticated;
+REVOKE ALL ON TABLE public.site_visits FROM anon, authenticated;
+REVOKE ALL ON TABLE public.staff FROM anon, authenticated;
+REVOKE ALL ON TABLE public.permission_requests FROM anon, authenticated;
+-- Revoke legacy column-level public INSERT grants too; table-level REVOKE alone
+-- does not remove column grants that may have been applied by an older schema.
+REVOKE INSERT (id, booking_number, car_id, car_name, car_plate, customer,
+  start_date, start_time, end_date, end_time, days_count, daily_rate_egp,
+  total_rent_egp, discount_code, discount_amount_egp, final_total_egp,
+  security_deposit_egp, deposit_status, start_km, status, staff_id, staff_name, notes)
+  ON TABLE public.bookings FROM PUBLIC, anon;
+REVOKE INSERT (id, full_name, phone, whatsapp, national_id, license_number,
+  nationality, tier, risk_status, trust_score, star_rating, rating_count,
+  cleanliness_score, damages_count, loyalty_points, total_rentals_count,
+  total_spent_egp, notes) ON TABLE public.customers FROM PUBLIC, anon;
 
 -- الموظفون الموثقون يمرون إلى RLS؛ سياسات كل جدول تحدد دورهم المسموح.
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.cars, public.owners,
@@ -255,21 +298,13 @@ GRANT SELECT (id, name, username, role, phone, active, created_at)
 CREATE POLICY "Staff read own profile" ON public.staff
   FOR SELECT TO authenticated USING (id = auth.uid());
 
--- صلاحيات الموقع العام: عرض السيارات المتاحة فقط، وإنشاء طلب حجز/عميل وزيارة.
+-- صلاحيات الموقع العام: عرض السيارات المتاحة وتسجيل زيارة فقط.
 -- لا توجد صلاحية عامة لقراءة الحجوزات أو بيانات العملاء أو الملاك أو الفواتير.
-GRANT SELECT (id, make, model, year, category, plate_number, color,
+REVOKE SELECT (plate_number, ownership) ON TABLE public.cars FROM PUBLIC, anon;
+GRANT SELECT (id, make, model, year, category, color, current_km,
   daily_price_egp, weekly_price_egp, monthly_price_egp, security_deposit_egp,
-  status, images, cover_image, transmission, fuel_type, seats, ownership, features)
+  status, images, cover_image, transmission, fuel_type, seats, features)
   ON TABLE public.cars TO anon;
-GRANT INSERT (id, booking_number, car_id, car_name, car_plate, customer,
-  start_date, start_time, end_date, end_time, days_count, daily_rate_egp,
-  total_rent_egp, discount_code, discount_amount_egp, final_total_egp,
-  security_deposit_egp, deposit_status, start_km, status, staff_id, staff_name, notes)
-  ON TABLE public.bookings TO anon;
-GRANT INSERT (id, full_name, phone, whatsapp, national_id, license_number,
-  nationality, tier, risk_status, trust_score, star_rating, rating_count,
-  cleanliness_score, damages_count, loyalty_points, total_rentals_count,
-  total_spent_egp, notes) ON TABLE public.customers TO anon;
 GRANT INSERT (page_path, device_type, session_id) ON TABLE public.site_visits TO anon;
 
 CREATE POLICY "Public read available cars" ON public.cars
@@ -299,13 +334,6 @@ CREATE POLICY "Staff update bookings" ON public.bookings
   WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent']));
 CREATE POLICY "Managers delete bookings" ON public.bookings
   FOR DELETE TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
-CREATE POLICY "Public submit booking request" ON public.bookings
-  FOR INSERT TO anon
-  WITH CHECK (
-    status = 'active' AND deposit_status = 'pending'
-    AND staff_id = 'online-portal' AND staff_name = 'بوابة الحجز الإلكتروني'
-  );
-
 CREATE POLICY "Staff read customers" ON public.customers
   FOR SELECT TO authenticated
   USING (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
@@ -318,10 +346,6 @@ CREATE POLICY "Staff update customers" ON public.customers
   WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent']));
 CREATE POLICY "Managers delete customers" ON public.customers
   FOR DELETE TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
-CREATE POLICY "Public submit booking customer" ON public.customers
-  FOR INSERT TO anon
-  WITH CHECK (national_id = 'طلب حجز إلكتروني' AND license_number = 'طلب حجز إلكتروني');
-
 CREATE POLICY "Accountants and managers read owners" ON public.owners
   FOR SELECT TO authenticated
   USING (public.has_staff_role(ARRAY['super_admin', 'accountant']));
@@ -396,5 +420,174 @@ VALUES
   ('cp-1', 'VIP2026', 'fixed_egp', 5000, '2026-12-31', 50, 7, true),
   ('cp-2', 'GULF10', 'percentage', 10, '2026-11-30', 100, 14, true)
 ON CONFLICT (id) DO NOTHING;
+
+-- Public website requests go through a server-only RPC. Prices and status are
+-- derived here so an anonymous browser cannot forge booking totals or activate a rental.
+CREATE OR REPLACE FUNCTION public.submit_public_booking(
+  p_car_id TEXT,
+  p_customer_name TEXT,
+  p_customer_phone TEXT,
+  p_start_date TEXT,
+  p_end_date TEXT,
+  p_coupon_code TEXT DEFAULT NULL,
+  p_notes TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_car public.cars%ROWTYPE;
+  v_coupon public.coupons%ROWTYPE;
+  v_days INTEGER;
+  v_total NUMERIC;
+  v_discount NUMERIC := 0;
+  v_final NUMERIC;
+  v_booking_id TEXT := 'bk-' || gen_random_uuid()::TEXT;
+  v_booking_number TEXT := 'WEB-' || upper(substr(replace(gen_random_uuid()::TEXT, '-', ''), 1, 10));
+  v_customer JSONB;
+BEGIN
+  IF length(trim(coalesce(p_customer_name, ''))) NOT BETWEEN 2 AND 120
+    OR length(trim(coalesce(p_customer_phone, ''))) NOT BETWEEN 7 AND 24
+    OR trim(coalesce(p_customer_phone, '')) !~ '^[+0-9 ()-]+$'
+    OR length(coalesce(p_notes, '')) > 500 THEN
+    RAISE EXCEPTION 'INVALID_CUSTOMER_DATA';
+  END IF;
+
+  IF p_start_date !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    OR p_end_date !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    OR p_start_date::DATE < CURRENT_DATE
+    OR p_end_date::DATE <= p_start_date::DATE
+    OR p_end_date::DATE - p_start_date::DATE > 90 THEN
+    RAISE EXCEPTION 'INVALID_BOOKING_DATES';
+  END IF;
+
+  SELECT * INTO v_car FROM public.cars
+    WHERE id = p_car_id AND status = 'available' FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'CAR_UNAVAILABLE'; END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.bookings b
+    WHERE b.car_id = p_car_id
+      AND b.status IN ('pending_approval', 'confirmed', 'active')
+      AND b.start_date < p_end_date AND b.end_date > p_start_date
+  ) THEN
+    RAISE EXCEPTION 'BOOKING_CONFLICT';
+  END IF;
+
+  v_days := p_end_date::DATE - p_start_date::DATE;
+  v_total := v_days * v_car.daily_price_egp;
+  IF nullif(trim(coalesce(p_coupon_code, '')), '') IS NOT NULL THEN
+    SELECT * INTO v_coupon FROM public.coupons
+      WHERE upper(code) = upper(trim(p_coupon_code)) AND active = true FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'COUPON_INVALID'; END IF;
+    IF v_coupon.expires_at::DATE < CURRENT_DATE THEN RAISE EXCEPTION 'COUPON_EXPIRED'; END IF;
+    IF v_coupon.used_count >= v_coupon.max_usage THEN RAISE EXCEPTION 'COUPON_EXHAUSTED'; END IF;
+    IF v_coupon.discount_type = 'percentage' THEN
+      v_discount := round(v_total * v_coupon.discount_value / 100);
+    ELSE
+      v_discount := v_coupon.discount_value;
+    END IF;
+    v_discount := least(v_total, greatest(0, v_discount));
+    UPDATE public.coupons SET used_count = used_count + 1 WHERE id = v_coupon.id;
+  END IF;
+  v_final := greatest(0, v_total - v_discount);
+  v_customer := jsonb_build_object(
+    'id', 'web-' || gen_random_uuid()::TEXT,
+    'fullName', trim(p_customer_name), 'phone', trim(p_customer_phone),
+    'whatsapp', trim(p_customer_phone),
+    'nationalId', 'طلب حجز إلكتروني', 'licenseNumber', 'طلب حجز إلكتروني'
+  );
+
+  INSERT INTO public.customers (
+    id, full_name, phone, whatsapp, national_id, license_number, notes
+  ) VALUES (
+    v_customer->>'id', trim(p_customer_name), trim(p_customer_phone),
+    trim(p_customer_phone), 'طلب حجز إلكتروني', 'طلب حجز إلكتروني',
+    'عميل من طلب حجز إلكتروني بانتظار مراجعة الإدارة'
+  );
+
+  INSERT INTO public.bookings (
+    id, booking_number, car_id, car_name, car_plate, customer,
+    start_date, start_time, end_date, end_time, days_count, daily_rate_egp,
+    total_rent_egp, discount_code, discount_amount_egp, final_total_egp,
+    security_deposit_egp, deposit_status, start_km, status, staff_id, staff_name, notes
+  ) VALUES (
+    v_booking_id, v_booking_number, v_car.id,
+    v_car.make || ' ' || v_car.model || ' ' || v_car.year,
+    v_car.plate_number, v_customer, p_start_date, '14:00', p_end_date, '14:00',
+    v_days, v_car.daily_price_egp, v_total, nullif(trim(p_coupon_code), ''),
+    v_discount, v_final, v_car.security_deposit_egp, 'pending', v_car.current_km,
+    'pending_approval', 'online-portal', 'بوابة الحجز الإلكتروني',
+    coalesce(nullif(trim(p_notes), ''), 'طلب حجز عبر الموقع الإلكتروني')
+  );
+
+  RETURN jsonb_build_object(
+    'id', v_booking_id, 'bookingNumber', v_booking_number,
+    'carName', v_car.make || ' ' || v_car.model || ' ' || v_car.year,
+    'carPlate', v_car.plate_number, 'daysCount', v_days,
+    'dailyRateEGP', v_car.daily_price_egp, 'totalRentEGP', v_total,
+    'discountAmountEGP', v_discount, 'finalTotalEGP', v_final,
+    'securityDepositEGP', v_car.security_deposit_egp
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.submit_public_booking(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.submit_public_booking(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT)
+  TO service_role;
+
+-- Approvals are performed atomically: the requested staff role and request
+-- status change together, and only an active super administrator can review.
+CREATE OR REPLACE FUNCTION public.review_permission_request(
+  p_request_id UUID,
+  p_decision TEXT,
+  p_reviewer_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_request public.permission_requests%ROWTYPE;
+BEGIN
+  IF p_decision NOT IN ('approved', 'rejected') THEN
+    RAISE EXCEPTION 'INVALID_PERMISSION_DECISION';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.staff
+    WHERE id = p_reviewer_id AND active = true AND role = 'super_admin'
+  ) THEN
+    RAISE EXCEPTION 'ADMIN_REQUIRED';
+  END IF;
+
+  SELECT * INTO v_request FROM public.permission_requests
+  WHERE id = p_request_id AND status = 'pending' FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'REQUEST_NOT_PENDING'; END IF;
+
+  IF p_decision = 'approved' THEN
+    UPDATE public.staff SET role = v_request.requested_role
+    WHERE id = v_request.staff_id AND active = true;
+    IF NOT FOUND THEN RAISE EXCEPTION 'STAFF_NOT_ACTIVE'; END IF;
+  END IF;
+
+  UPDATE public.permission_requests
+  SET status = p_decision, reviewed_by = p_reviewer_id, reviewed_at = now()
+  WHERE id = v_request.id;
+
+  RETURN jsonb_build_object(
+    'id', v_request.id, 'status', p_decision,
+    'staffId', v_request.staff_id, 'requestedRole', v_request.requested_role
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.review_permission_request(UUID, TEXT, UUID)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.review_permission_request(UUID, TEXT, UUID)
+  TO service_role;
 
 COMMIT;

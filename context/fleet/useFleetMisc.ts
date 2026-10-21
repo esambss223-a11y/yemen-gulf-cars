@@ -108,6 +108,88 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
     return found || null;
   };
 
+  const addCoupon = async (couponData: Omit<PromoCoupon, 'id' | 'usedCount'>) => {
+    const tempId = `cp-${Date.now()}`;
+    const newCoupon: PromoCoupon = {
+      ...couponData,
+      id: tempId,
+      usedCount: 0,
+      active: true,
+    };
+    setCoupons((prev) => {
+      const updated = [newCoupon, ...prev];
+      saveToStorage('yg_coupons', updated);
+      return updated;
+    });
+
+    try {
+      const res = await fetch('/api/admin/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(couponData),
+      });
+      const data = await res.json();
+      if (res.ok && data?.coupon) {
+        setCoupons((prev) => {
+          const updated = prev.map((c) => (c.id === tempId ? data.coupon : c));
+          saveToStorage('yg_coupons', updated);
+          return updated;
+        });
+      }
+    } catch {
+      // ignore
+    }
+
+    logAction('إنشاء كود خصم', `تم إنشاء كود الخصم: ${newCoupon.code}`);
+  };
+
+  const updateCoupon = async (id: string, partial: Partial<PromoCoupon>) => {
+    setCoupons((prev) => {
+      const updated = prev.map((c) => (c.id === id ? { ...c, ...partial } : c));
+      saveToStorage('yg_coupons', updated);
+      return updated;
+    });
+
+    try {
+      await fetch('/api/admin/coupons', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...partial }),
+      });
+    } catch {
+      // ignore
+    }
+
+    logAction('تعديل كود خصم', `تم تحديث بيانات كود الخصم ID: ${id}`);
+  };
+
+  const toggleCouponActive = async (id: string) => {
+    const target = coupons.find((c) => c.id === id);
+    if (!target) return;
+    const newActive = !target.active;
+    await updateCoupon(id, { active: newActive });
+    logAction('تغيير حالة كود خصم', `تم ${newActive ? 'تفعيل' : 'تعطيل'} كود الخصم: ${target.code}`);
+  };
+
+  const deleteCoupon = async (id: string) => {
+    const target = coupons.find((c) => c.id === id);
+    setCoupons((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      saveToStorage('yg_coupons', updated);
+      return updated;
+    });
+
+    try {
+      await fetch(`/api/admin/coupons?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      // ignore
+    }
+
+    logAction('حذف كود خصم', `تم حذف كود الخصم: ${target?.code || id}`);
+  };
+
   const trackAndLoadVisits = useCallback(async () => {
     try {
       let sessionId = typeof window !== 'undefined' ? sessionStorage.getItem('yg_visitor_session') : null;
@@ -193,6 +275,10 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
     coupons,
     setCoupons,
     applyCoupon,
+    addCoupon,
+    updateCoupon,
+    toggleCouponActive,
+    deleteCoupon,
     auditLogs,
     setAuditLogs,
     logAction,
