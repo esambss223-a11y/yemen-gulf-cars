@@ -12,9 +12,8 @@ interface UseFleetAuthProps {
 }
 
 export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
-  const [currentStaff, setCurrentStaff] = useState<StaffUser | null>(() =>
-    loadFromStorage<StaffUser | null>('yg_current_staff', null)
-  );
+  // A localStorage staff record is only a UI cache, never proof of an active Supabase session.
+  const [currentStaff, setCurrentStaff] = useState<StaffUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [staffList, setStaffList] = useState<StaffUser[]>(() =>
     loadFromStorage<StaffUser[]>('yg_staff', [])
@@ -78,11 +77,10 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     // 1. استعادة الجلسة الحالية
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const saved = loadFromStorage<StaffUser | null>('yg_current_staff', null);
-        if (saved && saved.active) {
-          setCurrentStaff(saved);
-        }
         void loadStaffProfile(session.user.id, session.access_token);
+      } else {
+        setCurrentStaff(null);
+        try { localStorage.removeItem('yg_current_staff'); } catch { /* ignore */ }
       }
       setIsAuthReady(true);
     }).catch(() => {
@@ -95,13 +93,11 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
         void loadStaffProfile(session.user.id, session.access_token);
         if (event === 'SIGNED_IN') onSignedIn?.();
       } else if (event === 'SIGNED_OUT') {
-        if (isExplicitSignOutRef.current) {
-          isExplicitSignOutRef.current = false;
-          setCurrentStaff(null);
-          setStaffList([]);
-          setStaffListError('');
-          try { localStorage.removeItem('yg_current_staff'); } catch { /* ignore */ }
-        }
+        isExplicitSignOutRef.current = false;
+        setCurrentStaff(null);
+        setStaffList([]);
+        setStaffListError('');
+        try { localStorage.removeItem('yg_current_staff'); } catch { /* ignore */ }
         setIsAuthReady(true);
       }
     });

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { 
   Car, 
   Booking, 
@@ -15,6 +16,7 @@ import {
   BookingReviewInput,
 } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
+import { saveToStorage } from './fleet/fleetStorage';
 import { useFleetMisc } from './fleet/useFleetMisc';
 import { useFleetAuth } from './fleet/useFleetAuth';
 import { useFleetCars } from './fleet/useFleetCars';
@@ -31,6 +33,7 @@ export interface FleetContextType {
 
   // حالة الاتصال السحابي
   isCloudConnected: boolean;
+  cloudSyncError: string;
 
   // إدارة الموظفين
   staffList: StaffUser[];
@@ -102,6 +105,9 @@ const FleetContext = createContext<FleetContextType | undefined>(undefined);
 const PUBLIC_CAR_FIELDS = 'id, make, model, year, category, color, current_km, daily_price_egp, weekly_price_egp, monthly_price_egp, security_deposit_egp, status, images, cover_image, transmission, fuel_type, seats, features';
 
 export function FleetProvider({ children }: { children: React.ReactNode }) {
+  const [cloudSyncError, setCloudSyncError] = useState('');
+  const pathname = usePathname();
+
   // 1. الوحدة المساعدة: السجلات، الفواتير، الزيارات، وإحصائيات السحابة
   const misc = useFleetMisc({});
 
@@ -138,9 +144,13 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    misc.trackAndLoadVisits();
+    let active = true;
 
     const fetchInitialData = async () => {
+      if (auth.currentStaff) {
+        misc.setIsCloudConnected(false);
+        setCloudSyncError('جارٍ تحميل البيانات المشتركة…');
+      }
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const hasSession = Boolean(session?.user);
@@ -152,19 +162,33 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
                 supabase.from('owners').select('*'),
                 supabase.from('customers').select('*'),
                 supabase.from('coupons').select('*').order('created_at', { ascending: false }),
+                supabase.from('invoices').select('*').order('created_at', { ascending: false }),
+                supabase.from('audit_logs').select('*').order('created_at', { ascending: false }),
               ])
             : Promise.resolve(null),
         ]);
+        if (!active) return;
 
+        const failures: string[] = [];
+        if (carsErr) failures.push('السيارات');
         if (privateResults) {
-          const [bookingsResult, ownersResult, customersResult, couponsResult] = privateResults;
+          const [bookingsResult, ownersResult, customersResult, couponsResult, invoicesResult, auditResult] = privateResults;
           const { data: cloudBookings, error: bkErr } = bookingsResult;
           const { data: cloudOwners, error: ownersErr } = ownersResult;
           const { data: cloudCustomers, error: custErr } = customersResult;
           const { data: cloudCoupons, error: couponsErr } = couponsResult;
+          const { data: cloudInvoices, error: invoicesErr } = invoicesResult;
+          const { data: cloudAuditLogs, error: auditErr } = auditResult;
+
+          if (bkErr) failures.push('الحجوزات');
+          if (ownersErr) failures.push('الملاك');
+          if (custErr) failures.push('العملاء');
+          if (couponsErr) failures.push('أكواد الخصم');
+          if (invoicesErr) failures.push('الفواتير');
+          if (auditErr) failures.push('سجل العمليات');
 
           if (!couponsErr && cloudCoupons) {
-            misc.setCoupons(cloudCoupons.map((c: any) => ({
+            const mapped = cloudCoupons.map((c: any): PromoCoupon => ({
               id: c.id,
               code: c.code,
               discountType: c.discount_type || 'percentage',
@@ -173,19 +197,25 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
               maxUsage: Number(c.max_usage || 100),
               usedCount: Number(c.used_count || 0),
               active: Boolean(c.active),
-            })));
+            }));
+            misc.setCoupons(mapped);
+            saveToStorage('yg_coupons', mapped);
           }
 
           if (!bkErr && cloudBookings) {
-            fleetBookings.setBookings(cloudBookings.map(fleetBookings.mapCloudBooking));
+            const mapped = cloudBookings.map(fleetBookings.mapCloudBooking);
+            fleetBookings.setBookings(mapped);
+            saveToStorage('yg_bookings', mapped);
           }
 
           if (!ownersErr && cloudOwners) {
-            fleetOwners.setOwners(cloudOwners.map(fleetOwners.mapCloudOwner));
+            const mapped = cloudOwners.map(fleetOwners.mapCloudOwner);
+            fleetOwners.setOwners(mapped);
+            saveToStorage('yg_owners', mapped);
           }
 
           if (!custErr && cloudCustomers) {
-            fleetCustomers.setCustomers(cloudCustomers.map((c: any) => ({
+            const mapped = cloudCustomers.map((c: any) => ({
               id: c.id,
               fullName: c.full_name,
               phone: c.phone,
@@ -205,21 +235,95 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
               totalSpentEGP: Number(c.total_spent_egp ?? 0),
               notes: c.notes,
               createdAt: c.created_at,
-            })));
+            }));
+            fleetCustomers.setCustomers(mapped);
+            saveToStorage('yg_customers', mapped);
+          }
+
+          if (!invoicesErr && cloudInvoices) {
+            const mapped = cloudInvoices.map((invoice: any): Invoice => ({
+              id: invoice.id,
+              invoiceNumber: invoice.invoice_number,
+              bookingId: invoice.booking_id,
+              customerName: invoice.customer_name,
+              customerPhone: invoice.customer_phone,
+              carDetails: invoice.car_details,
+              totalAmountEGP: Number(invoice.total_amount_egp || 0),
+              depositAmountEGP: Number(invoice.deposit_amount_egp || 0),
+              paymentMethod: ['cash', 'bank_transfer', 'instapay', 'card'].includes(invoice.payment_method)
+                ? invoice.payment_method
+                : 'cash',
+              paid: Boolean(invoice.paid),
+              issuedAt: invoice.issued_at || invoice.created_at,
+              issuedBy: invoice.issued_by || '',
+            }));
+            misc.setInvoices(mapped);
+            saveToStorage('yg_invoices', mapped);
+          }
+
+          if (!auditErr && cloudAuditLogs) {
+            const mapped = cloudAuditLogs.map((log: any): AuditLogItem => ({
+              id: log.id,
+              action: log.action,
+              staffName: log.staff_name,
+              staffRole: log.staff_role,
+              timestamp: log.timestamp,
+              details: log.details,
+            }));
+            misc.setAuditLogs(mapped);
+            saveToStorage('yg_audit_logs', mapped);
           }
         }
 
         if (!carsErr && cloudCars) {
-          misc.setIsCloudConnected(true);
-          fleetCars.setCars(cloudCars.map(fleetCars.mapCloudCar));
+          const mapped = cloudCars.map(fleetCars.mapCloudCar);
+          fleetCars.setCars(mapped);
+          saveToStorage('yg_cars', mapped);
         }
+
+        misc.setIsCloudConnected(failures.length === 0);
+        setCloudSyncError(failures.length
+          ? `تعذرت مزامنة أقسام: ${failures.join('، ')}. البيانات الظاهرة قد تكون نسخة محفوظة محليًا.`
+          : '');
       } catch (err) {
         console.warn('Initial data load notice:', err);
+        if (active && auth.currentStaff) {
+          misc.setIsCloudConnected(false);
+          setCloudSyncError('تعذر تحميل البيانات المشتركة من Supabase؛ تحقق من الاتصال ثم حدّث الصفحة.');
+        }
       }
     };
 
-    fetchInitialData();
+    void fetchInitialData();
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') void fetchInitialData();
+    };
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnFocus);
+    };
   }, [auth.currentStaff]);
+
+  useEffect(() => {
+    const currentPath = pathname || '/';
+    const isAdminPage = currentPath.startsWith('/admin');
+    const canReadVisitorStats = auth.currentStaff?.role === 'super_admin';
+    const refreshVisitorStats = () => {
+      void misc.trackAndLoadVisits(currentPath, isAdminPage && canReadVisitorStats);
+    };
+
+    refreshVisitorStats();
+    if (!isAdminPage || !canReadVisitorStats) return;
+    const intervalId = window.setInterval(refreshVisitorStats, 60_000);
+    window.addEventListener('focus', refreshVisitorStats);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshVisitorStats);
+    };
+  }, [pathname, auth.currentStaff, misc.trackAndLoadVisits]);
 
   // دالة إعادة ضبط المصنع
   const resetToDefault = misc.createResetFunction(
@@ -238,6 +342,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         signIn: auth.signIn,
         signOut: auth.signOut,
         isCloudConnected: misc.isCloudConnected,
+        cloudSyncError,
         staffList: auth.staffList,
         staffListError: auth.staffListError,
         addStaff: auth.addStaff,

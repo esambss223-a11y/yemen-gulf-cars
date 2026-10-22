@@ -228,5 +228,6 @@ export interface VisitorStats {
   total: number;
   liveNow: number;
   lastUpdated: string;
+  available: boolean;
 }
 

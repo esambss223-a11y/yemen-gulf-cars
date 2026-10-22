@@ -38,6 +38,7 @@ export default function AdminDashboardPage() {
     signOut,
     isAuthReady,
     isCloudConnected,
+    cloudSyncError,
     staffList,
     staffListError,
     addStaff,
@@ -498,6 +499,15 @@ export default function AdminDashboardPage() {
           onOpenProfile={() => setActiveTab('profile')}
           onOpenTab={(tab) => setActiveTab(tab)}
         />
+
+        {cloudSyncError && (
+          <div
+            role="status"
+            className="mx-3.5 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:mx-6"
+          >
+            {cloudSyncError}
+          </div>
+        )}
 
         {/* منطقة المحتوى التفاعلي (Tabs) */}
         <div className="p-3.5 sm:p-6 flex-1 space-y-6">

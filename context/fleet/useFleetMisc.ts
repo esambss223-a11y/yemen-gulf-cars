@@ -34,8 +34,9 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
     today: 0,
     thisMonth: 0,
     total: 0,
-    liveNow: 1,
+    liveNow: 0,
     lastUpdated: 'جاري التحميل...',
+    available: false,
   });
 
   const logAction = useCallback(
@@ -190,58 +191,59 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
     logAction('حذف كود خصم', `تم حذف كود الخصم: ${target?.code || id}`);
   };
 
-  const trackAndLoadVisits = useCallback(async () => {
+  const trackAndLoadVisits = useCallback(async (pathname: string, isAdmin: boolean) => {
     try {
-      let sessionId = typeof window !== 'undefined' ? sessionStorage.getItem('yg_visitor_session') : null;
-      if (!sessionId && typeof window !== 'undefined') {
-        sessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-        sessionStorage.setItem('yg_visitor_session', sessionId);
-
-        const deviceType =
-          window.innerWidth < 640 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop';
-        await supabase.from('site_visits').insert({
-          session_id: sessionId,
-          device_type: deviceType,
-          page_path: window.location.pathname,
-        });
+      const isPublicPage = !pathname.startsWith('/admin');
+      if (isPublicPage && typeof window !== 'undefined') {
+        let sessionId = sessionStorage.getItem('yg_visitor_session');
+        if (!sessionId) {
+          sessionId = `sess_${typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
+          sessionStorage.setItem('yg_visitor_session', sessionId);
+          const deviceType =
+            window.innerWidth < 640 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop';
+          const { error } = await supabase.from('site_visits').insert({
+            session_id: sessionId,
+            device_type: deviceType,
+            page_path: pathname,
+          });
+          if (error) {
+            sessionStorage.removeItem('yg_visitor_session');
+            throw error;
+          }
+        }
       }
+
+      // Visitor totals are private admin data; never substitute local/demo values.
+      if (!isAdmin) return;
 
       const todayDateStr = new Date().toISOString().slice(0, 10);
       const startOfMonthStr = `${todayDateStr.slice(0, 7)}-01`;
+      const recentCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const publicVisits = () => supabase.from('site_visits').select('*', { count: 'exact', head: true })
+        .not('page_path', 'like', '/admin%');
 
-      const [{ count: todayCount }, { count: monthCount }, { count: totalCount }] = await Promise.all([
-        supabase
-          .from('site_visits')
-          .select('*', { count: 'exact', head: true })
-          .gte('visited_at', `${todayDateStr}T00:00:00Z`),
-        supabase
-          .from('site_visits')
-          .select('*', { count: 'exact', head: true })
-          .gte('visited_at', `${startOfMonthStr}T00:00:00Z`),
-        supabase.from('site_visits').select('*', { count: 'exact', head: true }),
+      const [todayResult, monthResult, totalResult, recentResult] = await Promise.all([
+        publicVisits().gte('visited_at', `${todayDateStr}T00:00:00Z`),
+        publicVisits().gte('visited_at', `${startOfMonthStr}T00:00:00Z`),
+        publicVisits(),
+        publicVisits().gte('visited_at', recentCutoff),
       ]);
 
-      if (totalCount !== null && totalCount !== undefined) {
-        setVisitorStats({
-          today: todayCount || 1,
-          thisMonth: monthCount || 1,
-          total: totalCount || 1,
-          liveNow: 1,
-          lastUpdated: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-        });
-      } else {
-        const savedLocalVisits = parseInt(localStorage.getItem('yg_real_total_visits') || '0', 10) + 1;
-        localStorage.setItem('yg_real_total_visits', savedLocalVisits.toString());
-        setVisitorStats({
-          today: 1,
-          thisMonth: savedLocalVisits,
-          total: savedLocalVisits,
-          liveNow: 1,
-          lastUpdated: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-        });
-      }
+      const resultError = todayResult.error || monthResult.error || totalResult.error || recentResult.error;
+      if (resultError) throw resultError;
+      setVisitorStats({
+        today: todayResult.count ?? 0,
+        thisMonth: monthResult.count ?? 0,
+        total: totalResult.count ?? 0,
+        liveNow: recentResult.count ?? 0,
+        lastUpdated: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+        available: true,
+      });
     } catch (err) {
       console.warn('Real visits tracking notice:', err);
+      setVisitorStats((previous) => ({ ...previous, available: false, lastUpdated: 'تعذر تحميل الإحصائيات' }));
     }
   }, []);
 

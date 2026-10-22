@@ -139,20 +139,20 @@ export default function OverviewTab({
           
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200/60 shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-slate-500">المتواجدون الآن:</span>
-            <strong className="font-mono font-bold text-slate-900">{visitorStats?.liveNow || 1}</strong>
+            <span className="text-slate-500">زوار آخر 5 دقائق:</span>
+            <strong className="font-mono font-bold text-slate-900">{visitorStats?.available ? visitorStats.liveNow.toLocaleString() : '—'}</strong>
           </div>
 
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200/60 shadow-2xs">
             <Calendar className="w-3.5 h-3.5 text-blue-600" />
             <span className="text-slate-500">زوار اليوم:</span>
-            <strong className="font-mono font-bold text-slate-900">{(visitorStats?.today || 12).toLocaleString()}</strong>
+            <strong className="font-mono font-bold text-slate-900">{visitorStats?.available ? visitorStats.today.toLocaleString() : '—'}</strong>
           </div>
 
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200/60 shadow-2xs">
             <Users className="w-3.5 h-3.5 text-amber-600" />
             <span className="text-slate-500">إجمالي الزوار:</span>
-            <strong className="font-mono font-bold text-slate-900">{(visitorStats?.total || 1250).toLocaleString()}</strong>
+            <strong className="font-mono font-bold text-slate-900">{visitorStats?.available ? visitorStats.total.toLocaleString() : '—'}</strong>
           </div>
 
         </div>
@@ -452,7 +452,7 @@ export default function OverviewTab({
                   <Eye className="w-3.5 h-3.5 text-emerald-400" />
                   <span>زوار الموقع اليوم</span>
                 </div>
-                <span className="font-mono font-bold text-white text-sm">{visitorStats?.today || 12}</span>
+                <span className="font-mono font-bold text-white text-sm">{visitorStats?.available ? visitorStats.today : '—'}</span>
               </div>
 
               <div className="flex items-center justify-between pt-2.5 border-t border-white/10">

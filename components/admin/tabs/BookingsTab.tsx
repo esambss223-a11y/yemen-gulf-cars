@@ -39,7 +39,7 @@ interface BookingsTabProps {
   onRejectBooking?: (booking: Booking, reason: string) => Promise<void>;
 }
 
-type ViewSection = 'active' | 'completed' | 'all';
+type ViewSection = 'active' | 'completed' | 'rejected' | 'all';
 
 export default function BookingsTab({
   bookings,
@@ -61,7 +61,11 @@ export default function BookingsTab({
   }, [bookings]);
 
   const completedBookings = useMemo(() => {
-    return bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
+    return bookings.filter(b => b.status === 'completed');
+  }, [bookings]);
+
+  const rejectedBookings = useMemo(() => {
+    return bookings.filter(b => b.status === 'cancelled');
   }, [bookings]);
 
   // إحصائيات عامة
@@ -100,6 +104,11 @@ export default function BookingsTab({
       return matchStatus && matchesSearch(bk, searchTerm);
     });
   }, [completedBookings, statusFilter, searchTerm]);
+
+  const filteredRejected = useMemo(
+    () => rejectedBookings.filter((booking) => matchesSearch(booking, searchTerm)),
+    [rejectedBookings, searchTerm],
+  );
 
   const getStatusBadge = (status: BookingStatus) => {
     switch (status) {
@@ -403,6 +412,52 @@ export default function BookingsTab({
     </div>
   );
 
+  const renderRejectedTable = (items: Booking[]) => (
+    <div className="bg-white border border-rose-200 rounded-2xl shadow-xs overflow-hidden">
+      <div className="p-4 bg-rose-50/80 border-b border-rose-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-600" />
+          <h5 className="font-black text-slate-900 text-sm flex items-center gap-2">
+            <XCircle className="w-4 h-4 text-rose-600" /> طلبات الحجز المرفوضة
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-rose-100 text-rose-800 font-bold">{items.length}</span>
+          </h5>
+        </div>
+        <span className="text-xs text-slate-500 hidden sm:inline">أرشيف الطلبات التي لم تتم الموافقة عليها</span>
+      </div>
+      <div className="overflow-x-auto no-scrollbar">
+        <table className="w-full text-right text-xs">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+              <th className="py-3 pr-4">رقم الطلب</th>
+              <th className="py-3">السيارة</th>
+              <th className="py-3">العميل</th>
+              <th className="py-3">الفترة المطلوبة</th>
+              <th className="py-3">المبلغ والتأمين</th>
+              <th className="py-3">سبب الرفض</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {items.length === 0 ? (
+              <tr><td colSpan={6} className="py-12 text-center text-slate-400">لا توجد طلبات مرفوضة.</td></tr>
+            ) : items.map((booking) => {
+              const rejection = booking.notes?.split(/\r?\n/).find((line) => line.startsWith('رفض الطلب بواسطة'));
+              return (
+                <tr key={booking.id} className="align-top hover:bg-rose-50/30">
+                  <td className="py-3.5 pr-4"><span className="font-mono font-bold text-slate-800">{booking.bookingNumber}</span><span className="block mt-1 text-[10px] text-slate-400">{booking.createdAt?.split('T')[0] || '—'}</span></td>
+                  <td className="py-3.5"><strong className="block text-slate-900">{booking.carName}</strong><span className="text-[10px] text-slate-500">{booking.carPlate}</span></td>
+                  <td className="py-3.5"><strong className="block text-slate-900">{booking.customer.fullName}</strong><span dir="ltr" className="block text-right text-[10px] text-slate-500">{booking.customer.phone}</span></td>
+                  <td className="py-3.5 font-mono text-[11px] text-slate-700"><span className="block">استلام: {booking.startDate} {booking.startTime}</span><span className="block mt-1">إرجاع: {booking.endDate} {booking.endTime}</span></td>
+                  <td className="py-3.5"><strong className="block font-mono text-slate-800">{booking.finalTotalEGP.toLocaleString()} ج.م</strong><span className="mt-1 block text-[10px] text-slate-500">التأمين: {booking.securityDepositEGP.toLocaleString()} ج.م</span></td>
+                  <td className="max-w-xs py-3.5 pl-4 text-rose-800">{rejection || 'لم يُسجّل سبب الرفض'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4 animate-fadeIn font-arabic">
       
@@ -414,7 +469,7 @@ export default function BookingsTab({
               <ShieldCheck className="w-5 h-5 text-amber-500" /> إدارة العقود والتشغيل المالي
             </h4>
             <p className="text-xs text-slate-500 mt-0.5">
-              فصل كامل بين العقود الحالية المفتوحة في الشارع وبين العقود المستلمة والمغلقة لسهولة المتابعة
+              أقسام منفصلة للحجوزات الحالية والعقود المكتملة وطلبات الحجز المرفوضة
             </p>
           </div>
 
@@ -437,6 +492,26 @@ export default function BookingsTab({
                 activeSection === 'active' ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-700'
               }`}>
                 {activeBookings.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveSection('rejected');
+                setStatusFilter('all');
+              }}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeSection === 'rejected'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              <span>الطلبات المرفوضة</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                activeSection === 'rejected' ? 'bg-rose-800 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {rejectedBookings.length}
               </span>
             </button>
 
@@ -470,7 +545,7 @@ export default function BookingsTab({
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
               }`}
-              title="عرض القسمين معاً في نفس الصفحة"
+              title="عرض جميع أقسام الحجوزات"
             >
               الكل ({bookings.length})
             </button>
@@ -571,10 +646,12 @@ export default function BookingsTab({
       {/* 3. عرض الأقسام وفق التبويب المختار */}
       {activeSection === 'active' && renderActiveTable(filteredActive)}
       {activeSection === 'completed' && renderCompletedTable(filteredCompleted)}
+      {activeSection === 'rejected' && renderRejectedTable(filteredRejected)}
       {activeSection === 'all' && (
         <div className="space-y-6">
           {renderActiveTable(filteredActive)}
           {renderCompletedTable(filteredCompleted)}
+          {renderRejectedTable(filteredRejected)}
         </div>
       )}
 
