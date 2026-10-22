@@ -516,6 +516,13 @@ export async function GET(request: NextRequest) {
   const rawColor = searchParams.get('color') || '';
   const rawYear = searchParams.get('year') || '';
 
+  if (rawQuery.trim().length > 80 || rawColor.trim().length > 40 || (mode !== 'full' && mode !== 'autocomplete')) {
+    return NextResponse.json({ success: false, error: 'بيانات البحث أطول من المسموح أو نوع البحث غير صالح.' }, { status: 400 });
+  }
+  if (rawYear && (!/^\d{4}$/.test(rawYear) || Number(rawYear) < 1886 || Number(rawYear) > new Date().getFullYear() + 1)) {
+    return NextResponse.json({ success: false, error: 'سنة الصنع غير صالحة.' }, { status: 400 });
+  }
+
   if (!rawQuery.trim()) {
     return NextResponse.json({
       success: true,
