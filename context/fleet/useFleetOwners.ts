@@ -2,18 +2,15 @@
 
 import { useState, useCallback } from 'react';
 import { VehicleOwner } from '@/types/fleet';
-import { INITIAL_OWNERS } from '@/lib/initial-data';
 import { supabase } from '@/lib/supabase';
-import { saveToStorage, loadFromStorage } from './fleetStorage';
+import { reportFleetWriteError } from './fleetStorage';
 
 interface UseFleetOwnersProps {
   logAction: (action: string, details: string) => void;
 }
 
 export function useFleetOwners({ logAction }: UseFleetOwnersProps) {
-  const [owners, setOwners] = useState<VehicleOwner[]>(() =>
-    loadFromStorage('yg_owners', INITIAL_OWNERS)
-  );
+  const [owners, setOwners] = useState<VehicleOwner[]>([]);
 
   const mapCloudOwner = useCallback((o: Record<string, any>): VehicleOwner => ({
     id: String(o.id),
@@ -29,19 +26,13 @@ export function useFleetOwners({ logAction }: UseFleetOwnersProps) {
     notes: o.notes,
   }), []);
 
-  const addOwner = async (ownerData: Omit<VehicleOwner, 'id'>) => {
+  const addOwner = async (ownerData: Omit<VehicleOwner, 'id'>): Promise<boolean> => {
     const newOwner: VehicleOwner = {
       ...ownerData,
       id: `owner-${Date.now()}`,
     };
-    setOwners((prev) => {
-      const updated = [...prev, newOwner];
-      saveToStorage('yg_owners', updated);
-      return updated;
-    });
-
     try {
-      await supabase.from('owners').insert({
+      const { error } = await supabase.from('owners').insert({
         id: newOwner.id,
         name: newOwner.name,
         phone: newOwner.phone,
@@ -54,20 +45,19 @@ export function useFleetOwners({ logAction }: UseFleetOwnersProps) {
         monthly_payout_day: newOwner.monthlyPayoutDay,
         notes: newOwner.notes,
       });
-    } catch {
-      // ignore
+      if (error) throw error;
+    } catch (error) {
+      console.warn('Cloud owner insert failed:', error);
+      reportFleetWriteError('تعذرت إضافة المالك إلى قاعدة البيانات؛ لم يُحفظ.');
+      return false;
     }
 
+    setOwners((prev) => [...prev, newOwner]);
     logAction('إضافة مالك/مستثمر جديد', `تمت إضافة المالك ${newOwner.name}`);
+    return true;
   };
 
-  const updateOwner = async (id: string, partial: Partial<VehicleOwner>) => {
-    setOwners((prev) => {
-      const updated = prev.map((o) => (o.id === id ? { ...o, ...partial } : o));
-      saveToStorage('yg_owners', updated);
-      return updated;
-    });
-
+  const updateOwner = async (id: string, partial: Partial<VehicleOwner>): Promise<boolean> => {
     try {
       const payload: Record<string, unknown> = {};
       if (partial.name !== undefined) payload.name = partial.name;
@@ -81,32 +71,36 @@ export function useFleetOwners({ logAction }: UseFleetOwnersProps) {
       if (partial.monthlyPayoutDay !== undefined) payload.monthly_payout_day = partial.monthlyPayoutDay;
       if (partial.notes !== undefined) payload.notes = partial.notes;
 
-      const { data, error } = await supabase.from('owners').update(payload).eq('id', id).select();
-      if (!error && (!data || data.length === 0)) {
-        await supabase.from('owners').upsert({ id, ...payload });
-      }
-    } catch {
-      // ignore
+      if (!Object.keys(payload).length) return true;
+      const { data, error } = await supabase.from('owners').update(payload).eq('id', id).select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('OWNER_NOT_FOUND');
+    } catch (error) {
+      console.warn('Cloud owner update failed:', error);
+      reportFleetWriteError('تعذر حفظ تعديل المالك في قاعدة البيانات؛ لم يُعتمد التغيير.');
+      return false;
     }
 
+    setOwners((prev) => prev.map((o) => (o.id === id ? { ...o, ...partial } : o)));
     logAction('تعديل بيانات مالك', `تم تحديث المالك ID: ${id}`);
+    return true;
   };
 
-  const deleteOwner = async (id: string) => {
+  const deleteOwner = async (id: string): Promise<boolean> => {
     const owner = owners.find((o) => o.id === id);
-    setOwners((prev) => {
-      const updated = prev.filter((o) => o.id !== id);
-      saveToStorage('yg_owners', updated);
-      return updated;
-    });
-
     try {
-      await supabase.from('owners').delete().eq('id', id);
-    } catch {
-      // ignore
+      const { data, error } = await supabase.from('owners').delete().eq('id', id).select('id').maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('OWNER_NOT_FOUND');
+    } catch (error) {
+      console.warn('Cloud owner deletion failed:', error);
+      reportFleetWriteError('تعذر حذف المالك من قاعدة البيانات؛ لم يُحذف السجل.');
+      return false;
     }
 
+    setOwners((prev) => prev.filter((o) => o.id !== id));
     logAction('حذف مالك', `تم حذف المالك: ${owner?.name}`);
+    return true;
   };
 
   return {

@@ -19,7 +19,7 @@ interface CustomerFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingCustomer: Customer | null;
-  onSubmit: (data: Omit<Customer, 'id'>) => void;
+  onSubmit: (data: Omit<Customer, 'id'>) => Promise<boolean> | boolean;
 }
 
 export default function CustomerFormModal({
@@ -67,14 +67,14 @@ export default function CustomerFormModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim() || !phone.trim() || !nationalId.trim()) {
       alert('يرجى ملء الاسم الكامل، رقم الهاتف، والرقم القومي / الجواز');
       return;
     }
 
-    onSubmit({
+    await onSubmit({
       fullName: fullName.trim(),
       phone: phone.trim(),
       whatsapp: whatsapp.trim() || phone.trim(),

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { StaffUser, UserRole } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
-import { saveToStorage, loadFromStorage } from './fleetStorage';
 import type { Session } from '@supabase/supabase-js';
 
 interface UseFleetAuthProps {
@@ -12,12 +11,10 @@ interface UseFleetAuthProps {
 }
 
 export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
-  // A localStorage staff record is only a UI cache, never proof of an active Supabase session.
+  // حساب الموظف النشط يُحمّل من جلسة Supabase وقاعدة البيانات فقط.
   const [currentStaff, setCurrentStaff] = useState<StaffUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [staffList, setStaffList] = useState<StaffUser[]>(() =>
-    loadFromStorage<StaffUser[]>('yg_staff', [])
-  );
+  const [staffList, setStaffList] = useState<StaffUser[]>([]);
   const [staffListError, setStaffListError] = useState('');
   const isExplicitSignOutRef = useRef(false);
 
@@ -41,11 +38,12 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
       if (response.ok && Array.isArray(result.staff)) {
         const mapped = result.staff.map(mapStaffRow);
         setStaffList(mapped);
-        saveToStorage('yg_staff', mapped);
         setStaffListError('');
+      } else {
+        setStaffListError(result.error || 'تعذر تحميل قائمة الموظفين من الخادم.');
       }
     } catch {
-      // احتفظ بالقائمة المخزنة محلياً عند انقطاع الاتصال
+      setStaffListError('تعذر تحميل قائمة الموظفين من الخادم.');
     }
   }, [mapStaffRow]);
 
@@ -59,7 +57,6 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
         if (result.staff?.active) {
           const staff = mapStaffRow(result.staff);
           setCurrentStaff(staff);
-          saveToStorage('yg_current_staff', staff);
           await loadStaffList();
           return;
         }
@@ -143,7 +140,6 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
 
     const staff = mapStaffRow(result.staff);
     setCurrentStaff(staff);
-    saveToStorage('yg_current_staff', staff);
     setIsAuthReady(true);
 
     if (result.session) {
@@ -184,7 +180,6 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     const newStaff = mapStaffRow(result.staff);
     setStaffList((prev) => {
       const updated = [...prev, newStaff];
-      saveToStorage('yg_staff', updated);
       return updated;
     });
     setStaffListError('');
@@ -207,12 +202,10 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     const updatedStaff = mapStaffRow(result.staff);
     setStaffList((prev) => {
       const updated = prev.map((s) => s.id === id ? updatedStaff : s);
-      saveToStorage('yg_staff', updated);
       return updated;
     });
     if (currentStaff?.id === id) {
       setCurrentStaff(updatedStaff);
-      saveToStorage('yg_current_staff', updatedStaff);
     }
     logAction('تعديل حساب موظف', `تم تعديل بيانات: ${updatedStaff.name}`);
   };
@@ -232,10 +225,8 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     if (!response.ok || !result.staff) throw new Error(result.error || 'تعذر حفظ الملف الشخصي');
     const updatedStaff = mapStaffRow(result.staff);
     setCurrentStaff(updatedStaff);
-    saveToStorage('yg_current_staff', updatedStaff);
     setStaffList((prev) => {
       const updated = prev.map((s) => s.id === updatedStaff.id ? updatedStaff : s);
-      saveToStorage('yg_staff', updated);
       return updated;
     });
     logAction('تعديل الملف الشخصي', `تم تحديث بيانات: ${updatedStaff.name}`);
@@ -254,7 +245,6 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     if (!response.ok) throw new Error(result.error || 'تعذر حذف الموظف');
     setStaffList((prev) => {
       const updated = prev.filter((item) => item.id !== id && item.username !== id);
-      saveToStorage('yg_staff', updated);
       return updated;
     });
     logAction('حذف موظف', `تم حذف حساب الموظف: ${staff?.name || id}`);

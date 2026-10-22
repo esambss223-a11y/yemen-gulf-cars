@@ -2,18 +2,15 @@
 
 import { useState, useCallback } from 'react';
 import { Car } from '@/types/fleet';
-import { INITIAL_CARS } from '@/lib/initial-data';
 import { supabase } from '@/lib/supabase';
-import { saveToStorage, loadFromStorage } from './fleetStorage';
+import { reportFleetWriteError } from './fleetStorage';
 
 interface UseFleetCarsProps {
   logAction: (action: string, details: string) => void;
 }
 
 export function useFleetCars({ logAction }: UseFleetCarsProps) {
-  const [cars, setCars] = useState<Car[]>(() =>
-    loadFromStorage('yg_cars', INITIAL_CARS)
-  );
+  const [cars, setCars] = useState<Car[]>([]);
 
   const mapCloudCar = useCallback((c: Record<string, any>): Car => ({
     id: String(c.id),
@@ -54,19 +51,13 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
     insuranceExpiryDate: c.insurance_expiry_date,
   }), []);
 
-  const addCar = async (newCarData: Omit<Car, 'id'>) => {
+  const addCar = async (newCarData: Omit<Car, 'id'>): Promise<boolean> => {
     const newCar: Car = {
       ...newCarData,
       id: `car-${Date.now()}`,
     };
-    setCars((prev) => {
-      const updated = [newCar, ...prev];
-      saveToStorage('yg_cars', updated);
-      return updated;
-    });
-
     try {
-      await supabase.from('cars').insert({
+      const { error } = await supabase.from('cars').insert({
         id: newCar.id,
         car_code: newCar.carCode || null,
         make: newCar.make,
@@ -103,20 +94,19 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
         owner_agreed_rate_egp: newCar.ownerAgreedRateEGP ? Number(newCar.ownerAgreedRateEGP) : null,
         features: newCar.features || [],
       });
+      if (error) throw error;
     } catch (e) {
-      console.warn('Cloud car insert warning:', e);
+      console.warn('Cloud car insert failed:', e);
+      reportFleetWriteError('تعذرت إضافة السيارة إلى قاعدة البيانات؛ لم تُحفظ. تحقق من الاتصال والصلاحيات ثم أعد المحاولة.');
+      return false;
     }
 
+    setCars((prev) => [newCar, ...prev]);
     logAction('إضافة سيارة جديدة', `تمت إضافة ${newCar.make} ${newCar.model} (${newCar.plateNumber})`);
+    return true;
   };
 
-  const updateCar = async (id: string, partial: Partial<Car>) => {
-    setCars((prev) => {
-      const updated = prev.map((c) => (c.id === id ? { ...c, ...partial } : c));
-      saveToStorage('yg_cars', updated);
-      return updated;
-    });
-
+  const updateCar = async (id: string, partial: Partial<Car>): Promise<boolean> => {
     try {
       const payload: Record<string, unknown> = {};
       if (partial.carCode !== undefined) payload.car_code = partial.carCode;
@@ -125,6 +115,7 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       if (partial.year !== undefined) payload.year = partial.year;
       if (partial.category !== undefined) payload.category = partial.category;
       if (partial.plateNumber !== undefined) payload.plate_number = partial.plateNumber;
+      if (partial.vin !== undefined) payload.vin = partial.vin || null;
       if (partial.color !== undefined) payload.color = partial.color;
       if (partial.status !== undefined) payload.status = partial.status;
       if (partial.currentKm !== undefined) payload.current_km = partial.currentKm;
@@ -134,6 +125,7 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       if (partial.contractEndDate !== undefined) payload.contract_end_date = partial.contractEndDate || null;
       if (partial.licenseExpiryDate !== undefined) payload.license_expiry_date = partial.licenseExpiryDate || null;
       if (partial.licenseRenewalDate !== undefined) payload.license_renewal_date = partial.licenseRenewalDate || null;
+      if (partial.insuranceExpiryDate !== undefined) payload.insurance_expiry_date = partial.insuranceExpiryDate || null;
       if (partial.nextServiceKm !== undefined) payload.next_service_km = partial.nextServiceKm || null;
       if (partial.nextServiceDate !== undefined) payload.next_service_date = partial.nextServiceDate || null;
       if (partial.serviceResponsibleParty !== undefined) payload.service_responsible_party = partial.serviceResponsibleParty;
@@ -153,31 +145,42 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       if (partial.ownerCompensationType !== undefined) payload.owner_compensation_type = partial.ownerCompensationType;
       if (partial.ownerAgreedRateEGP !== undefined) payload.owner_agreed_rate_egp = partial.ownerAgreedRateEGP;
 
-      const { data, error } = await supabase.from('cars').update(payload).eq('id', id).select();
-      if (!error && (!data || data.length === 0)) {
-        await supabase.from('cars').upsert({ id, ...payload });
-      }
-    } catch {
-      // ignore
+      if (!Object.keys(payload).length) return true;
+      const { data, error } = await supabase.from('cars').update(payload).eq('id', id).select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('CAR_NOT_FOUND');
+    } catch (error) {
+      console.warn('Cloud car update failed:', error);
+      reportFleetWriteError('تعذر حفظ تعديل السيارة في قاعدة البيانات؛ لم يُعتمد التغيير.');
+      return false;
     }
 
+    setCars((prev) => prev.map((c) => (c.id === id ? { ...c, ...partial } : c)));
     logAction('تعديل سيارة', `تم تحديث بيانات السيارة ID: ${id}`);
+    return true;
   };
 
-  const deleteCar = async (id: string) => {
-    setCars((prev) => {
-      const updated = prev.filter((c) => c.id !== id);
-      saveToStorage('yg_cars', updated);
-      return updated;
-    });
-
+  const deleteCar = async (id: string): Promise<boolean> => {
     try {
-      await supabase.from('cars').delete().eq('id', id);
-    } catch {
-      // ignore
+      const { data: linkedBookings, error: bookingError } = await supabase
+        .from('bookings').select('id').eq('car_id', id).limit(1);
+      if (bookingError) throw bookingError;
+      if (linkedBookings?.length) {
+        reportFleetWriteError('لا يمكن حذف هذه السيارة لوجود حجوزات مرتبطة بها؛ غيّر حالتها إلى صيانة أو غير متاحة للحفاظ على سجل العقود.');
+        return false;
+      }
+      const { data, error } = await supabase.from('cars').delete().eq('id', id).select('id').maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('CAR_NOT_FOUND');
+    } catch (error) {
+      console.warn('Cloud car deletion failed:', error);
+      reportFleetWriteError('تعذر حذف السيارة من قاعدة البيانات؛ لم يُحذف السجل.');
+      return false;
     }
 
+    setCars((prev) => prev.filter((c) => c.id !== id));
     logAction('حذف سيارة', `تم حذف السيارة ID: ${id}`);
+    return true;
   };
 
   return {

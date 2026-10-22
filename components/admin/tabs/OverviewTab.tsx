@@ -15,7 +15,6 @@ import {
   BarChart2,
   ShieldCheck,
   Eye,
-  ArrowUpRight,
   Sparkles
 } from 'lucide-react';
 import { Booking, Car, StaffUser, VisitorStats } from '@/types/fleet';
@@ -28,6 +27,7 @@ interface OverviewTabProps {
   activeBookings: Booking[];
   totalRevenueEGP: number;
   totalHeldDepositsEGP: number;
+  customersCount: number;
   currentStaff: StaffUser;
   visitorStats: VisitorStats;
   cars: Car[];
@@ -45,6 +45,7 @@ export default function OverviewTab({
   activeBookings,
   totalRevenueEGP,
   totalHeldDepositsEGP,
+  customersCount,
   currentStaff,
   visitorStats,
   cars,
@@ -55,12 +56,6 @@ export default function OverviewTab({
   setActiveTab,
 }: OverviewTabProps) {
   const [activeView, setActiveView] = useState<'active_fleet' | 'recent_bookings'>('active_fleet');
-
-  // حساب عدد العملاء المسجلين الفريدين
-  const uniqueCustomersCount = useMemo(() => {
-    const phones = new Set(bookings.map(b => b.customer.phone || b.customer.fullName));
-    return Math.max(phones.size, bookings.length > 0 ? phones.size : 156);
-  }, [bookings]);
 
   // السيارات الأكثر طلباً وحجزاً
   const mostBookedCars = useMemo(() => {
@@ -75,7 +70,7 @@ export default function OverviewTab({
       .map((car, index) => ({
         car,
         rank: index + 1,
-        count: bookingCounts[car.id] || (index === 0 ? 8 : index === 1 ? 5 : index === 2 ? 3 : 1),
+        count: bookingCounts[car.id] || 0,
       }));
   }, [cars, bookings]);
 
@@ -89,12 +84,11 @@ export default function OverviewTab({
     const todayStr = new Date().toISOString().split('T')[0];
     const todayBookings = bookings.filter(b => b.startDate === todayStr);
     return {
-      newBookings: todayBookings.length > 0 ? todayBookings.length : 12,
-      rentedCars: rentedCars > 0 ? rentedCars : 8,
-      newCustomers: uniqueCustomersCount > 0 ? Math.min(5, uniqueCustomersCount) : 5,
-      revenueToday: todayBookings.reduce((sum, b) => sum + b.finalTotalEGP, 0) || 45000,
+      newBookings: todayBookings.length,
+      rentedCars,
+      revenueToday: todayBookings.reduce((sum, b) => sum + b.finalTotalEGP, 0),
     };
-  }, [bookings, rentedCars, uniqueCustomersCount]);
+  }, [bookings, rentedCars]);
 
   // نسبة تشغيل الأسطول
   const fleetUtilizationRate = useMemo(() => {
@@ -175,7 +169,7 @@ export default function OverviewTab({
           <div className="my-3">
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
               {currentStaff.role === 'rental_agent' ? '••••••' : (
-                totalRevenueEGP > 0 ? (totalRevenueEGP / 1000).toFixed(0) : '156'
+              (totalRevenueEGP / 1000).toFixed(0)
               )}
               {currentStaff.role !== 'rental_agent' && (
                 <span className="text-xs text-slate-500 font-arabic font-normal mr-1.5">ألف ج.م</span>
@@ -184,7 +178,7 @@ export default function OverviewTab({
           </div>
           <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span className="text-emerald-700 font-semibold flex items-center gap-1">
-              <ArrowUpRight className="w-3.5 h-3.5" /> +12% هذا الشهر
+              الإيراد المسجل في النظام
             </span>
             <span className="font-medium text-slate-400">الجنيه المصري</span>
           </div>
@@ -228,7 +222,7 @@ export default function OverviewTab({
           </div>
           <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span className="text-slate-600 font-medium">
-              العملاء المسجلين: <strong className="font-mono text-slate-800">{uniqueCustomersCount}</strong>
+              العملاء المسجلين: <strong className="font-mono text-slate-800">{customersCount}</strong>
             </span>
             <button 
               onClick={() => setActiveTab('bookings')} 
@@ -249,7 +243,7 @@ export default function OverviewTab({
           </div>
           <div className="my-3">
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
-              {totalHeldDepositsEGP > 0 ? (totalHeldDepositsEGP / 1000).toFixed(0) : '40'}
+              {(totalHeldDepositsEGP / 1000).toFixed(0)}
               <span className="text-xs text-slate-500 font-arabic font-normal mr-1.5">ألف ج.م</span>
             </div>
           </div>
@@ -434,7 +428,7 @@ export default function OverviewTab({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-slate-300">
                   <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                  <span>الحجوزات الجديدة</span>
+                  <span>حجوزات تبدأ اليوم</span>
                 </div>
                 <span className="font-mono font-bold text-white text-sm">{todaySummary.newBookings}</span>
               </div>
@@ -462,7 +456,7 @@ export default function OverviewTab({
                 </div>
                 <span className="font-mono font-black text-amber-300 text-sm">
                   {currentStaff.role === 'rental_agent' ? '••••••' : (
-                    todaySummary.revenueToday > 0 ? (todaySummary.revenueToday / 1000).toFixed(0) + ' ألف ج.م' : '45 ألف ج.م'
+                    (todaySummary.revenueToday / 1000).toFixed(0) + ' ألف ج.م'
                   )}
                 </span>
               </div>

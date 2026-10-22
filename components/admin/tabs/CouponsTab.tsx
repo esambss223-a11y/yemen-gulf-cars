@@ -163,7 +163,19 @@ export default function CouponsTab({
   // تأكيد الحذف
   const handleDelete = async (id: string, code: string) => {
     if (confirm(`هل أنت متأكد من رغبتك في حذف كود الخصم "${code}" نهائياً؟`)) {
-      await onDeleteCoupon(id);
+      try {
+        await onDeleteCoupon(id);
+      } catch (err: any) {
+        alert(err.message || 'تعذر حذف كود الخصم');
+      }
+    }
+  };
+
+  const handleToggleActive = async (id: string) => {
+    try {
+      await onToggleActive(id);
+    } catch (err: any) {
+      alert(err.message || 'تعذر تغيير حالة كود الخصم');
     }
   };
 
@@ -358,7 +370,7 @@ export default function CouponsTab({
                       <td className="py-3.5">
                         <button
                           type="button"
-                          onClick={() => onToggleActive(cp.id)}
+                          onClick={() => void handleToggleActive(cp.id)}
                           className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-all ${
                             cp.active && !isExpired
                               ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200 border border-emerald-300'

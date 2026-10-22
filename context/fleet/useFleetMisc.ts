@@ -1,18 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Invoice, PromoCoupon, AuditLogItem, VisitorStats, StaffUser } from '@/types/fleet';
-import {
-  INITIAL_INVOICES,
-  INITIAL_COUPONS,
-  INITIAL_AUDIT_LOGS,
-  INITIAL_CARS,
-  INITIAL_BOOKINGS,
-  INITIAL_OWNERS,
-  INITIAL_CUSTOMERS,
-} from '@/lib/initial-data';
+import { Invoice, PromoCoupon, AuditLogItem, VisitorStats } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
-import { saveToStorage, loadFromStorage } from './fleetStorage';
+import { reportFleetWriteError } from './fleetStorage';
 
 interface UseFleetMiscProps {
   currentStaffName?: string;
@@ -20,15 +11,9 @@ interface UseFleetMiscProps {
 }
 
 export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMiscProps) {
-  const [invoices, setInvoices] = useState<Invoice[]>(() =>
-    loadFromStorage('yg_invoices', INITIAL_INVOICES)
-  );
-  const [coupons, setCoupons] = useState<PromoCoupon[]>(() =>
-    loadFromStorage('yg_coupons', INITIAL_COUPONS)
-  );
-  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(() =>
-    loadFromStorage('yg_audit_logs', INITIAL_AUDIT_LOGS)
-  );
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [coupons, setCoupons] = useState<PromoCoupon[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [isCloudConnected, setIsCloudConnected] = useState(false);
   const [visitorStats, setVisitorStats] = useState<VisitorStats>({
     today: 0,
@@ -38,6 +23,12 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
     lastUpdated: 'جاري التحميل...',
     available: false,
   });
+
+  const getAdminAuthHeaders = useCallback(async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error || !session?.access_token) throw new Error('انتهت جلسة الدخول. سجّل الدخول مجددًا.');
+    return { Authorization: `Bearer ${session.access_token}` };
+  }, []);
 
   const logAction = useCallback(
     async (action: string, details: string) => {
@@ -50,14 +41,8 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
         details,
       };
 
-      setAuditLogs((prev) => {
-        const updated = [newLog, ...prev];
-        saveToStorage('yg_audit_logs', updated);
-        return updated;
-      });
-
       try {
-        await supabase.from('audit_logs').insert({
+        const { error } = await supabase.from('audit_logs').insert({
           id: newLog.id,
           action: newLog.action,
           staff_name: newLog.staffName,
@@ -65,14 +50,17 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
           timestamp: newLog.timestamp,
           details: newLog.details,
         });
-      } catch {
-        // ignore
+        if (error) throw error;
+        setAuditLogs((prev) => [newLog, ...prev]);
+      } catch (error) {
+        console.warn('Audit log insert failed:', error);
+        reportFleetWriteError('تم تنفيذ الإجراء، لكن تعذر تسجيله في سجل الرقابة بقاعدة البيانات.');
       }
     },
     [currentStaffName, currentStaffRole]
   );
 
-  const addInvoice = async (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'issuedAt'>) => {
+  const addInvoice = async (invoiceData: Omit<Invoice, 'id' | 'invoiceNumber' | 'issuedAt'>): Promise<boolean> => {
     const seq = invoices.length + 1;
     const newInvoice: Invoice = {
       ...invoiceData,
@@ -80,12 +68,8 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
       invoiceNumber: `INV-${new Date().getFullYear()}-${String(seq).padStart(3, '0')}`,
       issuedAt: new Date().toLocaleString('ar-EG'),
     };
-    const updated = [newInvoice, ...invoices];
-    setInvoices(updated);
-    saveToStorage('yg_invoices', updated);
-
     try {
-      await supabase.from('invoices').insert({
+      const { error } = await supabase.from('invoices').insert({
         id: newInvoice.id,
         invoice_number: newInvoice.invoiceNumber,
         booking_id: newInvoice.bookingId,
@@ -99,9 +83,16 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
         issued_at: newInvoice.issuedAt,
         issued_by: newInvoice.issuedBy,
       });
-    } catch {
-      // ignore
+      if (error) throw error;
+    } catch (error) {
+      console.warn('Invoice insert failed:', error);
+      reportFleetWriteError('تم حفظ الحجز، لكن تعذر حفظ الفاتورة في قاعدة البيانات.');
+      return false;
     }
+
+    const updated = [newInvoice, ...invoices];
+    setInvoices(updated);
+    return true;
   };
 
   const applyCoupon = (code: string): PromoCoupon | null => {
@@ -110,56 +101,47 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
   };
 
   const addCoupon = async (couponData: Omit<PromoCoupon, 'id' | 'usedCount'>) => {
-    const tempId = `cp-${Date.now()}`;
-    const newCoupon: PromoCoupon = {
-      ...couponData,
-      id: tempId,
-      usedCount: 0,
-      active: true,
-    };
-    setCoupons((prev) => {
-      const updated = [newCoupon, ...prev];
-      saveToStorage('yg_coupons', updated);
-      return updated;
-    });
-
+    let coupon: PromoCoupon;
     try {
       const res = await fetch('/api/admin/coupons', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAdminAuthHeaders()) },
         body: JSON.stringify(couponData),
       });
       const data = await res.json();
-      if (res.ok && data?.coupon) {
-        setCoupons((prev) => {
-          const updated = prev.map((c) => (c.id === tempId ? data.coupon : c));
-          saveToStorage('yg_coupons', updated);
-          return updated;
-        });
-      }
-    } catch {
-      // ignore
+      if (!res.ok || !data?.coupon) throw new Error(data?.error || 'تعذر إنشاء كود الخصم.');
+      coupon = data.coupon as PromoCoupon;
+    } catch (error) {
+      reportFleetWriteError(error instanceof Error ? error.message : 'تعذر إنشاء كود الخصم.');
+      throw error;
     }
-
-    logAction('إنشاء كود خصم', `تم إنشاء كود الخصم: ${newCoupon.code}`);
-  };
-
-  const updateCoupon = async (id: string, partial: Partial<PromoCoupon>) => {
     setCoupons((prev) => {
-      const updated = prev.map((c) => (c.id === id ? { ...c, ...partial } : c));
-      saveToStorage('yg_coupons', updated);
+      const updated = [coupon, ...prev];
       return updated;
     });
 
+    logAction('إنشاء كود خصم', `تم إنشاء كود الخصم: ${coupon.code}`);
+  };
+
+  const updateCoupon = async (id: string, partial: Partial<PromoCoupon>) => {
+    let coupon: PromoCoupon;
     try {
-      await fetch('/api/admin/coupons', {
+      const res = await fetch('/api/admin/coupons', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await getAdminAuthHeaders()) },
         body: JSON.stringify({ id, ...partial }),
       });
-    } catch {
-      // ignore
+      const data = await res.json();
+      if (!res.ok || !data?.coupon) throw new Error(data?.error || 'تعذر تحديث كود الخصم.');
+      coupon = data.coupon as PromoCoupon;
+    } catch (error) {
+      reportFleetWriteError(error instanceof Error ? error.message : 'تعذر تحديث كود الخصم.');
+      throw error;
     }
+    setCoupons((prev) => {
+      const updated = prev.map((c) => (c.id === id ? coupon : c));
+      return updated;
+    });
 
     logAction('تعديل كود خصم', `تم تحديث بيانات كود الخصم ID: ${id}`);
   };
@@ -174,19 +156,21 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
 
   const deleteCoupon = async (id: string) => {
     const target = coupons.find((c) => c.id === id);
+    try {
+      const res = await fetch(`/api/admin/coupons?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: await getAdminAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || 'تعذر حذف كود الخصم.');
+    } catch (error) {
+      reportFleetWriteError(error instanceof Error ? error.message : 'تعذر حذف كود الخصم.');
+      throw error;
+    }
     setCoupons((prev) => {
       const updated = prev.filter((c) => c.id !== id);
-      saveToStorage('yg_coupons', updated);
       return updated;
     });
-
-    try {
-      await fetch(`/api/admin/coupons?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      });
-    } catch {
-      // ignore
-    }
 
     logAction('حذف كود خصم', `تم حذف كود الخصم: ${target?.code || id}`);
   };
@@ -247,29 +231,6 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
     }
   }, []);
 
-  const createResetFunction = (
-    setCars: (c: typeof INITIAL_CARS) => void,
-    setBookings: (b: typeof INITIAL_BOOKINGS) => void,
-    setOwners: (o: typeof INITIAL_OWNERS) => void,
-    setStaffList: (staff: StaffUser[]) => void,
-    setCustomers: (cust: typeof INITIAL_CUSTOMERS) => void
-  ) => {
-    return () => {
-      setCars(INITIAL_CARS);
-      setBookings(INITIAL_BOOKINGS);
-      setInvoices(INITIAL_INVOICES);
-      setOwners(INITIAL_OWNERS);
-      setCoupons(INITIAL_COUPONS);
-      setAuditLogs(INITIAL_AUDIT_LOGS);
-      setStaffList([]);
-      setCustomers(INITIAL_CUSTOMERS);
-      if (typeof window !== 'undefined') {
-        localStorage.clear();
-      }
-      logAction('إعادة ضبط المصنع', 'تم استعادة البيانات الافتراضية');
-    };
-  };
-
   return {
     invoices,
     setInvoices,
@@ -288,6 +249,5 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
     setIsCloudConnected,
     visitorStats,
     trackAndLoadVisits,
-    createResetFunction,
   };
 }

@@ -36,7 +36,6 @@ interface AdminSidebarProps {
   couponsCount?: number;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
-  resetToDefault: () => void;
   handleLogout: () => void;
 }
 
@@ -53,7 +52,6 @@ export default function AdminSidebar({
   couponsCount = 0,
   isMobileOpen = false,
   onCloseMobile,
-  resetToDefault,
   handleLogout,
 }: AdminSidebarProps) {
   const [timeStr, setTimeStr] = useState('');
@@ -85,8 +83,8 @@ export default function AdminSidebar({
   // تصفية القوائم حسب صلاحية الرتبة الوظيفية
   const allowedTabsByRole: Record<string, AdminTab[]> = {
     super_admin: ['overview', 'cars', 'bookings', 'customers', 'owners', 'staff', 'coupons', 'audit', 'profile'],
-    rental_agent: ['overview', 'cars', 'bookings', 'customers', 'coupons', 'profile'],
-    accountant: ['overview', 'bookings', 'cars', 'customers', 'owners', 'coupons', 'profile'],
+    rental_agent: ['overview', 'cars', 'bookings', 'customers', 'profile'],
+    accountant: ['overview', 'bookings', 'cars', 'customers', 'owners', 'profile'],
   };
 
   const userRole = currentStaff.role || 'rental_agent';

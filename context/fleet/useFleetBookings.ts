@@ -2,17 +2,16 @@
 
 import { useState, useCallback } from 'react';
 import { Booking, BookingReviewInput, ReturnInspectionPayload, Customer, Invoice, Car } from '@/types/fleet';
-import { INITIAL_BOOKINGS } from '@/lib/initial-data';
 import { supabase } from '@/lib/supabase';
-import { saveToStorage, loadFromStorage } from './fleetStorage';
+import { reportFleetWriteError } from './fleetStorage';
 
 interface UseFleetBookingsProps {
   cars: Car[];
-  updateCar: (id: string, partial: Partial<Car>) => Promise<void>;
+  updateCar: (id: string, partial: Partial<Car>) => Promise<boolean>;
   customers: Customer[];
-  addCustomer: (customer: Omit<Customer, 'id'>) => Customer;
-  updateCustomer: (id: string, partial: Partial<Customer>) => void;
-  addInvoice: (invoice: Omit<Invoice, 'id' | 'invoiceNumber' | 'issuedAt'>) => Promise<void>;
+  addCustomer: (customer: Omit<Customer, 'id'>) => Promise<Customer | null>;
+  updateCustomer: (id: string, partial: Partial<Customer>) => Promise<boolean>;
+  addInvoice: (invoice: Omit<Invoice, 'id' | 'invoiceNumber' | 'issuedAt'>) => Promise<boolean>;
   logAction: (action: string, details: string) => void;
   currentStaffName?: string;
 }
@@ -27,9 +26,7 @@ export function useFleetBookings({
   logAction,
   currentStaffName,
 }: UseFleetBookingsProps) {
-  const [bookings, setBookings] = useState<Booking[]>(() =>
-    loadFromStorage('yg_bookings', INITIAL_BOOKINGS)
-  );
+  const [bookings, setBookings] = useState<Booking[]>([]);
 
   const mapCloudBooking = useCallback((b: Record<string, any>): Booking => ({
     id: String(b.id),
@@ -60,7 +57,7 @@ export function useFleetBookings({
     createdAt: b.created_at || new Date().toLocaleString('ar-EG'),
   }), []);
 
-  const addBooking = async (bookingData: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>) => {
+  const addBooking = async (bookingData: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>): Promise<boolean> => {
     const seq = bookings.length + 1;
     const bookingNumber = `BK-${new Date().getFullYear()}-${String(seq).padStart(3, '0')}`;
     const newBooking: Booking = {
@@ -69,82 +66,8 @@ export function useFleetBookings({
       bookingNumber,
       createdAt: new Date().toLocaleString('ar-EG'),
     };
-    setBookings((prev) => {
-      const updated = [newBooking, ...prev];
-      saveToStorage('yg_bookings', updated);
-      return updated;
-    });
-
-    // تحديث حالة السيارة تلقائياً إلى مؤجرة
-    await updateCar(newBooking.carId, { status: 'rented' });
-
-    // مزامنة ملف العميل في سجل العملاء وترقية الفئة تلقائياً
-    const existingCust = customers.find(
-      (c) =>
-        (newBooking.customer.nationalId && c.nationalId === newBooking.customer.nationalId) ||
-        c.phone === newBooking.customer.phone
-    );
-
-    const earnedPoints = Math.round(newBooking.finalTotalEGP / 100);
-
-    if (existingCust) {
-      const newTotalSpent = (existingCust.totalSpentEGP || 0) + newBooking.finalTotalEGP;
-      const newRentalsCount = (existingCust.totalRentalsCount || 0) + 1;
-      const newPoints = Math.max(
-        0,
-        (existingCust.loyaltyPoints || 0) - (newBooking.loyaltyPointsRedeemed || 0) + earnedPoints
-      );
-
-      let dynamicTier = existingCust.tier || 'regular';
-      if (dynamicTier !== 'blacklist') {
-        if (newTotalSpent >= 60000 || newRentalsCount >= 5) {
-          dynamicTier = 'vip_gold';
-        } else if (newTotalSpent >= 25000 || newRentalsCount >= 2) {
-          dynamicTier = 'vip_silver';
-        }
-      }
-
-      updateCustomer(existingCust.id, {
-        totalRentalsCount: newRentalsCount,
-        totalSpentEGP: newTotalSpent,
-        loyaltyPoints: newPoints,
-        tier: dynamicTier,
-        trustScore: Math.min(100, (existingCust.trustScore || 80) + 3),
-        nationality: newBooking.customer.nationality || existingCust.nationality || 'مصري',
-      });
-    } else {
-      addCustomer({
-        fullName: newBooking.customer.fullName,
-        phone: newBooking.customer.phone,
-        whatsapp: newBooking.customer.whatsapp || newBooking.customer.phone,
-        nationalId: newBooking.customer.nationalId,
-        licenseNumber: newBooking.customer.licenseNumber,
-        nationality: newBooking.customer.nationality || 'مصري',
-        tier: 'regular',
-        riskStatus: 'safe',
-        trustScore: 88,
-        loyaltyPoints: earnedPoints + 50,
-        totalRentalsCount: 1,
-        totalSpentEGP: newBooking.finalTotalEGP,
-        notes: 'تم تسجيله وتوثيقه تلقائياً عبر حجز جديد',
-      });
-    }
-
-    // إنشاء فاتورة تلقائياً
-    await addInvoice({
-      bookingId: newBooking.id,
-      customerName: newBooking.customer.fullName,
-      customerPhone: newBooking.customer.phone,
-      carDetails: `${newBooking.carName} (${newBooking.carPlate})`,
-      totalAmountEGP: newBooking.finalTotalEGP,
-      depositAmountEGP: newBooking.securityDepositEGP,
-      paymentMethod: 'cash',
-      paid: true,
-      issuedBy: newBooking.staffName,
-    });
-
     try {
-      await supabase.from('bookings').insert({
+      const { error } = await supabase.from('bookings').insert({
         id: newBooking.id,
         booking_number: newBooking.bookingNumber,
         car_id: newBooking.carId,
@@ -169,14 +92,75 @@ export function useFleetBookings({
         staff_name: newBooking.staffName,
         notes: newBooking.notes,
       });
-    } catch {
-      // ignore
+      if (error) throw error;
+    } catch (error) {
+      console.warn('Cloud booking insert failed:', error);
+      reportFleetWriteError('تعذر حفظ الحجز في قاعدة البيانات؛ لم يُسجل الحجز.');
+      return false;
     }
+
+    setBookings((prev) => [newBooking, ...prev]);
+
+    // Update dependent records only after the booking itself has been saved.
+    if (newBooking.status === 'active') await updateCar(newBooking.carId, { status: 'rented' });
+
+    const existingCust = customers.find(
+      (c) => (newBooking.customer.nationalId && c.nationalId === newBooking.customer.nationalId) ||
+        c.phone === newBooking.customer.phone
+    );
+    const earnedPoints = Math.round(newBooking.finalTotalEGP / 100);
+    if (existingCust) {
+      const newTotalSpent = (existingCust.totalSpentEGP || 0) + newBooking.finalTotalEGP;
+      const newRentalsCount = (existingCust.totalRentalsCount || 0) + 1;
+      const newPoints = Math.max(0, (existingCust.loyaltyPoints || 0) - (newBooking.loyaltyPointsRedeemed || 0) + earnedPoints);
+      let dynamicTier = existingCust.tier || 'regular';
+      if (dynamicTier !== 'blacklist') {
+        if (newTotalSpent >= 60000 || newRentalsCount >= 5) dynamicTier = 'vip_gold';
+        else if (newTotalSpent >= 25000 || newRentalsCount >= 2) dynamicTier = 'vip_silver';
+      }
+      await updateCustomer(existingCust.id, {
+        totalRentalsCount: newRentalsCount,
+        totalSpentEGP: newTotalSpent,
+        loyaltyPoints: newPoints,
+        tier: dynamicTier,
+        trustScore: Math.min(100, (existingCust.trustScore || 80) + 3),
+        nationality: newBooking.customer.nationality || existingCust.nationality || 'مصري',
+      });
+    } else {
+      await addCustomer({
+        fullName: newBooking.customer.fullName,
+        phone: newBooking.customer.phone,
+        whatsapp: newBooking.customer.whatsapp || newBooking.customer.phone,
+        nationalId: newBooking.customer.nationalId,
+        licenseNumber: newBooking.customer.licenseNumber,
+        nationality: newBooking.customer.nationality || 'مصري',
+        tier: 'regular',
+        riskStatus: 'safe',
+        trustScore: 88,
+        loyaltyPoints: earnedPoints + 50,
+        totalRentalsCount: 1,
+        totalSpentEGP: newBooking.finalTotalEGP,
+        notes: 'تم تسجيله وتوثيقه تلقائياً عبر حجز جديد',
+      });
+    }
+
+    await addInvoice({
+      bookingId: newBooking.id,
+      customerName: newBooking.customer.fullName,
+      customerPhone: newBooking.customer.phone,
+      carDetails: `${newBooking.carName} (${newBooking.carPlate})`,
+      totalAmountEGP: newBooking.finalTotalEGP,
+      depositAmountEGP: newBooking.securityDepositEGP,
+      paymentMethod: 'cash',
+      paid: true,
+      issuedBy: newBooking.staffName,
+    });
 
     logAction(
       'إنشاء حجز وفاتورة جديدة',
       `تم حجز ${newBooking.carName} للعميل ${newBooking.customer.fullName} بقيمة ${newBooking.finalTotalEGP.toLocaleString()} ج.م`
     );
+    return true;
   };
 
   const updateBookingStatus = async (
@@ -184,17 +168,31 @@ export function useFleetBookings({
     status: Booking['status'],
     returnKm?: number,
     delayDetails?: ReturnInspectionPayload
-  ) => {
+  ): Promise<boolean> => {
     const booking = bookings.find((b) => b.id === id);
-    if (!booking) return;
+    if (!booking) return false;
 
     const penaltyFee = delayDetails?.penaltyFee || 0;
     const cleanlinessFee = delayDetails?.cleanlinessFee || 0;
     const damageFee = delayDetails?.damageFee || 0;
     const totalDeductions = penaltyFee + cleanlinessFee + damageFee;
 
-    setBookings((prev) => {
-      const updated = prev.map((b) => {
+    const { data: savedBooking, error: bookingSaveError } = await supabase.from('bookings').update({
+      status,
+      return_km: returnKm || booking.startKm,
+      deposit_status: status === 'completed'
+        ? totalDeductions >= booking.securityDepositEGP
+          ? 'pending'
+          : totalDeductions > 0 ? 'refunded_partial' : 'refunded_full'
+        : booking.depositStatus,
+    }).eq('id', id).select('id').maybeSingle();
+    if (bookingSaveError || !savedBooking) {
+      console.warn('Cloud booking status update failed:', bookingSaveError);
+      reportFleetWriteError('تعذر حفظ حالة الحجز في قاعدة البيانات؛ لم يُعتمد التغيير.');
+      return false;
+    }
+
+    setBookings((prev) => prev.map((b) => {
         if (b.id === id) {
           return {
             ...b,
@@ -223,10 +221,7 @@ export function useFleetBookings({
           };
         }
         return b;
-      });
-      saveToStorage('yg_bookings', updated);
-      return updated;
-    });
+      }));
 
     // لا تُحجز السيارة فعليًا حتى تعتمد الإدارة الطلب العام.
     if (status === 'active' && booking.status === 'pending_approval') {
@@ -284,7 +279,7 @@ export function useFleetBookings({
           updatedNotes = updatedNotes ? `${updatedNotes}${notePrefix}${delayDetails.inspectionNotes}` : delayDetails.inspectionNotes;
         }
 
-        updateCustomer(existingCust.id, {
+        await updateCustomer(existingCust.id, {
           starRating: newStarRating,
           ratingCount: newRatingCount,
           cleanlinessScore: delayDetails?.cleanlinessScore || existingCust.cleanlinessScore || 'clean',
@@ -315,23 +310,7 @@ export function useFleetBookings({
       logAction('استلام سيارة وتقييم العميل', logSummary);
     }
 
-    try {
-      await supabase
-        .from('bookings')
-        .update({
-          status,
-          return_km: returnKm || booking.startKm,
-          deposit_status:
-            status === 'completed'
-              ? totalDeductions > 0
-                ? 'refunded_partial'
-                : 'refunded_full'
-              : booking.depositStatus,
-        })
-        .eq('id', id);
-    } catch {
-      // ignore
-    }
+    return true;
   };
 
   const reviewPendingBooking = async (
@@ -355,11 +334,7 @@ export function useFleetBookings({
     if (!response.ok) throw new Error(result.error || 'تعذرت مراجعة طلب الحجز.');
 
     const reviewed = mapCloudBooking(result.booking);
-    setBookings((previous) => {
-      const updated = previous.map((item) => item.id === reviewed.id ? reviewed : item);
-      saveToStorage('yg_bookings', updated);
-      return updated;
-    });
+    setBookings((previous) => previous.map((item) => item.id === reviewed.id ? reviewed : item));
     if (decision === 'approved') await updateCar(booking.carId, { status: 'rented' });
     logAction(
       decision === 'approved' ? 'اعتماد طلب حجز' : 'رفض طلب حجز',

@@ -39,6 +39,8 @@ export default function AdminDashboardPage() {
     isAuthReady,
     isCloudConnected,
     cloudSyncError,
+    dataOperationError,
+    clearDataOperationError,
     staffList,
     staffListError,
     addStaff,
@@ -66,8 +68,7 @@ export default function AdminDashboardPage() {
     toggleCouponActive,
     deleteCoupon,
     auditLogs, 
-    visitorStats,
-    resetToDefault 
+    visitorStats
   } = useFleet();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
@@ -287,19 +288,22 @@ export default function AdminDashboardPage() {
 
   const handleCarFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let saved = false;
     if (editingCar) {
-      await updateCar(editingCar.id, {
+      saved = await updateCar(editingCar.id, {
         ...carForm,
         coverImage: carForm.images[0] || '/car-mercedes.jpg'
       });
     } else {
-      await addCar({
+      saved = await addCar({
         ...carForm,
         coverImage: carForm.images[0] || '/car-mercedes.jpg',
         monthlyPriceEGP: carForm.dailyPriceEGP * 24,
       });
     }
+    if (!saved) return;
     setIsAddCarOpen(false);
+    setEditingCar(null);
   };
 
   // معالجات المودال - الموظفين
@@ -338,13 +342,15 @@ export default function AdminDashboardPage() {
   };
 
   // معالجات المودال - الملاك
-  const handleOwnerFormSubmit = (e: React.FormEvent) => {
+  const handleOwnerFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let saved = false;
     if (editingOwner) {
-      updateOwner(editingOwner.id, ownerForm);
+      saved = await updateOwner(editingOwner.id, ownerForm);
     } else {
-      addOwner(ownerForm);
+      saved = await addOwner(ownerForm);
     }
+    if (!saved) return;
     setIsAddOwnerOpen(false);
     setEditingOwner(null);
   };
@@ -402,23 +408,23 @@ export default function AdminDashboardPage() {
       notes: newBooking.notes
     };
 
-    await addBooking(bookingPayload);
-
-    setIsAddBookingOpen(false);
+    const saved = await addBooking(bookingPayload);
+    if (saved) setIsAddBookingOpen(false);
   };
 
   // إنهاء حجز واستلام السيارة والفحص الشامل
-  const handleReturnCarSubmit = (
+  const handleReturnCarSubmit = async (
     e: React.FormEvent,
     inspectionData?: ReturnInspectionPayload
   ) => {
     e.preventDefault();
     if (!selectedBookingForReturn) return;
     const km = parseInt(returnKmInput) || selectedBookingForReturn.startKm;
-    updateBookingStatus(selectedBookingForReturn.id, 'completed', km, {
+    const saved = await updateBookingStatus(selectedBookingForReturn.id, 'completed', km, {
       ...inspectionData,
       staffName: currentStaff?.name,
     });
+    if (!saved) return;
     setSelectedBookingForReturn(null);
     setReturnKmInput('');
   };
@@ -480,7 +486,6 @@ export default function AdminDashboardPage() {
         couponsCount={coupons.length}
         isMobileOpen={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
-        resetToDefault={resetToDefault}
         handleLogout={handleLogout}
       />
 
@@ -509,6 +514,18 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
+        {dataOperationError && (
+          <div
+            role="alert"
+            className="mx-3.5 mt-3 flex items-start justify-between gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 sm:mx-6"
+          >
+            <span>{dataOperationError}</span>
+            <button type="button" onClick={clearDataOperationError} className="shrink-0 font-bold underline">
+              إغلاق
+            </button>
+          </div>
+        )}
+
         {/* منطقة المحتوى التفاعلي (Tabs) */}
         <div className="p-3.5 sm:p-6 flex-1 space-y-6">
 
@@ -521,6 +538,7 @@ export default function AdminDashboardPage() {
               activeBookings={activeBookings}
               totalRevenueEGP={totalRevenueEGP}
               totalHeldDepositsEGP={totalHeldDepositsEGP}
+              customersCount={customers.length}
               currentStaff={currentStaff}
               visitorStats={visitorStats}
               cars={cars}
@@ -767,13 +785,15 @@ export default function AdminDashboardPage() {
         isOpen={isCustomerModalOpen}
         onClose={() => setIsCustomerModalOpen(false)}
         editingCustomer={editingCustomer}
-        onSubmit={(data) => {
+        onSubmit={async (data) => {
+          let saved = false;
           if (editingCustomer) {
-            updateCustomer(editingCustomer.id, data);
+            saved = await updateCustomer(editingCustomer.id, data);
           } else {
-            addCustomer(data);
+            saved = Boolean(await addCustomer(data));
           }
-          setIsCustomerModalOpen(false);
+          if (saved) setIsCustomerModalOpen(false);
+          return saved;
         }}
       />
 

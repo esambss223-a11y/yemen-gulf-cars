@@ -16,7 +16,6 @@ import {
   BookingReviewInput,
 } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
-import { saveToStorage } from './fleet/fleetStorage';
 import { useFleetMisc } from './fleet/useFleetMisc';
 import { useFleetAuth } from './fleet/useFleetAuth';
 import { useFleetCars } from './fleet/useFleetCars';
@@ -34,6 +33,8 @@ export interface FleetContextType {
   // حالة الاتصال السحابي
   isCloudConnected: boolean;
   cloudSyncError: string;
+  dataOperationError: string;
+  clearDataOperationError: () => void;
 
   // إدارة الموظفين
   staffList: StaffUser[];
@@ -45,25 +46,25 @@ export interface FleetContextType {
 
   // إدارة العملاء وسجل CRM
   customers: Customer[];
-  addCustomer: (customer: Omit<Customer, 'id'>) => Customer;
-  updateCustomer: (id: string, partial: Partial<Customer>) => void;
-  deleteCustomer: (id: string) => void;
+  addCustomer: (customer: Omit<Customer, 'id'>) => Promise<Customer | null>;
+  updateCustomer: (id: string, partial: Partial<Customer>) => Promise<boolean>;
+  deleteCustomer: (id: string) => Promise<boolean>;
 
   // أسطول السيارات
   cars: Car[];
-  addCar: (car: Omit<Car, 'id'>) => Promise<void>;
-  updateCar: (id: string, car: Partial<Car>) => Promise<void>;
-  deleteCar: (id: string) => Promise<void>;
+  addCar: (car: Omit<Car, 'id'>) => Promise<boolean>;
+  updateCar: (id: string, car: Partial<Car>) => Promise<boolean>;
+  deleteCar: (id: string) => Promise<boolean>;
 
   // الحجوزات والعقود
   bookings: Booking[];
-  addBooking: (booking: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>) => Promise<void>;
+  addBooking: (booking: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>) => Promise<boolean>;
   updateBookingStatus: (
     id: string, 
     status: Booking['status'], 
     returnKm?: number,
     delayDetails?: ReturnInspectionPayload
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   reviewPendingBooking: (
     booking: Booking,
     decision: 'approved' | 'rejected',
@@ -73,13 +74,13 @@ export interface FleetContextType {
 
   // الفواتير
   invoices: Invoice[];
-  addInvoice: (invoice: Omit<Invoice, 'id' | 'invoiceNumber' | 'issuedAt'>) => Promise<void>;
+  addInvoice: (invoice: Omit<Invoice, 'id' | 'invoiceNumber' | 'issuedAt'>) => Promise<boolean>;
 
   // الملاك والشركاء
   owners: VehicleOwner[];
-  addOwner: (owner: Omit<VehicleOwner, 'id'>) => Promise<void>;
-  updateOwner: (id: string, partial: Partial<VehicleOwner>) => void;
-  deleteOwner: (id: string) => void;
+  addOwner: (owner: Omit<VehicleOwner, 'id'>) => Promise<boolean>;
+  updateOwner: (id: string, partial: Partial<VehicleOwner>) => Promise<boolean>;
+  deleteOwner: (id: string) => Promise<boolean>;
 
   // الكوبونات وأكواد الخصم
   coupons: PromoCoupon[];
@@ -96,8 +97,6 @@ export interface FleetContextType {
   // إحصائيات الزوار
   visitorStats: VisitorStats;
 
-  // إعادة ضبط المصنع
-  resetToDefault: () => void;
 }
 
 const FleetContext = createContext<FleetContextType | undefined>(undefined);
@@ -106,10 +105,20 @@ const PUBLIC_CAR_FIELDS = 'id, make, model, year, category, color, current_km, d
 
 export function FleetProvider({ children }: { children: React.ReactNode }) {
   const [cloudSyncError, setCloudSyncError] = useState('');
+  const [dataOperationError, setDataOperationError] = useState('');
   const pathname = usePathname();
 
   // 1. الوحدة المساعدة: السجلات، الفواتير، الزيارات، وإحصائيات السحابة
   const misc = useFleetMisc({});
+
+  useEffect(() => {
+    const handleWriteError = (event: Event) => {
+      const message = (event as CustomEvent<string>).detail;
+      setDataOperationError(typeof message === 'string' ? message : 'تعذر حفظ التغيير في قاعدة البيانات.');
+    };
+    window.addEventListener('fleet:write-error', handleWriteError);
+    return () => window.removeEventListener('fleet:write-error', handleWriteError);
+  }, []);
 
   // 2. وحدة المصادقة والموظفين
   const auth = useFleetAuth({
@@ -199,19 +208,16 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
               active: Boolean(c.active),
             }));
             misc.setCoupons(mapped);
-            saveToStorage('yg_coupons', mapped);
           }
 
           if (!bkErr && cloudBookings) {
             const mapped = cloudBookings.map(fleetBookings.mapCloudBooking);
             fleetBookings.setBookings(mapped);
-            saveToStorage('yg_bookings', mapped);
           }
 
           if (!ownersErr && cloudOwners) {
             const mapped = cloudOwners.map(fleetOwners.mapCloudOwner);
             fleetOwners.setOwners(mapped);
-            saveToStorage('yg_owners', mapped);
           }
 
           if (!custErr && cloudCustomers) {
@@ -237,7 +243,6 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
               createdAt: c.created_at,
             }));
             fleetCustomers.setCustomers(mapped);
-            saveToStorage('yg_customers', mapped);
           }
 
           if (!invoicesErr && cloudInvoices) {
@@ -258,7 +263,6 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
               issuedBy: invoice.issued_by || '',
             }));
             misc.setInvoices(mapped);
-            saveToStorage('yg_invoices', mapped);
           }
 
           if (!auditErr && cloudAuditLogs) {
@@ -271,19 +275,17 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
               details: log.details,
             }));
             misc.setAuditLogs(mapped);
-            saveToStorage('yg_audit_logs', mapped);
           }
         }
 
         if (!carsErr && cloudCars) {
           const mapped = cloudCars.map(fleetCars.mapCloudCar);
           fleetCars.setCars(mapped);
-          saveToStorage('yg_cars', mapped);
         }
 
         misc.setIsCloudConnected(failures.length === 0);
         setCloudSyncError(failures.length
-          ? `تعذرت مزامنة أقسام: ${failures.join('، ')}. البيانات الظاهرة قد تكون نسخة محفوظة محليًا.`
+          ? `تعذرت مزامنة أقسام: ${failures.join('، ')}. قد تكون البيانات الظاهرة غير مكتملة.`
           : '');
       } catch (err) {
         console.warn('Initial data load notice:', err);
@@ -325,15 +327,6 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, auth.currentStaff, misc.trackAndLoadVisits]);
 
-  // دالة إعادة ضبط المصنع
-  const resetToDefault = misc.createResetFunction(
-    fleetCars.setCars,
-    fleetBookings.setBookings,
-    fleetOwners.setOwners,
-    auth.setStaffList,
-    fleetCustomers.setCustomers
-  );
-
   return (
     <FleetContext.Provider
       value={{
@@ -343,6 +336,8 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         signOut: auth.signOut,
         isCloudConnected: misc.isCloudConnected,
         cloudSyncError,
+        dataOperationError,
+        clearDataOperationError: () => setDataOperationError(''),
         staffList: auth.staffList,
         staffListError: auth.staffListError,
         addStaff: auth.addStaff,
@@ -376,7 +371,6 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         auditLogs: misc.auditLogs,
         logAction: misc.logAction,
         visitorStats: misc.visitorStats,
-        resetToDefault,
       }}
     >
       {children}

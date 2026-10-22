@@ -2,20 +2,17 @@
 
 import { useState } from 'react';
 import { Customer } from '@/types/fleet';
-import { INITIAL_CUSTOMERS } from '@/lib/initial-data';
 import { supabase } from '@/lib/supabase';
-import { saveToStorage, loadFromStorage } from './fleetStorage';
+import { reportFleetWriteError } from './fleetStorage';
 
 interface UseFleetCustomersProps {
   logAction: (action: string, details: string) => void;
 }
 
 export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
-  const [customers, setCustomers] = useState<Customer[]>(() =>
-    loadFromStorage('yg_customers', INITIAL_CUSTOMERS)
-  );
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
-  const addCustomer = (customerData: Omit<Customer, 'id'>): Customer => {
+  const addCustomer = async (customerData: Omit<Customer, 'id'>): Promise<Customer | null> => {
     const newCustomer: Customer = {
       ...customerData,
       id: `cust-${Date.now()}`,
@@ -26,14 +23,8 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
       totalRentalsCount: customerData.totalRentalsCount ?? 0,
       totalSpentEGP: customerData.totalSpentEGP ?? 0,
     };
-    setCustomers((prev) => {
-      const updated = [newCustomer, ...prev];
-      saveToStorage('yg_customers', updated);
-      return updated;
-    });
-
     try {
-      supabase.from('customers').insert({
+      const { error } = await supabase.from('customers').insert({
         id: newCustomer.id,
         full_name: newCustomer.fullName,
         phone: newCustomer.phone,
@@ -52,22 +43,20 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
         total_rentals_count: newCustomer.totalRentalsCount,
         total_spent_egp: newCustomer.totalSpentEGP,
         notes: newCustomer.notes,
-      }).then();
-    } catch {
-      // ignore
+      });
+      if (error) throw error;
+    } catch (error) {
+      console.warn('Cloud customer insert failed:', error);
+      reportFleetWriteError('تعذرت إضافة العميل إلى قاعدة البيانات؛ لم يُحفظ.');
+      return null;
     }
 
+    setCustomers((prev) => [newCustomer, ...prev]);
     logAction('تسجيل عميل جديد', `تمت إضافة العميل ${newCustomer.fullName} في سجل العملاء`);
     return newCustomer;
   };
 
-  const updateCustomer = (id: string, partial: Partial<Customer>) => {
-    setCustomers((prev) => {
-      const updated = prev.map((c) => (c.id === id ? { ...c, ...partial } : c));
-      saveToStorage('yg_customers', updated);
-      return updated;
-    });
-
+  const updateCustomer = async (id: string, partial: Partial<Customer>): Promise<boolean> => {
     try {
       const payload: Record<string, unknown> = {};
       if (partial.fullName !== undefined) payload.full_name = partial.fullName;
@@ -85,29 +74,36 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
       if (partial.totalSpentEGP !== undefined) payload.total_spent_egp = partial.totalSpentEGP;
       if (partial.notes !== undefined) payload.notes = partial.notes;
 
-      supabase.from('customers').update(payload).eq('id', id).then();
-    } catch {
-      // ignore
+      if (!Object.keys(payload).length) return true;
+      const { data, error } = await supabase.from('customers').update(payload).eq('id', id).select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('CUSTOMER_NOT_FOUND');
+    } catch (error) {
+      console.warn('Cloud customer update failed:', error);
+      reportFleetWriteError('تعذر حفظ تعديل العميل في قاعدة البيانات؛ لم يُعتمد التغيير.');
+      return false;
     }
 
+    setCustomers((prev) => prev.map((c) => (c.id === id ? { ...c, ...partial } : c)));
     logAction('تحديث بيانات عميل', `تم تحديث ملف العميل ID: ${id}`);
+    return true;
   };
 
-  const deleteCustomer = (id: string) => {
+  const deleteCustomer = async (id: string): Promise<boolean> => {
     const cust = customers.find((c) => c.id === id);
-    setCustomers((prev) => {
-      const updated = prev.filter((c) => c.id !== id);
-      saveToStorage('yg_customers', updated);
-      return updated;
-    });
-
     try {
-      supabase.from('customers').delete().eq('id', id).then();
-    } catch {
-      // ignore
+      const { data, error } = await supabase.from('customers').delete().eq('id', id).select('id').maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('CUSTOMER_NOT_FOUND');
+    } catch (error) {
+      console.warn('Cloud customer deletion failed:', error);
+      reportFleetWriteError('تعذر حذف العميل من قاعدة البيانات؛ لم يُحذف السجل.');
+      return false;
     }
 
+    setCustomers((prev) => prev.filter((c) => c.id !== id));
     logAction('حذف عميل من الدليل', `تم حذف العميل: ${cust?.fullName}`);
+    return true;
   };
 
   return {
