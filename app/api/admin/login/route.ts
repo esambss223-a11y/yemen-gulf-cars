@@ -1,8 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/server/staff-auth';
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from '@/lib/supabase-config';
 
 export async function POST(request: Request) {
   let username: string;
@@ -19,10 +17,6 @@ export async function POST(request: Request) {
   if (!/^[a-z0-9._-]{1,64}$/.test(username) || password.length < 1 || password.length > 256) {
     return Response.json({ code: 'INVALID_INPUT', error: 'يرجى إدخال اسم الموظف وكلمة المرور' }, { status: 400 });
   }
-  if (!SUPABASE_URL || !ANON_KEY) {
-    return Response.json({ code: 'AUTH_SERVICE_UNAVAILABLE', error: 'خدمة تسجيل الدخول غير مهيأة' }, { status: 503 });
-  }
-
   const admin = createServiceClient();
   if (!admin) {
     return Response.json({ code: 'AUTH_SERVICE_UNAVAILABLE', error: 'خدمة التحقق من الموظفين غير مهيأة' }, { status: 503 });
@@ -51,7 +45,7 @@ export async function POST(request: Request) {
     return Response.json({ code: 'AUTH_ACCOUNT_UNAVAILABLE', error: 'حساب الدخول المرتبط بالموظف غير متاح' }, { status: 503 });
   }
 
-  const authClient = createClient(SUPABASE_URL, ANON_KEY, {
+  const authClient = createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: authResult, error: authError } = await authClient.auth.signInWithPassword({

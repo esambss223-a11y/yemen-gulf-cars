@@ -1,11 +1,12 @@
 import 'server-only';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from '@/lib/supabase-config';
 
 export type StaffRole = 'super_admin' | 'rental_agent' | 'accountant';
 
 export function createServiceClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return null;
   return createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -13,8 +14,8 @@ export function createServiceClient(): SupabaseClient | null {
 }
 
 export async function authorizeStaffRequest(request: Request, requireAdmin = false) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = SUPABASE_URL;
+  const anonKey = SUPABASE_PUBLIC_KEY;
   const admin = createServiceClient();
   const token = request.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1];
 
