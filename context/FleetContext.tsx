@@ -11,7 +11,8 @@ import {
   AuditLogItem,
   VisitorStats,
   Customer,
-  ReturnInspectionPayload
+  ReturnInspectionPayload,
+  BookingReviewInput,
 } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
 import { useFleetMisc } from './fleet/useFleetMisc';
@@ -59,6 +60,12 @@ export interface FleetContextType {
     status: Booking['status'], 
     returnKm?: number,
     delayDetails?: ReturnInspectionPayload
+  ) => Promise<void>;
+  reviewPendingBooking: (
+    booking: Booking,
+    decision: 'approved' | 'rejected',
+    details?: BookingReviewInput,
+    reason?: string,
   ) => Promise<void>;
 
   // الفواتير
@@ -248,6 +255,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         bookings: fleetBookings.bookings,
         addBooking: fleetBookings.addBooking,
         updateBookingStatus: fleetBookings.updateBookingStatus,
+        reviewPendingBooking: fleetBookings.reviewPendingBooking,
         invoices: misc.invoices,
         addInvoice: misc.addInvoice,
         owners: fleetOwners.owners,

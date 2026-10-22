@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Booking, ReturnInspectionPayload, Customer, Invoice, Car } from '@/types/fleet';
+import { Booking, BookingReviewInput, ReturnInspectionPayload, Customer, Invoice, Car } from '@/types/fleet';
 import { INITIAL_BOOKINGS } from '@/lib/initial-data';
 import { supabase } from '@/lib/supabase';
 import { saveToStorage, loadFromStorage } from './fleetStorage';
@@ -334,11 +334,45 @@ export function useFleetBookings({
     }
   };
 
+  const reviewPendingBooking = async (
+    booking: Booking,
+    decision: 'approved' | 'rejected',
+    details?: BookingReviewInput,
+    reason?: string,
+  ) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('انتهت جلسة الدخول. سجّل الدخول مجددًا.');
+
+    const response = await fetch('/api/admin/bookings/review', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ id: booking.id, decision, ...(details || {}), reason }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'تعذرت مراجعة طلب الحجز.');
+
+    const reviewed = mapCloudBooking(result.booking);
+    setBookings((previous) => {
+      const updated = previous.map((item) => item.id === reviewed.id ? reviewed : item);
+      saveToStorage('yg_bookings', updated);
+      return updated;
+    });
+    if (decision === 'approved') await updateCar(booking.carId, { status: 'rented' });
+    logAction(
+      decision === 'approved' ? 'اعتماد طلب حجز' : 'رفض طلب حجز',
+      `${booking.bookingNumber} — ${booking.customer.fullName}${reason ? ` — ${reason}` : ''}`,
+    );
+  };
+
   return {
     bookings,
     setBookings,
     mapCloudBooking,
     addBooking,
     updateBookingStatus,
+    reviewPendingBooking,
   };
 }

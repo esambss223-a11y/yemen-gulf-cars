@@ -27,13 +27,16 @@ import {
   Key
 } from 'lucide-react';
 import { Booking, BookingStatus, StaffUser } from '@/types/fleet';
+import BookingReviewModal from '@/components/admin/modals/BookingReviewModal';
+import { BookingReviewInput } from '@/types/fleet';
 
 interface BookingsTabProps {
   bookings: Booking[];
   currentStaff?: StaffUser;
   onOpenContract: (booking: Booking) => void;
   onReturnCar: (booking: Booking) => void;
-  onApproveBooking?: (booking: Booking) => void;
+  onApproveBooking?: (booking: Booking, details: BookingReviewInput) => Promise<void>;
+  onRejectBooking?: (booking: Booking, reason: string) => Promise<void>;
 }
 
 type ViewSection = 'active' | 'completed' | 'all';
@@ -44,11 +47,13 @@ export default function BookingsTab({
   onOpenContract,
   onReturnCar,
   onApproveBooking,
+  onRejectBooking,
 }: BookingsTabProps) {
   // التبويب الافتراضي: العقود الحالية والنشطة فقط لمنع اللخبطة
   const [activeSection, setActiveSection] = useState<ViewSection>('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | BookingStatus>('all');
+  const [bookingForReview, setBookingForReview] = useState<Booking | null>(null);
 
   // فرز العقود حسب حالتها (الحالية vs المستلمة)
   const activeBookings = useMemo(() => {
@@ -223,13 +228,13 @@ export default function BookingsTab({
                   <td className="py-3.5 pl-4 text-center">
                     <div className="flex items-center justify-center gap-1.5">
                       {/* اعتماد الحجز المعلق */}
-                      {bk.status === 'pending_approval' && onApproveBooking && (
+                      {bk.status === 'pending_approval' && onApproveBooking && currentStaff?.role === 'super_admin' && (
                         <button
-                          onClick={() => onApproveBooking(bk)}
+                          onClick={() => setBookingForReview(bk)}
                           className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-xs transition-colors"
-                          title="اعتماد تسليم السيارة للعميل"
+                          title="مراجعة بيانات العميل والموعد والسعر قبل الاعتماد"
                         >
-                          <Check className="w-3.5 h-3.5" /> اعتماد الصفقة
+                          <FileText className="w-3.5 h-3.5" /> مراجعة الطلب
                         </button>
                       )}
 
@@ -571,6 +576,15 @@ export default function BookingsTab({
           {renderActiveTable(filteredActive)}
           {renderCompletedTable(filteredCompleted)}
         </div>
+      )}
+
+      {bookingForReview && onApproveBooking && onRejectBooking && (
+        <BookingReviewModal
+          booking={bookingForReview}
+          onClose={() => setBookingForReview(null)}
+          onApprove={(details) => onApproveBooking(bookingForReview, details)}
+          onReject={(reason) => onRejectBooking(bookingForReview, reason)}
+        />
       )}
 
     </div>

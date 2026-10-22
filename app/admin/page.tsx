@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useFleet } from '@/context/FleetContext';
-import { Car, Booking, UserRole, VehicleOwner, StaffUser, OwnerCompensationType, Customer, ReturnInspectionPayload } from '@/types/fleet';
+import { Car, Booking, BookingReviewInput, UserRole, VehicleOwner, StaffUser, OwnerCompensationType, Customer, ReturnInspectionPayload } from '@/types/fleet';
 
 // Modular UI Components
 import AdminLogin from '@/components/admin/AdminLogin';
@@ -55,6 +55,7 @@ export default function AdminDashboardPage() {
     bookings, 
     addBooking, 
     updateBookingStatus, 
+    reviewPendingBooking,
     owners, 
     addOwner,
     updateOwner,
@@ -558,11 +559,8 @@ export default function AdminDashboardPage() {
                 setSelectedBookingForReturn(bk);
                 setReturnKmInput(String(bk.startKm + 300));
               }}
-              onApproveBooking={async (bk) => {
-                if (confirm(`هل قمت بفحص رخصة وهوية العميل "${bk.customer.fullName}" والتأكد من استلام العربون؟`)) {
-                  await updateBookingStatus(bk.id, 'active', undefined, { staffName: currentStaff.name });
-                }
-              }}
+              onApproveBooking={(bk, details: BookingReviewInput) => reviewPendingBooking(bk, 'approved', details)}
+              onRejectBooking={(bk, reason) => reviewPendingBooking(bk, 'rejected', undefined, reason)}
             />
           )}
 

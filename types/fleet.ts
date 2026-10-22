@@ -103,7 +103,25 @@ export interface Customer {
   notes?: string;           // ملاحظات سلوك العميل وتفضيلاته
   idPhotoUrl?: string;      // صورة البطاقة / الجواز إن وجدت
   licensePhotoUrl?: string; // صورة الرخصة إن وجدت
+  identityVerified?: boolean;
+  licenseVerified?: boolean;
+  documentsVerifiedAt?: string;
+  documentsVerifiedBy?: string;
   createdAt?: string;       // تاريخ تسجيل العميل
+}
+
+export interface BookingReviewInput {
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  dailyRateEGP: number;
+  discountAmountEGP: number;
+  securityDepositEGP: number;
+  nationalId: string;
+  licenseNumber: string;
+  identityVerified: boolean;
+  licenseVerified: boolean;
 }
 
 export interface Booking {
