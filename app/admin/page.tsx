@@ -59,6 +59,7 @@ export default function AdminDashboardPage() {
     addBooking, 
     updateBookingStatus, 
     reviewPendingBooking,
+    activateConfirmedBooking,
     owners, 
     addOwner,
     updateOwner,
@@ -581,6 +582,7 @@ export default function AdminDashboardPage() {
           {activeTab === 'bookings' && (
             <BookingsTab
               bookings={bookings}
+              coupons={coupons}
               currentStaff={currentStaff}
               onOpenContract={(bk) => setSelectedBookingForContract(bk)}
               onReturnCar={(bk) => {
@@ -588,6 +590,7 @@ export default function AdminDashboardPage() {
                 setReturnKmInput(String(bk.startKm + 300));
               }}
               onApproveBooking={(bk, details: BookingReviewInput) => reviewPendingBooking(bk, 'approved', details)}
+              onActivateBooking={activateConfirmedBooking}
               onRejectBooking={(bk, reason) => reviewPendingBooking(bk, 'rejected', undefined, reason)}
             />
           )}
@@ -775,6 +778,7 @@ export default function AdminDashboardPage() {
         onClose={() => setIsAddBookingOpen(false)}
         cars={cars}
         customers={customers}
+        coupons={coupons}
         newBooking={newBooking}
         setNewBooking={setNewBooking}
         onSubmit={handleAddBookingSubmit}

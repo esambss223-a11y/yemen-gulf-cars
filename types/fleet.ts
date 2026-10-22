@@ -81,6 +81,7 @@ export interface Car {
 export type BookingStatus = 'pending_approval' | 'confirmed' | 'active' | 'completed' | 'cancelled';
 export type CustomerTier = 'vip_gold' | 'vip_silver' | 'regular' | 'blacklist';
 export type CustomerRiskStatus = 'safe' | 'medium' | 'high_risk';
+export type CustomerSource = 'website' | 'office';
 
 export interface Customer {
   id: string;
@@ -89,6 +90,7 @@ export interface Customer {
   whatsapp?: string;
   nationalId: string;       // الرقم القومي أو جواز السفر
   licenseNumber: string;    // رقم رخصة القيادة
+  source?: CustomerSource;  // مصدر التسجيل: الموقع أو المكتب
   nationality?: string;     // الجنسية: مصري، سعودي، كويتي، إماراتي، إلخ
   tier?: CustomerTier;      // تصنيف العميل: VIP ذهبي / فضي / عادي / قائمة سوداء
   riskStatus?: CustomerRiskStatus; // مؤشر المخاطر: آمن / متوسط / عالي
@@ -202,7 +204,7 @@ export interface Invoice {
 // 5. أكواد الخصم
 export interface PromoCoupon {
   id: string;
-  code: string;               // مثلا: VIP2026
+  code: string;               // كود فعّال أنشأته الإدارة
   discountType: 'percentage' | 'fixed_egp';
   discountValue: number;      // مثلا 10% أو 500 جنيه
   expiresAt: string;

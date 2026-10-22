@@ -84,5 +84,42 @@ export async function POST(request: Request) {
     }, { status: 500 });
   }
 
+  // A blank public coupon must never inherit a legacy DB default or stale RPC result.
+  if (!discountCode) {
+    const bookingId = data && typeof data === 'object' && typeof data.id === 'string' ? data.id : '';
+    if (!bookingId) {
+      console.error('[public-booking:NO_COUPON_NORMALIZE_ID]');
+      return Response.json({ code: 'BOOKING_NORMALIZATION_FAILED', error: 'تعذر تأكيد السعر الكامل للطلب. تواصل مع الإدارة قبل إعادة الإرسال.' }, { status: 503 });
+    }
+
+    const { data: savedBooking, error: lookupError } = await admin.from('bookings')
+      .select('id, total_rent_egp').eq('id', bookingId).maybeSingle();
+    if (lookupError || !savedBooking) {
+      console.error('[public-booking:NO_COUPON_LOOKUP_FAILED]', lookupError?.code || 'NOT_FOUND');
+      return Response.json({ code: 'BOOKING_NORMALIZATION_FAILED', error: 'سُجل الطلب لكن تعذر تأكيد السعر الكامل. أبلغ الإدارة برقم الطلب قبل إعادة الإرسال.' }, { status: 503 });
+    }
+
+    const fullRent = Number(savedBooking.total_rent_egp);
+    if (!Number.isFinite(fullRent) || fullRent < 0) {
+      console.error('[public-booking:NO_COUPON_INVALID_TOTAL]');
+      return Response.json({ code: 'BOOKING_NORMALIZATION_FAILED', error: 'تعذر التحقق من إجمالي الطلب. أبلغ الإدارة قبل إعادة الإرسال.' }, { status: 503 });
+    }
+    const { data: normalizedBooking, error: normalizeError } = await admin.from('bookings').update({
+      discount_code: null,
+      discount_amount_egp: 0,
+      final_total_egp: fullRent,
+    }).eq('id', bookingId).select('id').maybeSingle();
+    if (normalizeError || !normalizedBooking) {
+      console.error('[public-booking:NO_COUPON_NORMALIZE_FAILED]', normalizeError?.code || 'NOT_UPDATED');
+      return Response.json({ code: 'BOOKING_NORMALIZATION_FAILED', error: 'سُجل الطلب لكن تعذر إزالة خصم غير مطلوب. أبلغ الإدارة برقم الطلب قبل إعادة الإرسال.' }, { status: 503 });
+    }
+
+    if (data && typeof data === 'object') {
+      data.discountCode = null;
+      data.discountAmountEGP = 0;
+      data.finalTotalEGP = fullRent;
+    }
+  }
+
   return Response.json({ booking: data }, { status: 201 });
 }

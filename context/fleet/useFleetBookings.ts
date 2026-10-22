@@ -8,6 +8,7 @@ import { reportFleetWriteError } from './fleetStorage';
 interface UseFleetBookingsProps {
   cars: Car[];
   updateCar: (id: string, partial: Partial<Car>) => Promise<boolean>;
+  setCarStatus: (id: string, status: Car['status']) => void;
   customers: Customer[];
   addCustomer: (customer: Omit<Customer, 'id'>) => Promise<Customer | null>;
   updateCustomer: (id: string, partial: Partial<Customer>) => Promise<boolean>;
@@ -19,6 +20,7 @@ interface UseFleetBookingsProps {
 export function useFleetBookings({
   cars,
   updateCar,
+  setCarStatus,
   customers,
   addCustomer,
   updateCustomer,
@@ -224,7 +226,7 @@ export function useFleetBookings({
       }));
 
     // لا تُحجز السيارة فعليًا حتى تعتمد الإدارة الطلب العام.
-    if (status === 'active' && booking.status === 'pending_approval') {
+    if (status === 'active' && (booking.status === 'pending_approval' || booking.status === 'confirmed')) {
       await updateCar(booking.carId, { status: 'rented' });
     }
 
@@ -335,11 +337,39 @@ export function useFleetBookings({
 
     const reviewed = mapCloudBooking(result.booking);
     setBookings((previous) => previous.map((item) => item.id === reviewed.id ? reviewed : item));
-    if (decision === 'approved') await updateCar(booking.carId, { status: 'rented' });
+    if (decision === 'approved' && reviewed.customer.id) {
+      await updateCustomer(reviewed.customer.id, {
+        nationalId: reviewed.customer.nationalId,
+        licenseNumber: reviewed.customer.licenseNumber,
+        identityVerified: true,
+      });
+    }
+    if (reviewed.status === 'active') setCarStatus(booking.carId, 'rented');
     logAction(
       decision === 'approved' ? 'اعتماد طلب حجز' : 'رفض طلب حجز',
       `${booking.bookingNumber} — ${booking.customer.fullName}${reason ? ` — ${reason}` : ''}`,
     );
+  };
+
+  const activateConfirmedBooking = async (booking: Booking) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('انتهت جلسة الدخول. سجّل الدخول مجددًا.');
+
+    const response = await fetch('/api/admin/bookings/review', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ id: booking.id, decision: 'activate' }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.booking) throw new Error(result.error || 'تعذر بدء العقد.');
+
+    const activated = mapCloudBooking(result.booking);
+    setBookings((previous) => previous.map((item) => item.id === activated.id ? activated : item));
+    setCarStatus(booking.carId, 'rented');
+    logAction('بدء عقد وتسليم سيارة', `${booking.bookingNumber} — ${booking.carName} — ${booking.customer.fullName}`);
   };
 
   return {
@@ -349,5 +379,6 @@ export function useFleetBookings({
     addBooking,
     updateBookingStatus,
     reviewPendingBooking,
+    activateConfirmedBooking,
   };
 }

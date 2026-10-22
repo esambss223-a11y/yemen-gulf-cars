@@ -16,6 +16,7 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
     const newCustomer: Customer = {
       ...customerData,
       id: `cust-${Date.now()}`,
+      source: customerData.source || 'office',
       createdAt: customerData.createdAt || new Date().toISOString().split('T')[0],
       tier: customerData.tier || 'regular',
       riskStatus: customerData.riskStatus || 'safe',
@@ -27,6 +28,8 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
       const { error } = await supabase.from('customers').insert({
         id: newCustomer.id,
         full_name: newCustomer.fullName,
+        source: newCustomer.source,
+        identity_verified: Boolean(newCustomer.identityVerified),
         phone: newCustomer.phone,
         whatsapp: newCustomer.whatsapp,
         national_id: newCustomer.nationalId,
@@ -62,6 +65,10 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
       if (partial.fullName !== undefined) payload.full_name = partial.fullName;
       if (partial.phone !== undefined) payload.phone = partial.phone;
       if (partial.whatsapp !== undefined) payload.whatsapp = partial.whatsapp;
+      if (partial.nationalId !== undefined) payload.national_id = partial.nationalId;
+      if (partial.licenseNumber !== undefined) payload.license_number = partial.licenseNumber;
+      if (partial.identityVerified !== undefined) payload.identity_verified = partial.identityVerified;
+      if (partial.source !== undefined) payload.source = partial.source;
       if (partial.tier !== undefined) payload.tier = partial.tier;
       if (partial.riskStatus !== undefined) payload.risk_status = partial.riskStatus;
       if (partial.trustScore !== undefined) payload.trust_score = partial.trustScore;

@@ -18,7 +18,7 @@ import {
   Tag,
   Gift
 } from 'lucide-react';
-import { Car, Customer } from '@/types/fleet';
+import { Car, Customer, PromoCoupon } from '@/types/fleet';
 
 export interface NewBookingFormState {
   carId: string;
@@ -43,6 +43,7 @@ interface AddBookingModalProps {
   onClose: () => void;
   cars: Car[];
   customers?: Customer[];
+  coupons: PromoCoupon[];
   newBooking: NewBookingFormState;
   setNewBooking: React.Dispatch<React.SetStateAction<NewBookingFormState>>;
   onSubmit: (e: React.FormEvent) => void;
@@ -65,6 +66,7 @@ export default function AddBookingModal({
   onClose,
   cars,
   customers = [],
+  coupons,
   newBooking,
   setNewBooking,
   onSubmit,
@@ -73,13 +75,10 @@ export default function AddBookingModal({
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
   const [promoMessage, setPromoMessage] = useState<{ text: string; success: boolean } | null>(null);
 
-  const AVAILABLE_COUPONS = [
-    { code: 'YEMEN15', label: 'خصم 15% (يمن الخليج)', type: 'percentage', value: 15 },
-    { code: 'VIP2026', label: 'خصم 5,000 ج.م ثابت', type: 'fixed_egp', value: 5000 },
-    { code: 'GULF10', label: 'خصم 10% لعملاء الخليج', type: 'percentage', value: 10 },
-    { code: 'WELCOME', label: 'خصم ترحيبي 1,000 ج.م', type: 'fixed_egp', value: 1000 },
-    { code: 'VIP20', label: 'خصم VIP الخاص 20%', type: 'percentage', value: 20 },
-  ];
+  const currentDate = new Date().toISOString().slice(0, 10);
+  const availableCoupons = coupons.filter((coupon) =>
+    coupon.active && coupon.usedCount < coupon.maxUsage && (!coupon.expiresAt || coupon.expiresAt >= currentDate),
+  );
 
   const handleApplyPromo = (codeToApply?: string) => {
     const code = (codeToApply || newBooking.discountCode || '').trim().toUpperCase();
@@ -89,11 +88,11 @@ export default function AddBookingModal({
       return;
     }
 
-    const found = AVAILABLE_COUPONS.find(c => c.code === code);
+    const found = availableCoupons.find((coupon) => coupon.code.toUpperCase() === code);
     if (found) {
-      const discount = found.type === 'percentage'
-        ? Math.round((baseRentTotal * found.value) / 100)
-        : Math.min(found.value, baseRentTotal);
+      const discount = found.discountType === 'percentage'
+        ? Math.round((baseRentTotal * found.discountValue) / 100)
+        : Math.min(found.discountValue, baseRentTotal);
       setNewBooking(prev => ({
         ...prev,
         discountCode: found.code,
@@ -426,7 +425,7 @@ export default function AddBookingModal({
                     setPromoMessage(null);
                   }
                 }}
-                placeholder="أدخل الرمز مثل YEMEN15 أو VIP2026..."
+                placeholder="أدخل كودًا فعّالًا من قائمة الأكواد"
                 className="flex-1 bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono tracking-wider uppercase"
               />
               <button
@@ -441,7 +440,9 @@ export default function AddBookingModal({
             {/* أزرار سريعة للأكواد المعتمدة */}
             <div className="flex items-center gap-1.5 flex-wrap pt-1">
               <span className="text-[10px] text-slate-400">أكواد سريعة:</span>
-              {AVAILABLE_COUPONS.map(cp => (
+              {availableCoupons.length === 0 ? (
+                <span className="text-[10px] text-slate-400">لا توجد أكواد خصم فعّالة حاليًا.</span>
+              ) : availableCoupons.map(cp => (
                 <button
                   key={cp.code}
                   type="button"
@@ -452,7 +453,7 @@ export default function AddBookingModal({
                       : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:border-amber-400/50'
                   }`}
                 >
-                  {cp.code} ({cp.label})
+                  {cp.code} ({cp.discountType === 'percentage' ? `${cp.discountValue}%` : `${cp.discountValue.toLocaleString()} ج.م`})
                 </button>
               ))}
             </div>

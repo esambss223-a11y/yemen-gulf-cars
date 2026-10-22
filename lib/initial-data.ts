@@ -285,9 +285,9 @@ export const INITIAL_BOOKINGS: Booking[] = [
     daysCount: 5,
     dailyRateEGP: 12000,
     totalRentEGP: 60000,
-    discountCode: 'VIP2026',
-    discountAmountEGP: 5000,
-    finalTotalEGP: 55000,
+    discountCode: undefined,
+    discountAmountEGP: 0,
+    finalTotalEGP: 60000,
     securityDepositEGP: 20000,
     depositStatus: 'held',
     startKm: 21500,
@@ -299,59 +299,8 @@ export const INITIAL_BOOKINGS: Booking[] = [
   },
 ];
 
-// 5. أكواد الخصم الأولية
-export const INITIAL_COUPONS: PromoCoupon[] = [
-  {
-    id: 'cp-1',
-    code: 'VIP2026',
-    discountType: 'fixed_egp',
-    discountValue: 5000,
-    expiresAt: '2026-12-31',
-    maxUsage: 50,
-    usedCount: 7,
-    active: true,
-  },
-  {
-    id: 'cp-2',
-    code: 'GULF10',
-    discountType: 'percentage',
-    discountValue: 10,
-    expiresAt: '2026-12-31',
-    maxUsage: 100,
-    usedCount: 14,
-    active: true,
-  },
-  {
-    id: 'cp-3',
-    code: 'YEMEN15',
-    discountType: 'percentage',
-    discountValue: 15,
-    expiresAt: '2026-12-31',
-    maxUsage: 100,
-    usedCount: 0,
-    active: true,
-  },
-  {
-    id: 'cp-4',
-    code: 'WELCOME',
-    discountType: 'fixed_egp',
-    discountValue: 1000,
-    expiresAt: '2026-12-31',
-    maxUsage: 200,
-    usedCount: 0,
-    active: true,
-  },
-  {
-    id: 'cp-5',
-    code: 'VIP20',
-    discountType: 'percentage',
-    discountValue: 20,
-    expiresAt: '2026-12-31',
-    maxUsage: 50,
-    usedCount: 0,
-    active: true,
-  },
-];
+// لا تُنشأ أكواد تجريبية محليًا؛ الأكواد الفعالة تُحمّل من قاعدة البيانات.
+export const INITIAL_COUPONS: PromoCoupon[] = [];
 
 // 6. الفواتير الأولية
 export const INITIAL_INVOICES: Invoice[] = [
@@ -362,7 +311,7 @@ export const INITIAL_INVOICES: Invoice[] = [
     customerName: 'محمد عبد الرحمن القحطاني',
     customerPhone: '+20 102 345 6789',
     carDetails: 'Range Rover Autobiography LWB 2024 (لوحة: ق هـ ر 7741)',
-    totalAmountEGP: 55000,
+    totalAmountEGP: 60000,
     depositAmountEGP: 20000,
     paymentMethod: 'instapay',
     paid: true,

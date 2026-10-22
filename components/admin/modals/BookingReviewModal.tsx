@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Booking, BookingReviewInput } from '@/types/fleet';
+import { Booking, BookingReviewInput, PromoCoupon } from '@/types/fleet';
 import { CalendarClock, CheckCircle2, CreditCard, FileCheck2, LoaderCircle, Phone, X } from 'lucide-react';
 
 interface BookingReviewModalProps {
   booking: Booking;
+  coupons: PromoCoupon[];
   onClose: () => void;
   onApprove: (details: BookingReviewInput) => Promise<void>;
   onReject: (reason: string) => Promise<void>;
@@ -14,13 +15,20 @@ interface BookingReviewModalProps {
 const fieldClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100';
 const documentPlaceholder = 'طلب حجز إلكتروني';
 
-export default function BookingReviewModal({ booking, onClose, onApprove, onReject }: BookingReviewModalProps) {
+export default function BookingReviewModal({ booking, coupons, onClose, onApprove, onReject }: BookingReviewModalProps) {
+  const originalCode = booking.discountCode?.trim().toUpperCase() || '';
+  const today = new Date().toISOString().slice(0, 10);
+  const hasActiveCoupon = originalCode !== '' && coupons.some((coupon) =>
+    coupon.code.trim().toUpperCase() === originalCode && coupon.active &&
+    (!coupon.expiresAt || coupon.expiresAt >= today),
+  );
+  const couponWasAppliedToRequest = Boolean(originalCode && booking.discountAmountEGP > 0);
   const [startDate, setStartDate] = useState(booking.startDate);
   const [startTime, setStartTime] = useState(booking.startTime || '14:00');
   const [endDate, setEndDate] = useState(booking.endDate);
   const [endTime, setEndTime] = useState(booking.endTime || '14:00');
   const [dailyRate, setDailyRate] = useState(String(booking.dailyRateEGP));
-  const [discount, setDiscount] = useState(String(booking.discountAmountEGP || 0));
+  const [discount, setDiscount] = useState(String(couponWasAppliedToRequest || hasActiveCoupon ? booking.discountAmountEGP || 0 : 0));
   const [deposit, setDeposit] = useState(String(booking.securityDepositEGP || 0));
   const [nationalId, setNationalId] = useState(booking.customer.nationalId === documentPlaceholder ? '' : booking.customer.nationalId || '');
   const [licenseNumber, setLicenseNumber] = useState(booking.customer.licenseNumber === documentPlaceholder ? '' : booking.customer.licenseNumber || '');
@@ -86,7 +94,9 @@ export default function BookingReviewModal({ booking, onClose, onApprove, onReje
             <div className="flex items-center gap-2 text-sm font-bold text-slate-800"><span>{booking.customer.fullName}</span><FileCheck2 className="h-4 w-4 text-slate-400" /></div>
             <div className="flex items-center gap-2 text-sm text-slate-700"><span dir="ltr">{booking.customer.phone}</span><Phone className="h-4 w-4 text-slate-400" /></div>
             <p className="text-xs text-slate-500">وصل الطلب: {booking.createdAt}</p>
-            <p className="text-xs text-slate-500">كود الخصم: {booking.discountCode || 'لا يوجد'}</p>
+            <p className="text-xs text-slate-500">
+              كود الخصم: {!originalCode ? 'لا يوجد' : couponWasAppliedToRequest ? `${originalCode} (تم التحقق منه وتثبيته عند تقديم الطلب)` : hasActiveCoupon ? `${originalCode} (فعال)` : `${originalCode} (غير فعّال)`}
+            </p>
             {booking.notes && <p className="text-xs text-slate-600 sm:col-span-2">ملاحظات العميل: {booking.notes}</p>}
             <p className="text-[11px] text-amber-800 sm:col-span-2">لم تُرفق صور البطاقة أو الرخصة مع الطلب. أدخل الرقمين من الوثائق التي راجعتها مع العميل.</p>
           </div>
@@ -121,7 +131,11 @@ export default function BookingReviewModal({ booking, onClose, onApprove, onReje
               <label className="text-xs font-bold text-slate-600">التأمين المسترد (ج.م)<input type="number" min="0" step="1" value={deposit} onChange={(e) => setDeposit(e.target.value)} className={`${fieldClass} mt-1`} /></label>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white">
-              <span>{days} أيام × {Number(dailyRate || 0).toLocaleString()} − خصم {discountAmount.toLocaleString()} = <strong className="text-amber-300">{finalTotal.toLocaleString()} ج.م</strong></span>
+              <span>
+                {days} أيام × {Number(dailyRate || 0).toLocaleString()}
+                {discountAmount > 0 ? ` − خصم ${discountAmount.toLocaleString()}` : ' — بدون خصم'}
+                {' = '}<strong className="text-amber-300">{finalTotal.toLocaleString()} ج.م</strong>
+              </span>
               <span className="text-xs text-slate-300">التأمين: {Number(deposit || 0).toLocaleString()} ج.م</span>
             </div>
           </section>

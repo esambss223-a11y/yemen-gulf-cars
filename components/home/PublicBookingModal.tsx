@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { Car } from '@/types/fleet';
-import { X, Calendar, CheckCircle2, ArrowLeft, XCircle, LoaderCircle, CircleAlert } from 'lucide-react';
+import { X, Calendar, CheckCircle2, ArrowLeft, XCircle, LoaderCircle, CircleAlert, MapPin, MessageCircle, ArrowUpRight } from 'lucide-react';
 
 function dateAfterDays(days: number) {
   const date = new Date();
@@ -30,6 +30,7 @@ export default function PublicBookingModal({ car, onClose }: PublicBookingModalP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [whatsappUrl, setWhatsappUrl] = useState('');
+  const [submittedBookingNumber, setSubmittedBookingNumber] = useState('');
 
   // حساب الأيام والمبالغ
   const start = new Date(startDate).getTime();
@@ -68,12 +69,15 @@ export default function PublicBookingModal({ car, onClose }: PublicBookingModalP
     setIsSubmitting(true);
     setSubmitError('');
     try {
+      // Only send a coupon after the customer explicitly verified it.
+      // Text left in the input (including autofill or an old value) is not an applied coupon.
+      const verifiedDiscountCode = couponStatus === 'active' ? discountCode.trim() : '';
       const response = await fetch('/api/public/booking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           carId: car.id, customerName, customerPhone, startDate, endDate,
-          discountCode: discountCode.trim(), notes,
+          discountCode: verifiedDiscountCode, notes,
         }),
       });
       const result = await response.json();
@@ -83,6 +87,7 @@ export default function PublicBookingModal({ car, onClose }: PublicBookingModalP
       }
 
       const booking = result.booking;
+      setSubmittedBookingNumber(booking.bookingNumber || '');
       const whatsappMsg = encodeURIComponent(
         `مرحباً شركة اليمن والخليج، أرسلت طلب حجز عبر الموقع.\n\n` +
         `رقم الطلب: ${booking.bookingNumber}\nالسيارة: ${booking.carName}\n` +
@@ -121,23 +126,40 @@ export default function PublicBookingModal({ car, onClose }: PublicBookingModalP
         </div>
 
         {isSubmitted ? (
-          <div className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto animate-bounce">
-              <CheckCircle2 className="w-10 h-10" />
+          <div className="p-5 sm:p-7 text-center">
+            <div className="relative mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 shadow-[0_0_40px_rgba(52,211,153,0.12)]">
+              <span className="absolute inset-2 rounded-full border border-emerald-300/15" />
+              <CheckCircle2 className="h-10 w-10" strokeWidth={1.7} />
             </div>
-            <h4 className="text-lg font-black text-white">تم استلام طلب حجزك بنجاح!</h4>
-            <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
-              تم استلام طلبك وهو بانتظار مراجعة الإدارة. يمكنك إرسال تفاصيل الطلب إلى خدمة العملاء عبر واتساب.
+            <p className="mb-2 text-[10px] font-black tracking-[0.22em] text-[#c5a059]">اليمن والخليج لتأجير السيارات</p>
+            <h4 className="text-xl font-black text-white">وصلنا طلبك، شكرًا لثقتك</h4>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-7 text-slate-300">
+              سجّلنا طلب حجز <span className="font-bold text-white">{car.make} {car.model}</span> بنجاح. طلبك الآن بانتظار مراجعة فريقنا، وسنتواصل معك لتأكيد التفاصيل قبل اعتماد الحجز.
             </p>
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-              className="inline-flex px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-black text-xs hover:bg-emerald-500">
-              متابعة عبر واتساب
-            </a>
-            <button
-              onClick={onClose}
-              className="mt-4 px-6 py-2.5 rounded-xl bg-[#c5a059] text-black font-black text-xs hover:bg-[#d4af37]"
-            >
-              إغلاق النافذة
+
+            <div className="my-5 rounded-2xl border border-slate-700/80 bg-[#0d162a] p-4 text-right">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#c5a059]/10 text-[#d8b66e]"><Calendar className="h-5 w-5" /></span>
+                <div>
+                  <p className="text-xs font-bold text-white">الخطوة التالية</p>
+                  <p className="mt-1 text-[11px] leading-5 text-slate-400">فريق خدمة العملاء سيراجع طلبك ويتواصل معك لتأكيد التوفر والسعر النهائي.</p>
+                </div>
+              </div>
+              {submittedBookingNumber && <p className="mt-3 border-t border-slate-700/70 pt-3 text-[11px] text-slate-400">رقم متابعة الطلب: <span className="font-mono font-bold text-[#e6c77e]" dir="ltr">{submittedBookingNumber}</span></p>}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black text-white transition hover:bg-emerald-500">
+                <MessageCircle className="h-4 w-4" /> إرسال التفاصيل عبر واتساب <ArrowUpRight className="h-3.5 w-3.5" />
+              </a>
+              <a href="https://maps.app.goo.gl/BS7RD2rtZoQiyZnW9" target="_blank" rel="noopener noreferrer"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#c5a059]/50 bg-[#c5a059]/10 px-4 py-3 text-xs font-black text-[#f3e5ab] transition hover:bg-[#c5a059]/20">
+                <MapPin className="h-4 w-4" /> موقع المكتب على الخريطة <ArrowUpRight className="h-3.5 w-3.5" />
+              </a>
+            </div>
+            <button onClick={onClose} className="mt-4 rounded-lg px-5 py-2 text-xs font-bold text-slate-400 transition hover:text-white">
+              العودة إلى الموقع
             </button>
           </div>
         ) : (
@@ -221,7 +243,7 @@ export default function PublicBookingModal({ car, onClose }: PublicBookingModalP
                       setCouponStatus('idle');
                       setCouponMessage('');
                     }}
-                    placeholder="مثال: VIP2026 أو GULF10"
+                    placeholder="أدخل الكود الذي استلمته إن وُجد"
                     className="flex-1 bg-[#0d162a] border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 uppercase focus:outline-none focus:border-[#c5a059]"
                   />
                   <button

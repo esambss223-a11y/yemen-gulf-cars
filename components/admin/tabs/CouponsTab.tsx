@@ -244,7 +244,7 @@ export default function CouponsTab({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ابحث برمز الكود (مثل YEMEN15) أو قيمة الخصم..."
+            placeholder="ابحث برمز الكود أو قيمة الخصم..."
             className="w-full pl-4 pr-10 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-xs bg-slate-50/60 font-arabic"
           />
         </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Customer, CustomerTier } from '@/types/fleet';
+import { Customer, CustomerTier, CustomerSource } from '@/types/fleet';
 import { 
   Users, 
   Search, 
@@ -34,6 +34,9 @@ interface CustomersTabProps {
   onNewBookingForCustomer?: (customer: Customer) => void;
 }
 
+const getCustomerSource = (customer: Customer): CustomerSource =>
+  customer.source || (customer.id.startsWith('web-') ? 'website' : 'office');
+
 export default function CustomersTab({
   customers,
   onOpenAddCustomer,
@@ -43,6 +46,7 @@ export default function CustomersTab({
 }: CustomersTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [tierFilter, setTierFilter] = useState<'all' | CustomerTier>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | CustomerSource>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   // تصفية العملاء حسب البحث وتصنيف العميل
@@ -58,7 +62,9 @@ export default function CustomersTab({
       (c.nationality && c.nationality.toLowerCase().includes(term));
 
     const matchesTier = tierFilter === 'all' || c.tier === tierFilter;
-    return matchesSearch && matchesTier;
+    const source = getCustomerSource(c);
+    const matchesSource = sourceFilter === 'all' || source === sourceFilter;
+    return matchesSearch && matchesTier && matchesSource;
   });
 
   const getTierBadge = (tier?: CustomerTier) => {
@@ -138,7 +144,7 @@ export default function CustomersTab({
         {/* إحصائيات سريعة للعملاء */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-            <span className="text-[11px] text-slate-500 font-medium">إجمالي العملاء المسجلين</span>
+              <span className="text-[11px] text-slate-500 font-medium">ملفات العملاء والطلبات</span>
             <p className="text-lg font-black text-slate-900 font-mono mt-0.5">{customers.length}</p>
           </div>
           <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80">
@@ -148,9 +154,9 @@ export default function CustomersTab({
             </p>
           </div>
           <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200/80">
-            <span className="text-[11px] text-emerald-800 font-medium">عملاء نشطون وموثوقون</span>
+            <span className="text-[11px] text-emerald-800 font-medium">طلبات موقع بانتظار التحقق</span>
             <p className="text-lg font-black text-emerald-700 font-mono mt-0.5">
-              {customers.filter(c => c.riskStatus !== 'high_risk' && c.tier !== 'blacklist').length}
+              {customers.filter(c => getCustomerSource(c) === 'website' && !c.identityVerified).length}
             </p>
           </div>
           <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-200/80">
@@ -240,6 +246,24 @@ export default function CustomersTab({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm">
+        <span className="ml-1 text-[11px] font-bold text-slate-500">مصدر التسجيل:</span>
+        {([
+          ['all', `الكل (${customers.length})`],
+          ['website', `طلبات الموقع (${customers.filter((c) => getCustomerSource(c) === 'website').length})`],
+          ['office', `عملاء المكتب (${customers.filter((c) => getCustomerSource(c) === 'office').length})`],
+        ] as const).map(([source, label]) => (
+          <button
+            key={source}
+            onClick={() => setSourceFilter(source)}
+            className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${sourceFilter === source ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            {label}
+          </button>
+        ))}
+        <span className="mr-auto text-[10px] text-slate-400">طلب الموقع لا يعني أن هوية صاحبه مؤكدة.</span>
+      </div>
+
       {/* 3. شبكة بطاقات العملاء الاحترافية */}
       {filteredCustomers.length === 0 ? (
         <div className="bg-white border border-slate-200/80 rounded-2xl p-12 text-center shadow-sm">
@@ -278,13 +302,21 @@ export default function CustomersTab({
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[11px] text-slate-500">{cust.nationality || 'مصري'}</span>
                           <span className="text-[10px] text-slate-300">•</span>
-                          {getRiskIndicator(cust.riskStatus, trustScore)}
+                          {getCustomerSource(cust) === 'website' && !cust.identityVerified
+                            ? <span className="text-[11px] font-bold text-amber-700">بانتظار التحقق</span>
+                            : getRiskIndicator(cust.riskStatus, trustScore)}
                         </div>
+                        <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold ${getCustomerSource(cust) === 'website' ? 'bg-sky-50 text-sky-700' : 'bg-violet-50 text-violet-700'}`}>
+                          {getCustomerSource(cust) === 'website' ? 'طلب من الموقع' : 'تسجيل من المكتب'}
+                          {getCustomerSource(cust) === 'website' && !cust.identityVerified ? ' · الهوية غير متحققة' : ''}
+                        </span>
                       </div>
                     </div>
 
                     <div className="shrink-0">
-                      {getTierBadge(cust.tier)}
+                      {getCustomerSource(cust) === 'website' && !cust.identityVerified
+                        ? <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-800">طلب جديد</span>
+                        : getTierBadge(cust.tier)}
                     </div>
                   </div>
 

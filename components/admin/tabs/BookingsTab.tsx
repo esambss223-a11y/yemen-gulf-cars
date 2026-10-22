@@ -26,46 +26,81 @@ import {
   Gauge,
   Key
 } from 'lucide-react';
-import { Booking, BookingStatus, StaffUser } from '@/types/fleet';
+import { Booking, BookingStatus, PromoCoupon, StaffUser } from '@/types/fleet';
 import BookingReviewModal from '@/components/admin/modals/BookingReviewModal';
 import { BookingReviewInput } from '@/types/fleet';
 
 interface BookingsTabProps {
   bookings: Booking[];
+  coupons: PromoCoupon[];
   currentStaff?: StaffUser;
   onOpenContract: (booking: Booking) => void;
   onReturnCar: (booking: Booking) => void;
+  onActivateBooking?: (booking: Booking) => Promise<void>;
   onApproveBooking?: (booking: Booking, details: BookingReviewInput) => Promise<void>;
   onRejectBooking?: (booking: Booking, reason: string) => Promise<void>;
 }
 
-type ViewSection = 'active' | 'completed' | 'rejected' | 'all';
+type ViewSection = 'pending' | 'active' | 'completed' | 'rejected' | 'all';
+
+function bookingCreatedAt(booking: Booking) {
+  const parsed = Date.parse(booking.createdAt || '');
+  if (Number.isFinite(parsed)) return parsed;
+  const localIdTimestamp = /^bk-(\d+)$/.exec(booking.id)?.[1];
+  return localIdTimestamp ? Number(localIdTimestamp) : 0;
+}
+
+function newestFirst(bookings: Booking[]) {
+  return [...bookings].sort((a, b) => bookingCreatedAt(b) - bookingCreatedAt(a));
+}
 
 export default function BookingsTab({
   bookings,
+  coupons,
   currentStaff,
   onOpenContract,
   onReturnCar,
+  onActivateBooking,
   onApproveBooking,
   onRejectBooking,
 }: BookingsTabProps) {
-  // التبويب الافتراضي: العقود الحالية والنشطة فقط لمنع اللخبطة
-  const [activeSection, setActiveSection] = useState<ViewSection>('active');
+  // افتح الطلبات المعلقة مباشرة إذا كانت تحتاج مراجعة.
+  const [activeSection, setActiveSection] = useState<ViewSection>(
+    () => bookings.some((booking) => booking.status === 'pending_approval') ? 'pending' : 'active',
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | BookingStatus>('all');
   const [bookingForReview, setBookingForReview] = useState<Booking | null>(null);
+  const [activatingBookingId, setActivatingBookingId] = useState<string | null>(null);
+  const todayParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const cairoNowMinute = `${todayParts.find((part) => part.type === 'year')?.value}-${todayParts.find((part) => part.type === 'month')?.value}-${todayParts.find((part) => part.type === 'day')?.value}T${todayParts.find((part) => part.type === 'hour')?.value}:${todayParts.find((part) => part.type === 'minute')?.value}`;
+
+  const handleActivateBooking = async (booking: Booking) => {
+    if (!onActivateBooking) return;
+    setActivatingBookingId(booking.id);
+    try {
+      await onActivateBooking(booking);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'تعذر بدء العقد.');
+    } finally {
+      setActivatingBookingId(null);
+    }
+  };
 
   // فرز العقود حسب حالتها (الحالية vs المستلمة)
   const activeBookings = useMemo(() => {
-    return bookings.filter(b => b.status === 'active' || b.status === 'pending_approval' || b.status === 'confirmed');
+    return newestFirst(bookings.filter(b => b.status === 'active' || b.status === 'pending_approval' || b.status === 'confirmed'));
   }, [bookings]);
 
   const completedBookings = useMemo(() => {
-    return bookings.filter(b => b.status === 'completed');
+    return newestFirst(bookings.filter(b => b.status === 'completed'));
   }, [bookings]);
 
   const rejectedBookings = useMemo(() => {
-    return bookings.filter(b => b.status === 'cancelled');
+    return newestFirst(bookings.filter(b => b.status === 'cancelled'));
   }, [bookings]);
 
   // إحصائيات عامة
@@ -98,6 +133,11 @@ export default function BookingsTab({
     });
   }, [activeBookings, statusFilter, searchTerm]);
 
+  const pendingBookings = useMemo(
+    () => newestFirst(bookings.filter((booking) => booking.status === 'pending_approval' && matchesSearch(booking, searchTerm))),
+    [bookings, searchTerm],
+  );
+
   const filteredCompleted = useMemo(() => {
     return completedBookings.filter(bk => {
       const matchStatus = statusFilter === 'all' || bk.status === statusFilter;
@@ -110,18 +150,64 @@ export default function BookingsTab({
     [rejectedBookings, searchTerm],
   );
 
+  const renderPendingCards = () => (
+    <div className="space-y-3">
+      {pendingBookings.length === 0 ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center text-sm font-bold text-amber-900">
+          لا يوجد طلب بانتظار الموافقة هنا. إذا كان الطلب ظاهرًا في قائمة أخرى، أرسل صورة للشاشة لنحدد حالته.
+        </div>
+      ) : pendingBookings.map((booking) => (
+        <article key={booking.id} className="rounded-2xl border border-amber-200 bg-white p-4 shadow-xs">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1 text-right">
+              <div className="flex flex-wrap items-center gap-2">
+                <strong className="font-mono text-sm text-amber-800">{booking.bookingNumber}</strong>
+                {getStatusBadge(booking.status)}
+              </div>
+              <p className="font-black text-slate-900">{booking.customer.fullName} <span dir="ltr" className="font-mono text-xs font-medium text-slate-500">{booking.customer.phone}</span></p>
+              <p className="text-xs text-slate-700">{booking.carName} · {booking.carPlate}</p>
+              <p className="text-xs text-slate-600">الاستلام: {booking.startDate} {booking.startTime || '14:00'} — الإرجاع: {booking.endDate} {booking.endTime || '14:00'}</p>
+              <p className="text-xs font-bold text-slate-700">السعر المسجل: {booking.finalTotalEGP.toLocaleString()} ج.م · التأمين: {booking.securityDepositEGP.toLocaleString()} ج.م</p>
+            </div>
+            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:min-w-56">
+              {currentStaff?.role === 'super_admin' && onApproveBooking && onRejectBooking ? (
+                <button
+                  onClick={() => setBookingForReview(booking)}
+                  className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-black text-white shadow-xs hover:bg-amber-500"
+                  title="إدخال الرقم القومي والرخصة ومراجعة الموعد والسعر ثم الموافقة أو الرفض"
+                >
+                  فتح بيانات الطلب للمراجعة
+                </button>
+              ) : (
+                <span className="rounded-xl bg-rose-50 px-4 py-3 text-center text-xs font-bold text-rose-800">
+                  يلزم الدخول بحساب المدير العام للموافقة أو الرفض.
+                </span>
+              )}
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+
   const getStatusBadge = (status: BookingStatus) => {
     switch (status) {
       case 'pending_approval':
         return (
           <span className="px-2.5 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1 bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
-            <Clock className="w-3 h-3 text-amber-600" /> بانتظار تدقيق الموظف
+            <Clock className="w-3 h-3 text-amber-600" /> بانتظار موافقة الإدارة
           </span>
         );
       case 'active':
         return (
           <span className="px-2.5 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1 bg-blue-100 text-blue-900 border border-blue-200">
             <CheckCircle2 className="w-3 h-3 text-blue-600" /> ساري بالتشغيل (بالشارع)
+          </span>
+        );
+      case 'confirmed':
+        return (
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1 bg-emerald-100 text-emerald-900 border border-emerald-200">
+            <CalendarCheck className="w-3 h-3 text-emerald-700" /> مؤكد — بانتظار التسليم
           </span>
         );
       case 'completed':
@@ -152,14 +238,14 @@ export default function BookingsTab({
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-blue-600 animate-ping" />
           <h5 className="font-black text-slate-900 text-sm flex items-center gap-2">
-            <Key className="w-4 h-4 text-blue-600" /> العقود الحالية والسارية بالتشغيل
+            <Key className="w-4 h-4 text-blue-600" /> {activeSection === 'pending' ? 'طلبات الحجز بانتظار الموافقة' : 'العقود الحالية والسارية بالتشغيل'}
             <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-blue-100 text-blue-800 font-bold">
-              {items.length} عقود نشطة
+              {items.length} {activeSection === 'pending' ? 'طلبات معلقة' : 'عقود/حجوزات'}
             </span>
           </h5>
         </div>
         <span className="text-xs text-slate-500 font-arabic hidden sm:inline">
-          السيارات قيد التأجير في الشارع أو بانتظار خروجها
+          {activeSection === 'pending' ? 'افتح مراجعة الطلب لإدخال بيانات الهوية والرخصة ثم الموافقة أو الرفض.' : 'السيارات قيد التأجير في الشارع أو بانتظار خروجها'}
         </span>
       </div>
 
@@ -181,7 +267,9 @@ export default function BookingsTab({
             {items.length === 0 ? (
               <tr>
                 <td colSpan={8} className="py-12 text-center text-slate-400">
-                  لا توجد عقود سارية حالياً تطابق بحثك
+                  {activeSection === 'pending'
+                    ? 'لا يوجد طلب بانتظار الموافقة هنا. إذا وصلك الطلب على الموقع فقط، افتح لوحة الموقع نفسها أو تأكد أن المحلي والموقع متصلان بمشروع Supabase نفسه.'
+                    : 'لا توجد عقود سارية حالياً تطابق بحثك'}
                 </td>
               </tr>
             ) : (
@@ -193,6 +281,18 @@ export default function BookingsTab({
                     <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
                       <UserCheck className="w-3 h-3 text-slate-400" /> المسؤول: {bk.staffName}
                     </span>
+                    {bk.status === 'pending_approval' && currentStaff?.role === 'super_admin' && onApproveBooking && onRejectBooking && (
+                      <button
+                        onClick={() => setBookingForReview(bk)}
+                        className="mt-2 rounded-lg bg-amber-600 px-3 py-2 text-[11px] font-black text-white shadow-xs hover:bg-amber-500"
+                        title="إدخال بيانات الهوية والرخصة ومراجعة الطلب"
+                      >
+                        فتح المراجعة والموافقة أو الرفض
+                      </button>
+                    )}
+                    {bk.status === 'pending_approval' && currentStaff && currentStaff.role !== 'super_admin' && (
+                      <span className="mt-2 block text-[10px] font-bold text-rose-700">الموافقة والرفض متاحان لحساب المدير العام فقط.</span>
+                    )}
                   </td>
 
                   {/* السيارة */}
@@ -212,6 +312,7 @@ export default function BookingsTab({
                   {/* المدة والإرجاع */}
                   <td className="py-3.5">
                     <div className="font-medium text-slate-800">{bk.daysCount} أيام</div>
+                    <div className="text-[10px] text-slate-600 font-mono">الاستلام: {bk.startDate} ({bk.startTime || '14:00'})</div>
                     <div className="text-[10px] text-blue-700 font-bold flex items-center gap-1 font-mono">
                       <Clock className="w-3 h-3 text-blue-600" /> الإرجاع: {bk.endDate} ({bk.endTime || '14:00'})
                     </div>
@@ -237,13 +338,24 @@ export default function BookingsTab({
                   <td className="py-3.5 pl-4 text-center">
                     <div className="flex items-center justify-center gap-1.5">
                       {/* اعتماد الحجز المعلق */}
-                      {bk.status === 'pending_approval' && onApproveBooking && currentStaff?.role === 'super_admin' && (
+                      {bk.status === 'pending_approval' && onApproveBooking && onRejectBooking && currentStaff?.role === 'super_admin' && (
                         <button
                           onClick={() => setBookingForReview(bk)}
-                          className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-xs transition-colors"
-                          title="مراجعة بيانات العميل والموعد والسعر قبل الاعتماد"
+                          className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-xs transition-colors"
+                          title="أدخل بيانات الهوية والرخصة ثم وافق أو ارفض الطلب"
                         >
-                          <FileText className="w-3.5 h-3.5" /> مراجعة الطلب
+                          <FileText className="w-3.5 h-3.5" /> مراجعة / موافقة / رفض
+                        </button>
+                      )}
+
+                      {bk.status === 'confirmed' && `${bk.startDate}T${(bk.startTime || '14:00').slice(0, 5)}` <= cairoNowMinute && onActivateBooking && currentStaff?.role === 'super_admin' && (
+                        <button
+                          onClick={() => void handleActivateBooking(bk)}
+                          disabled={activatingBookingId === bk.id}
+                          className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-xs transition-colors disabled:opacity-50"
+                          title="بدء العقد عند استلام السيارة"
+                        >
+                          <Key className="w-3.5 h-3.5" /> {activatingBookingId === bk.id ? 'جارٍ البدء…' : 'بدء العقد والتسليم'}
                         </button>
                       )}
 
@@ -259,13 +371,15 @@ export default function BookingsTab({
                       )}
 
                       {/* زر طباعة العقد */}
-                      <button
-                        onClick={() => onOpenContract(bk)}
-                        className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-[#081225] text-slate-700 hover:text-amber-400 text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer border border-slate-200"
-                        title="عرض العقد وطباعة نسخة PDF"
-                      >
-                        <FileText className="w-3.5 h-3.5" /> العقد
-                      </button>
+                      {bk.status !== 'pending_approval' && (
+                        <button
+                          onClick={() => onOpenContract(bk)}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-[#081225] text-slate-700 hover:text-amber-400 text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer border border-slate-200"
+                          title="عرض العقد وطباعة نسخة PDF"
+                        >
+                          <FileText className="w-3.5 h-3.5" /> العقد
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -477,6 +591,24 @@ export default function BookingsTab({
           <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 w-full sm:w-auto">
             <button
               onClick={() => {
+                setActiveSection('pending');
+                setStatusFilter('all');
+              }}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                activeSection === 'pending' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>بانتظار الموافقة</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                activeSection === 'pending' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-900'
+              }`}>
+                {pendingCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
                 setActiveSection('active');
                 setStatusFilter('all');
               }}
@@ -644,6 +776,7 @@ export default function BookingsTab({
       </div>
 
       {/* 3. عرض الأقسام وفق التبويب المختار */}
+      {activeSection === 'pending' && renderPendingCards()}
       {activeSection === 'active' && renderActiveTable(filteredActive)}
       {activeSection === 'completed' && renderCompletedTable(filteredCompleted)}
       {activeSection === 'rejected' && renderRejectedTable(filteredRejected)}
@@ -658,6 +791,7 @@ export default function BookingsTab({
       {bookingForReview && onApproveBooking && onRejectBooking && (
         <BookingReviewModal
           booking={bookingForReview}
+          coupons={coupons}
           onClose={() => setBookingForReview(null)}
           onApprove={(details) => onApproveBooking(bookingForReview, details)}
           onReject={(reason) => onRejectBooking(bookingForReview, reason)}

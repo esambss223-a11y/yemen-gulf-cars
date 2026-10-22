@@ -154,6 +154,13 @@ CREATE TABLE IF NOT EXISTS public.customers (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Distinguish self-entered web requests from customers entered by office staff.
+-- Defaults keep existing CRM rows readable without rewriting their history.
+ALTER TABLE public.customers
+  ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'office';
+ALTER TABLE public.customers
+  ADD COLUMN IF NOT EXISTS identity_verified BOOLEAN NOT NULL DEFAULT false;
+
 -- ========================================================
 -- سياسات الأمان والحماية (Row Level Security - RLS)
 -- 7. جدول تتبع زوار الموقع الحقيقيين (site_visits)
@@ -415,11 +422,9 @@ VALUES
   ('car-3', 'Nissan', 'Patrol Platinum V8', 2024, 'suv', 'ج ي ز 5502', 'رمادي تيتانيوم', 31000, 6500, 42000, 10000, 'available', '["/car-nissan.jpg"]'::jsonb, '/car-nissan.jpg', 'company', 'owner-1', 'شركة يمن الخليج (أسطول الشركة)')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO public.coupons (id, code, discount_type, discount_value, expires_at, max_usage, used_count, active)
-VALUES
-  ('cp-1', 'VIP2026', 'fixed_egp', 5000, '2026-12-31', 50, 7, true),
-  ('cp-2', 'GULF10', 'percentage', 10, '2026-11-30', 100, 14, true)
-ON CONFLICT (id) DO NOTHING;
+-- Remove legacy sample coupons that were previously seeded by this schema.
+DELETE FROM public.coupons
+WHERE id IN ('cp-1', 'cp-2') OR upper(code) IN ('VIP2026', 'GULF10');
 
 -- Public website requests go through a server-only RPC. Prices and status are
 -- derived here so an anonymous browser cannot forge booking totals or activate a rental.
@@ -470,7 +475,7 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM public.bookings b
     WHERE b.car_id = p_car_id
-      AND b.status IN ('pending_approval', 'confirmed', 'active')
+      AND b.status IN ('confirmed', 'active')
       AND b.start_date < p_end_date AND b.end_date > p_start_date
   ) THEN
     RAISE EXCEPTION 'BOOKING_CONFLICT';
@@ -501,11 +506,11 @@ BEGIN
   );
 
   INSERT INTO public.customers (
-    id, full_name, phone, whatsapp, national_id, license_number, notes
+    id, full_name, phone, whatsapp, national_id, license_number, notes, source, identity_verified
   ) VALUES (
     v_customer->>'id', trim(p_customer_name), trim(p_customer_phone),
     trim(p_customer_phone), 'طلب حجز إلكتروني', 'طلب حجز إلكتروني',
-    'عميل من طلب حجز إلكتروني بانتظار مراجعة الإدارة'
+    'بيانات ذاتية من الموقع؛ بانتظار مراجعة الإدارة', 'website', false
   );
 
   INSERT INTO public.bookings (

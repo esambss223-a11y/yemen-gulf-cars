@@ -71,6 +71,7 @@ export interface FleetContextType {
     details?: BookingReviewInput,
     reason?: string,
   ) => Promise<void>;
+  activateConfirmedBooking: (booking: Booking) => Promise<void>;
 
   // الفواتير
   invoices: Invoice[];
@@ -143,6 +144,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
   // 6. وحدة الحجوزات والعقود
   const fleetBookings = useFleetBookings({
     cars: fleetCars.cars,
+    setCarStatus: (id, status) => fleetCars.setCars((previous) => previous.map((car) => car.id === id ? { ...car, status } : car)),
     updateCar: fleetCars.updateCar,
     customers: fleetCustomers.customers,
     addCustomer: fleetCustomers.addCustomer,
@@ -224,6 +226,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
             const mapped = cloudCustomers.map((c: any) => ({
               id: c.id,
               fullName: c.full_name,
+              source: c.source || (String(c.id).startsWith('web-') ? 'website' : 'office'),
               phone: c.phone,
               whatsapp: c.whatsapp,
               nationalId: c.national_id,
@@ -240,6 +243,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
               totalRentalsCount: Number(c.total_rentals_count ?? 0),
               totalSpentEGP: Number(c.total_spent_egp ?? 0),
               notes: c.notes,
+              identityVerified: Boolean(c.identity_verified),
               createdAt: c.created_at,
             }));
             fleetCustomers.setCustomers(mapped);
@@ -356,6 +360,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         addBooking: fleetBookings.addBooking,
         updateBookingStatus: fleetBookings.updateBookingStatus,
         reviewPendingBooking: fleetBookings.reviewPendingBooking,
+        activateConfirmedBooking: fleetBookings.activateConfirmedBooking,
         invoices: misc.invoices,
         addInvoice: misc.addInvoice,
         owners: fleetOwners.owners,
