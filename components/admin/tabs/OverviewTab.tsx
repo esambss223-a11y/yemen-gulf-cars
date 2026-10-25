@@ -3,19 +3,16 @@
 import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { 
-  TrendingUp, 
   Car as CarIcon, 
   Calendar, 
   Users, 
   Wallet, 
-  Clock, 
   ChevronLeft, 
   Plus, 
   CheckCircle2, 
   BarChart2,
   ShieldCheck,
-  Eye,
-  Sparkles
+  Eye
 } from 'lucide-react';
 import { Booking, Car, StaffUser, VisitorStats } from '@/types/fleet';
 import { AdminTab } from '@/components/admin/AdminSidebar';
@@ -107,12 +104,12 @@ export default function OverviewTab({
   }, []);
 
   return (
-    <div className="space-y-6 font-arabic text-slate-800">
+    <div className="admin-overview space-y-6 font-arabic text-slate-800">
 
       {/* ========================================================
           1. الترويسة الذكية الهادئة: ترحيب أنيق + مؤشرات النشاط اللحظي
           ======================================================== */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="admin-overview-heading">
         
         {/* الترحيب بالموظف والتاريخ */}
         <div className="space-y-0.5">
@@ -124,12 +121,12 @@ export default function OverviewTab({
             <span className="text-xs font-mono text-slate-500">{formattedTodayDate}</span>
           </div>
           <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-            لوحة العمليات والتشغيل اليومي
+            لوحة العمليات
           </h2>
         </div>
 
         {/* كبسولة نشاط المنصة وزوار الموقع (هادئة ومدمجة بدون وميض) */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-slate-50 p-2 sm:p-2.5 rounded-xl border border-slate-200/80 text-xs">
+        <div className="admin-visitors text-xs">
           
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200/60 shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -153,107 +150,41 @@ export default function OverviewTab({
 
       </div>
 
-      {/* ========================================================
-          2. بطاقات المؤشرات الأربعة الأساسية (Primary Metrics - 4 Clean Cards)
-          ======================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* 1. إجمالي الإيرادات */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-bold">إجمالي الإيرادات التعاقدية</span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
-              <Wallet className="w-4 h-4 text-amber-600" />
-            </div>
+      <section className="admin-metric-grid" aria-label="مؤشرات التشغيل">
+        <div className="admin-fleet-feature">
+          <div className="admin-fleet-copy">
+            <span className="admin-eyebrow"><CarIcon size={16} /> أسطولك اليوم</span>
+            <div className="admin-fleet-number">{availableCars}<span>سيارة متاحة بالمعرض</span></div>
+            <span className="admin-utilization">{fleetUtilizationRate}% نسبة تشغيل الأسطول</span>
           </div>
-          <div className="my-3">
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
-              {currentStaff.role === 'rental_agent' ? '••••••' : (
-              (totalRevenueEGP / 1000).toFixed(0)
-              )}
-              {currentStaff.role !== 'rental_agent' && (
-                <span className="text-xs text-slate-500 font-arabic font-normal mr-1.5">ألف ج.م</span>
-              )}
-            </div>
+          <div className="admin-fleet-photo">
+            <Image src="/admin-fleet-suv.png" alt="" fill sizes="(max-width: 640px) 52vw, 400px" className="object-contain" />
           </div>
-          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span className="text-emerald-700 font-semibold flex items-center gap-1">
-              الإيراد المسجل في النظام
-            </span>
-            <span className="font-medium text-slate-400">الجنيه المصري</span>
+          <div className="admin-fleet-breakdown">
+            <span><i className="admin-status-dot" />متاحة <strong>{availableCars}</strong></span>
+            <span>مؤجرة <strong>{rentedCars}</strong></span>
+            <span>إجمالي الأسطول <strong>{totalCars}</strong></span>
           </div>
         </div>
-
-        {/* 2. حالة الأسطول ونسبة التشغيل */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-bold">حالة أسطول السيارات</span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
-              <CarIcon className="w-4 h-4 text-blue-600" />
-            </div>
+        <div className="admin-revenue-feature">
+          <span className="admin-eyebrow"><Wallet size={17} /> إجمالي الإيرادات التعاقدية</span>
+          <div className="admin-revenue-number">{currentStaff.role === 'rental_agent' ? '••••••' : (totalRevenueEGP / 1000).toFixed(0)}
+            {currentStaff.role !== 'rental_agent' && <small>ألف ج.م</small>}
           </div>
-          <div className="my-3">
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
-              {availableCars} <span className="text-xs text-emerald-700 font-arabic font-normal mr-1">متاحة بالمعرض</span>
-            </div>
-          </div>
-          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span className="text-slate-600 font-medium">
-              مؤجرة: <strong className="font-mono text-amber-700">{rentedCars}</strong> من <strong className="font-mono text-slate-800">{totalCars}</strong>
-            </span>
-            <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md font-bold font-mono text-[11px]">
-              {fleetUtilizationRate}% تشغيل
-            </span>
+          <p>الإيراد المسجل في النظام · الجنيه المصري</p>
+          <div className="admin-revenue-details">
+            <div><Calendar size={19} /><span><strong>{activeBookings.length}</strong>عقد جاري</span></div>
+            <div><Users size={19} /><span><strong>{customersCount}</strong>عميل مسجل</span></div>
+            <button onClick={() => setActiveTab('bookings')}>عرض العقود <ChevronLeft size={16} /></button>
           </div>
         </div>
-
-        {/* 3. العقود النشطة والعملاء */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-bold">العقود النشطة بالشارع</span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
-              <Calendar className="w-4 h-4 text-amber-600" />
-            </div>
-          </div>
-          <div className="my-3">
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
-              {activeBookings.length} <span className="text-xs text-slate-500 font-arabic font-normal mr-1">عقد جاري</span>
-            </div>
-          </div>
-          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span className="text-slate-600 font-medium">
-              العملاء المسجلين: <strong className="font-mono text-slate-800">{customersCount}</strong>
-            </span>
-            <button 
-              onClick={() => setActiveTab('bookings')} 
-              className="text-amber-700 hover:underline font-bold text-[11px] cursor-pointer"
-            >
-              عرض العقود
-            </button>
-          </div>
+        <div className="admin-deposits-feature">
+          <span className="admin-eyebrow"><ShieldCheck size={18} /> كفالات التأمين المحجوزة</span>
+          <strong>{(totalHeldDepositsEGP / 1000).toFixed(0)}<small> ألف ج.م</small></strong>
+          <span>تسترد عند فحص الإرجاع</span>
+          <span className="admin-deposits-badge"><ShieldCheck size={14} /> مؤمنة بالكامل</span>
         </div>
-
-        {/* 4. كفالات التأمين المستردة */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-bold">كفالات التأمين المحجوزة</span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-cyan-600" />
-            </div>
-          </div>
-          <div className="my-3">
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono tracking-tight">
-              {(totalHeldDepositsEGP / 1000).toFixed(0)}
-              <span className="text-xs text-slate-500 font-arabic font-normal mr-1.5">ألف ج.م</span>
-            </div>
-          </div>
-          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span className="text-cyan-700 font-medium">تسترد عند فحص الإرجاع</span>
-            <span className="text-emerald-700 font-bold text-[11px]">مؤمنة بالكامل</span>
-          </div>
-        </div>
-
-      </div>
+      </section>
 
       {/* ========================================================
           3. مركز التشغيل الرئيسي المنظم (2-Column Operating Center)

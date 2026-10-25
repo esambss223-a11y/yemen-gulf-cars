@@ -3,6 +3,7 @@ import FeaturedFleet from "@/components/home/FeaturedFleet";
 import ChauffeurAirportService from "@/components/home/ChauffeurAirportService";
 import HowToBook from "@/components/home/HowToBook";
 import WhyChooseUs from "@/components/home/WhyChooseUs";
+import OfficeLocation from "@/components/home/OfficeLocation";
 
 export default function Home() {
   return (
@@ -21,6 +22,9 @@ export default function Home() {
       </div>
       <div className="snap-section">
         <WhyChooseUs />
+      </div>
+      <div className="snap-section">
+        <OfficeLocation />
       </div>
     </div>
   );

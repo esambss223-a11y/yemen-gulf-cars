@@ -1,5 +1,6 @@
 'use client';
 
+import { COMPANY_CONTACT } from '@/lib/company-contact';
 import React from 'react';
 import Image from 'next/image';
 import { VehicleOwner, Car, Booking } from '@/types/fleet';
@@ -79,12 +80,12 @@ export default function OwnerSettlementModal({ owner, cars, bookings, onClose }:
               <div className="text-right">
                 <h1 className="text-xl font-black text-[#0f172a]">شركة اليمن والخليج لتأجير السيارات</h1>
                 <p className="text-[11px] text-slate-600 font-semibold">إدارة تشغيل أساطيل المستثمرين ومشاركة الأرباح</p>
-                <p className="text-[10px] text-slate-500 mt-1">القاهرة - جمهورية مصر العربية | هاتف: +20 103 402 5211</p>
+                <p className="text-[10px] text-slate-500 mt-1">القاهرة - جمهورية مصر العربية | هاتف: <bdi>{COMPANY_CONTACT.displayPhone}</bdi></p>
               </div>
 
               <div className="text-center sm:text-left flex flex-col items-center sm:items-end">
-                <div className="w-16 h-16 relative mb-1">
-                  <Image src="/logo2.png" alt="شعار الشركة" width={64} height={64} className="object-contain" />
+                <div className="admin-settlement-logo w-16 h-16 relative mb-1">
+                  <Image src="/logo2.png" alt="شعار الشركة" width={64} height={64} sizes="132px" className="object-contain" />
                 </div>
                 <div className="bg-[#f8f5eb] border border-[#c5a059]/60 px-3 py-1 rounded text-center">
                   <span className="text-[10px] text-slate-600 block">كشف حساب مستثمر رقم</span>

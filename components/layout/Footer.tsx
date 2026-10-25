@@ -1,13 +1,17 @@
 "use client";
 
+import { COMPANY_CONTACT } from '@/lib/company-contact';
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { OFFICE_LOCATION } from "@/lib/office-location";
 
 const FOOTER_SECTIONS = [
   { id: "featured-fleet", label: "أسطول السيارات 2026" },
   { id: "chauffeur-service", label: "خدمة المطار مع سائق خاص" },
   { id: "how-to-book", label: "إجراءات وخطوات الحجز" },
   { id: "why-us", label: "معايير الجودة والضمان" },
+  { id: "our-location", label: "موقعنا والاتجاهات" },
 ];
 
 export default function Footer() {
@@ -56,7 +60,7 @@ export default function Footer() {
             {/* بطاقة واتساب السريعة */}
             <div className="pt-2">
               <a
-                href="https://wa.me/201034025211"
+                href={COMPANY_CONTACT.whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-[#c5a059]/50 transition-all duration-200"
@@ -64,8 +68,8 @@ export default function Footer() {
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
                 <div className="text-right">
                   <span className="text-[10px] text-slate-400 block font-medium">الخط الساخن والواتساب المباشر</span>
-                  <span className="text-xs sm:text-sm font-mono font-bold text-[#d4af37] dir-ltr inline-block">
-                    +20 10 34025211
+                  <span dir="ltr" className="text-xs sm:text-sm font-mono font-bold text-[#d4af37] dir-ltr inline-block">
+                    {COMPANY_CONTACT.displayPhone}
                   </span>
                 </div>
               </a>
@@ -105,7 +109,7 @@ export default function Footer() {
                 <span className="text-[#c5a059] text-sm shrink-0 mt-0.5">📍</span>
                 <div>
                   <p className="font-bold text-white">المقر الرئيسي للعمليات:</p>
-                  <p className="text-slate-400 mt-0.5">حدائق أكتوبر • محافظة الجيزة • جمهورية مصر العربية</p>
+                  <a href={OFFICE_LOCATION.mapsUrl} target="_blank" rel="noopener noreferrer" className="mt-0.5 block text-slate-400 transition-colors hover:text-[#f3e5ab]">{OFFICE_LOCATION.address}</a>
                 </div>
               </div>
 
@@ -126,6 +130,8 @@ export default function Footer() {
       <div className="border-t border-white/5 bg-[#03060e] py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-right text-[11px] text-slate-500">
           <p>© 2026 شركة اليمن والخليج لتأجير وتوريد السيارات. جميع الحقوق محفوظة.</p>
+          <div className="flex flex-wrap items-center justify-center gap-5 sm:justify-end">
+            <Link href="/admin" prefetch={false} className="inline-flex min-h-11 items-center text-[11px] text-slate-500 transition-colors hover:text-slate-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c5a059]">دخول الموظفين</Link>
           <button
             type="button"
             onClick={scrollToTop}
@@ -134,6 +140,7 @@ export default function Footer() {
             <span>العودة للأعلى</span>
             <span className="text-xs">↑</span>
           </button>
+          </div>
         </div>
       </div>
 

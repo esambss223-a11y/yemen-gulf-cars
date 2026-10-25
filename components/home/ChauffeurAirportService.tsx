@@ -1,5 +1,6 @@
 "use client";
 
+import { COMPANY_CONTACT } from '@/lib/company-contact';
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
@@ -204,7 +205,7 @@ export default function ChauffeurAirportService() {
             </div>
 
             <a
-              href={`https://wa.me/201034025211?text=${whatsappMsg}`}
+              href={`${COMPANY_CONTACT.whatsappUrl}?text=${whatsappMsg}`}
               target="_blank"
               rel="noopener noreferrer"
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#c5a059] hover:bg-[#d4af37] text-[#060b17] text-sm font-black transition-colors active:scale-95 cursor-pointer shadow-sm shadow-[#c5a059]/15"

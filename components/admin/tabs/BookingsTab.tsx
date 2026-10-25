@@ -573,11 +573,11 @@ export default function BookingsTab({
   );
 
   return (
-    <div className="space-y-4 animate-fadeIn font-arabic">
+    <div className="admin-section admin-section-bookings space-y-4 animate-fadeIn font-arabic">
       
       {/* 1. الترويسة الرئيسية والبطاقات الإحصائية المنفصلة */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+        <div className="admin-booking-heading flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
             <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-amber-500" /> إدارة العقود والتشغيل المالي
@@ -588,7 +588,7 @@ export default function BookingsTab({
           </div>
 
           {/* تبويبات التبديل الرئيسية البارزة (القسم الأول vs القسم الثاني) */}
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 w-full sm:w-auto">
+          <div className="admin-booking-sections bg-slate-100 p-1 rounded-xl flex items-center gap-1 w-full sm:w-auto">
             <button
               onClick={() => {
                 setActiveSection('pending');

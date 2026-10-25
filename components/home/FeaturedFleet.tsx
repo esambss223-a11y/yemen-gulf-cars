@@ -1,8 +1,10 @@
 "use client";
 
-import Image from "next/image";
+import { COMPANY_CONTACT } from '@/lib/company-contact';
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
+import { Maximize2 } from "lucide-react";
+import CarImageCarousel from "@/components/home/CarImageCarousel";
+import { getCarImages } from "@/lib/car-images";
 
 type DurationKey = "day" | "week" | "month";
 
@@ -29,12 +31,11 @@ export default function FeaturedFleet() {
   const { cars } = useFleet();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [selectedCarForBooking, setSelectedCarForBooking] = useState<{ car: Car; label: string } | null>(null);
-  const [selectedCarForGallery, setSelectedCarForGallery] = useState<Car | null>(null);
-  const [carImageIndexes, setCarImageIndexes] = useState<Record<string, number>>({});
+  const [selectedCarForGallery, setSelectedCarForGallery] = useState<{ car: Car; initialIndex: number } | null>(null);
 
   // تحويل سيارات النظام إلى بنية العرض في الكتالوج مع دعم تعدد الصور
   const displayCars: FleetCar[] = cars.map(car => {
-    const carImages = car.images && car.images.length > 0 ? car.images : [car.coverImage || '/car-mercedes.jpg'];
+    const carImages = getCarImages(car);
     return {
       id: car.id,
       name: `${car.make} ${car.model}`,
@@ -51,22 +52,6 @@ export default function FeaturedFleet() {
       }
     };
   });
-
-  const nextCarImage = (e: React.MouseEvent, carId: string, max: number) => {
-    e.stopPropagation();
-    setCarImageIndexes((prev) => ({
-      ...prev,
-      [carId]: ((prev[carId] || 0) + 1) % max
-    }));
-  };
-
-  const prevCarImage = (e: React.MouseEvent, carId: string, max: number) => {
-    e.stopPropagation();
-    setCarImageIndexes((prev) => ({
-      ...prev,
-      [carId]: ((prev[carId] || 0) - 1 + max) % max
-    }));
-  };
 
   const [durations, setDurations] = useState<Record<string, DurationKey>>({});
 
@@ -135,93 +120,28 @@ export default function FeaturedFleet() {
                 key={car.id}
                 className="scroll-card-reveal bg-[#080f1e] border border-white/10 rounded-xl overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 hover:border-[#c5a059]/40 hover:shadow-[0_12px_30px_rgba(0,0,0,0.5)]"
               >
-                {/* صورة السيارة مع سلايدر تقليب مباشر ونقر للتكبير */}
-                {(() => {
-                  const carImages = car.images && car.images.length > 0 ? car.images : [car.image];
-                  const currentImgIdx = carImageIndexes[car.id] || 0;
-                  const currentImgSrc = carImages[currentImgIdx] || car.image;
-
-                  return (
-                    <div 
-                      onClick={() => {
-                        const originalCar = cars.find(c => c.id === car.id) || cars[0];
-                        if (originalCar) {
-                          setSelectedCarForGallery(originalCar);
-                        }
-                      }}
-                      className="relative aspect-video w-full overflow-hidden cursor-pointer group/img"
-                    >
-                      <Image
-                        src={currentImgSrc}
-                        alt={`${car.name} - صورة ${currentImgIdx + 1}`}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        priority={filtered[0]?.id === car.id}
-                        className="object-cover object-center transition-transform duration-500 group-hover/img:scale-105"
-                      />
-
-                      {/* تدرج سفلي للنص */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#080f1e] via-transparent to-transparent pointer-events-none" />
-
-                      {/* مؤشر التوفر */}
-                      <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
-                        <span className={`w-1.5 h-1.5 rounded-full ${car.isAvailable ? "bg-emerald-400" : "bg-slate-500"}`} />
-                        <span className="text-[10px] font-semibold text-white bg-[#080f1e]/80 backdrop-blur-sm px-2 py-0.5 rounded shadow">
-                          {car.isAvailable ? "متاحة" : "محجوزة"}
-                        </span>
-                      </div>
-
-                      {/* أيقونة تكبير الحجم الكامل */}
-                      <div className="absolute top-3 left-3 bg-black/60 hover:bg-[#c5a059] text-white hover:text-black backdrop-blur-sm p-1.5 rounded-lg text-[10px] font-bold transition-all z-10 opacity-70 group-hover/img:opacity-100" title="انقر لعرض الحجم الكامل">
-                        <Maximize2 className="w-3.5 h-3.5" />
-                      </div>
-
-                      {/* أزرار التقليب في نفس المكان إذا كان للسيارة أكثر من صورة */}
-                      {carImages.length > 1 && (
-                        <>
-                          {/* زر الصورة السابقة (اليمين) */}
-                          <button
-                            type="button"
-                            onClick={(e) => prevCarImage(e, car.id, carImages.length)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 hover:bg-[#c5a059] text-white hover:text-black flex items-center justify-center transition-all opacity-0 group-hover/img:opacity-100 z-10 cursor-pointer shadow-lg"
-                            title="الصورة السابقة"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-
-                          {/* زر الصورة التالية (اليسار) */}
-                          <button
-                            type="button"
-                            onClick={(e) => nextCarImage(e, car.id, carImages.length)}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 hover:bg-[#c5a059] text-white hover:text-black flex items-center justify-center transition-all opacity-0 group-hover/img:opacity-100 z-10 cursor-pointer shadow-lg"
-                            title="الصورة التالية"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </button>
-
-                          {/* مؤشرات التقليب (Dots) في المنتصف */}
-                          <div className="absolute bottom-11 inset-x-0 flex items-center justify-center gap-1 z-10 pointer-events-none">
-                            {carImages.map((_, dotIdx) => (
-                              <span 
-                                key={dotIdx} 
-                                className={`w-1.5 h-1.5 rounded-full transition-all ${dotIdx === currentImgIdx ? "bg-[#c5a059] w-3" : "bg-white/40"}`}
-                              />
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {/* اسم السيارة والموديل فوق التدرج */}
-                      <div className="absolute bottom-2.5 right-3 left-3 z-10">
-                        <h3 className="text-base font-black text-white drop-shadow-md">{car.name}</h3>
-                        <div className="flex items-center justify-between mt-0.5">
-                          <span className="text-[11px] text-slate-300">{car.category}</span>
-                          <span className="text-[10px] font-mono text-slate-400">{car.modelYear}</span>
-                        </div>
-                      </div>
+                {/* Native horizontal scrolling keeps vertical page gestures available. */}
+                <div className="relative aspect-video w-full overflow-hidden group/img">
+                  <CarImageCarousel key={car.images?.join('|')} images={car.images || [car.image]} name={car.name}
+                    preload={filtered[0]?.id === car.id}
+                    onOpen={(initialIndex) => {
+                      const originalCar = cars.find(c => c.id === car.id);
+                      if (originalCar) setSelectedCarForGallery({ car: originalCar, initialIndex });
+                    }} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#080f1e] via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10 pointer-events-none">
+                    <span className={`w-1.5 h-1.5 rounded-full ${car.isAvailable ? "bg-emerald-400" : "bg-slate-500"}`} />
+                    <span className="text-[10px] font-semibold text-white bg-[#080f1e]/80 backdrop-blur-sm px-2 py-0.5 rounded shadow">{car.isAvailable ? "متاحة" : "محجوزة"}</span>
+                  </div>
+                  <div className="absolute top-3 left-3 bg-black/60 text-white backdrop-blur-sm p-1.5 rounded-lg z-10 pointer-events-none" aria-hidden="true"><Maximize2 className="w-3.5 h-3.5" /></div>
+                  <div className="absolute bottom-2.5 right-3 left-3 z-10 pointer-events-none">
+                    <h3 className="text-base font-black text-white drop-shadow-md">{car.name}</h3>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span className="text-[11px] text-slate-300">{car.category}</span>
+                      <span className="text-[10px] font-mono text-slate-400">{car.modelYear}</span>
                     </div>
-                  );
-                })()}
+                  </div>
+                </div>
 
                 {/* تفاصيل البطاقة */}
                 <div className="p-4 flex flex-col gap-4 flex-1">
@@ -291,7 +211,7 @@ export default function FeaturedFleet() {
         <p className="mt-10 text-center text-xs text-slate-500">
           تسليم واستلام فوري في حدائق أكتوبر ومطار القاهرة وكافة المحافظات ·{" "}
           <a
-            href="https://wa.me/201034025211"
+            href={COMPANY_CONTACT.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[#c5a059] hover:underline"
@@ -311,10 +231,11 @@ export default function FeaturedFleet() {
         {/* نافذة ألبوم صور السيارة للعميل */}
         {selectedCarForGallery && (
           <CarGalleryModal
-            car={selectedCarForGallery}
+            car={selectedCarForGallery.car}
+            initialIndex={selectedCarForGallery.initialIndex}
             onClose={() => setSelectedCarForGallery(null)}
             onBookNow={() => {
-              setSelectedCarForBooking({ car: selectedCarForGallery, label: "يومي" });
+              setSelectedCarForBooking({ car: selectedCarForGallery.car, label: "يومي" });
               setSelectedCarForGallery(null);
             }}
           />

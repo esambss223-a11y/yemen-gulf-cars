@@ -22,7 +22,7 @@ export default function StaffTab({
   onDeleteStaff,
 }: StaffTabProps) {
   return (
-    <div className="space-y-4 animate-fadeIn">
+    <div className="admin-section admin-section-staff space-y-4 animate-fadeIn">
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
         {staffListError && (
           <div role="alert" className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">

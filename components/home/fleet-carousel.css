@@ -1,0 +1,19 @@
+.car-image-carousel { position: absolute; inset: 0; }
+.car-image-track { display: flex; width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; touch-action: auto; }
+.car-image-track::-webkit-scrollbar { display: none; }
+.car-image-slide { position: relative; flex: 0 0 100%; min-width: 0; height: 100%; padding: 0; scroll-snap-align: start; scroll-snap-stop: always; cursor: zoom-in; border: 0; background: #080f1e; }
+.car-image-slide img { user-select: none; -webkit-user-drag: none; }
+.car-image-slide:focus-visible { outline: 3px solid #c5a059; outline-offset: -4px; }
+.car-image-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 12; width: 36px; height: 36px; border-radius: 50%; background: #060b17b3; color: white; display: grid; place-items: center; cursor: pointer; transition: opacity 180ms, background-color 180ms; }
+.car-image-arrow.is-previous { right: 8px; }
+.car-image-arrow.is-next { left: 8px; }
+.car-image-arrow:hover { background: #c5a059; color: #060b17; }
+.car-image-arrow:focus-visible, .car-image-dots button:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+.car-image-dots { position: absolute; bottom: 47px; inset-inline: 48px; z-index: 12; display: flex; justify-content: center; direction: ltr; }
+.car-image-dots button { width: 24px; height: 24px; display: grid; place-items: center; cursor: pointer; border-radius: 50%; }
+.car-image-dots span { width: 6px; height: 6px; border-radius: 50%; background: #ffffffa6; box-shadow: 0 1px 4px #0008; transition: background-color 180ms, transform 180ms; }
+.car-image-dots .is-active { background: #fff; transform: scale(1.3); }
+.car-gallery-main { min-height: 0; }
+@media (hover: hover) and (pointer: fine) { .car-image-arrow { opacity: 0; } .car-image-carousel:hover .car-image-arrow, .car-image-carousel:focus-within .car-image-arrow { opacity: 1; } }
+@media (hover: none), (pointer: coarse) { .car-image-arrow { width: 44px; height: 44px; background: transparent; text-shadow: 0 1px 3px #000; } .car-image-arrow svg { filter: drop-shadow(0 1px 2px #000); } }
+@media (prefers-reduced-motion: reduce) { .car-image-carousel * { transition: none !important; scroll-behavior: auto !important; } }

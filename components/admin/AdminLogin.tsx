@@ -35,7 +35,7 @@ export default function AdminLogin({
   const [rememberMe, setRememberMe] = useState(true);
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#060911] text-slate-100 flex flex-col justify-between font-arabic selection:bg-[#c5a059] selection:text-black">
+    <div className="admin-ui admin-login relative min-h-screen w-full overflow-hidden bg-[#060911] text-slate-100 flex flex-col justify-between font-arabic selection:bg-[#c5a059] selection:text-black">
       
       {/* ========================================================
           1. خلفية سينمائية هادئة وفخمة (Cinematic Ambient Showroom)

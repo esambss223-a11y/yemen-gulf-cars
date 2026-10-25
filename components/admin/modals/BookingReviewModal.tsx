@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { Booking, BookingReviewInput, PromoCoupon } from '@/types/fleet';
 import { CalendarClock, CheckCircle2, CreditCard, FileCheck2, LoaderCircle, Phone, X } from 'lucide-react';
 
@@ -14,8 +15,18 @@ interface BookingReviewModalProps {
 
 const fieldClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100';
 const documentPlaceholder = 'طلب حجز إلكتروني';
+const subscribeToPortal = () => () => {};
+const getPortalContainer = () => document.body;
+const getServerPortalContainer = () => null;
 
 export default function BookingReviewModal({ booking, coupons, onClose, onApprove, onReject }: BookingReviewModalProps) {
+  const portalContainer = useSyncExternalStore(subscribeToPortal, getPortalContainer, getServerPortalContainer);
+  useEffect(() => {
+    const containers = [document.documentElement, document.body, ...document.querySelectorAll<HTMLElement>('.admin-content')];
+    const previousOverflow = containers.map((element) => element.style.overflow);
+    containers.forEach((element) => { element.style.overflow = 'hidden'; });
+    return () => containers.forEach((element, index) => { element.style.overflow = previousOverflow[index]; });
+  }, []);
   const originalCode = booking.discountCode?.trim().toUpperCase() || '';
   const today = new Date().toISOString().slice(0, 10);
   const hasActiveCoupon = originalCode !== '' && coupons.some((coupon) =>
@@ -78,10 +89,13 @@ export default function BookingReviewModal({ booking, coupons, onClose, onApprov
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-950/70 p-3 sm:p-6 font-arabic" role="presentation">
-      <section role="dialog" aria-modal="true" aria-labelledby="booking-review-title" className="my-auto w-full max-w-3xl overflow-hidden rounded-2xl bg-slate-50 shadow-2xl">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+  if (!portalContainer) return null;
+
+  return createPortal(
+    <div className="admin-ui booking-review-root">
+    <div className="booking-review-overlay fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-950/70 p-3 sm:p-6 font-arabic" role="presentation">
+      <section role="dialog" aria-modal="true" aria-labelledby="booking-review-title" className="booking-review-dialog my-auto w-full max-w-3xl overflow-hidden rounded-2xl bg-slate-50 shadow-2xl">
+        <header className="booking-review-header flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
           <button onClick={onClose} disabled={busy} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="إغلاق"><X className="h-5 w-5" /></button>
           <div className="text-right">
             <h2 id="booking-review-title" className="text-base font-black text-slate-900">مراجعة طلب الحجز</h2>
@@ -89,7 +103,7 @@ export default function BookingReviewModal({ booking, coupons, onClose, onApprov
           </div>
         </header>
 
-        <div className="max-h-[76vh] space-y-5 overflow-y-auto p-4 sm:p-6">
+        <div className="booking-review-body max-h-[76vh] space-y-5 overflow-y-auto p-4 sm:p-6">
           <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-800"><span>{booking.customer.fullName}</span><FileCheck2 className="h-4 w-4 text-slate-400" /></div>
             <div className="flex items-center gap-2 text-sm text-slate-700"><span dir="ltr">{booking.customer.phone}</span><Phone className="h-4 w-4 text-slate-400" /></div>
@@ -103,7 +117,7 @@ export default function BookingReviewModal({ booking, coupons, onClose, onApprov
 
           <section className="space-y-3">
             <h3 className="flex items-center justify-end gap-2 text-sm font-black text-slate-800"><CalendarClock className="h-4 w-4 text-amber-600" /> موعد الاستلام والإرجاع</h3>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="booking-review-dates grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="text-xs font-bold text-slate-600">تاريخ الاستلام<input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`${fieldClass} mt-1`} /></label>
               <label className="text-xs font-bold text-slate-600">وقت الاستلام<input type="time" required value={startTime} onChange={(e) => setStartTime(e.target.value)} className={`${fieldClass} mt-1`} /></label>
               <label className="text-xs font-bold text-slate-600">تاريخ الإرجاع<input type="date" required min={startDate} value={endDate} onChange={(e) => setEndDate(e.target.value)} className={`${fieldClass} mt-1`} /></label>
@@ -151,7 +165,7 @@ export default function BookingReviewModal({ booking, coupons, onClose, onApprov
           {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-right text-xs font-bold text-rose-800">{error}</p>}
         </div>
 
-        <footer className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-white p-4 sm:flex-row sm:justify-between">
+        <footer className="booking-review-footer flex flex-col-reverse gap-2 border-t border-slate-200 bg-white p-4 sm:flex-row sm:justify-between">
           <button onClick={onClose} disabled={busy} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600">إغلاق</button>
           <button onClick={() => void approve()} disabled={busy || !identityVerified || !licenseVerified || nationalId.trim().length < 4 || licenseNumber.trim().length < 4 || days < 1 || discountAmount > total} className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-50">
             {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} اعتماد الحجز بعد المراجعة
@@ -159,5 +173,7 @@ export default function BookingReviewModal({ booking, coupons, onClose, onApprov
         </footer>
       </section>
     </div>
+    </div>,
+    portalContainer,
   );
 }

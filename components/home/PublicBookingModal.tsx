@@ -1,8 +1,10 @@
 'use client';
 
+import { COMPANY_CONTACT } from '@/lib/company-contact';
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { Car } from '@/types/fleet';
+import { OFFICE_LOCATION } from '@/lib/office-location';
 import { X, Calendar, CheckCircle2, ArrowLeft, XCircle, LoaderCircle, CircleAlert, MapPin, MessageCircle, ArrowUpRight } from 'lucide-react';
 
 function dateAfterDays(days: number) {
@@ -98,7 +100,7 @@ export default function PublicBookingModal({ car, onClose }: PublicBookingModalP
         (notes ? `ملاحظات: ${notes}\n` : '') +
         `\nأرجو التواصل معي لتأكيد الطلب.`
       );
-      setWhatsappUrl(`https://wa.me/201034025211?text=${whatsappMsg}`);
+      setWhatsappUrl(`${COMPANY_CONTACT.whatsappUrl}?text=${whatsappMsg}`);
       setIsSubmitted(true);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'تعذر إرسال طلب الحجز.');
@@ -153,7 +155,7 @@ export default function PublicBookingModal({ car, onClose }: PublicBookingModalP
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black text-white transition hover:bg-emerald-500">
                 <MessageCircle className="h-4 w-4" /> إرسال التفاصيل عبر واتساب <ArrowUpRight className="h-3.5 w-3.5" />
               </a>
-              <a href="https://maps.app.goo.gl/BS7RD2rtZoQiyZnW9" target="_blank" rel="noopener noreferrer"
+              <a href={OFFICE_LOCATION.mapsUrl} target="_blank" rel="noopener noreferrer"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#c5a059]/50 bg-[#c5a059]/10 px-4 py-3 text-xs font-black text-[#f3e5ab] transition hover:bg-[#c5a059]/20">
                 <MapPin className="h-4 w-4" /> موقع المكتب على الخريطة <ArrowUpRight className="h-3.5 w-3.5" />
               </a>

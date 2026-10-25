@@ -10,7 +10,7 @@ interface AuditTabProps {
 
 export default function AuditTab({ auditLogs }: AuditTabProps) {
   return (
-    <div className="space-y-4 animate-fadeIn">
+    <div className="admin-section admin-section-audit space-y-4 animate-fadeIn">
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
         
         {/* الترويسة */}

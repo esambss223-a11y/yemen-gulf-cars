@@ -14,7 +14,7 @@ export default function AdminFooter({
   rentedCars,
 }: AdminFooterProps) {
   return (
-    <footer className="h-8 bg-[#040813] border-t border-slate-800/80 px-4 flex items-center justify-between text-[11px] text-slate-400 select-none shrink-0 font-mono z-10">
+    <footer className="admin-footer h-8 bg-[#040813] border-t border-slate-800/80 px-4 flex items-center justify-between text-[11px] text-slate-400 select-none shrink-0 font-mono z-10">
       <div className="flex items-center gap-4">
         <span className="flex items-center gap-1.5 text-slate-300">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />

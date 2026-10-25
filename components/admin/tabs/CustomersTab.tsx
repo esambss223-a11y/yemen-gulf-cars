@@ -119,7 +119,7 @@ export default function CustomersTab({
   };
 
   return (
-    <div className="space-y-4 animate-fadeIn font-arabic">
+    <div className="admin-section admin-section-customers space-y-4 animate-fadeIn font-arabic">
       
       {/* 1. الترويسة الرئيسية + الإحصائيات السريعة */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm">
@@ -290,7 +290,7 @@ export default function CustomersTab({
               >
                 <div>
                   {/* ترويسة بطاقة العميل */}
-                  <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="admin-customer-card-heading flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-950 text-amber-400 flex items-center justify-center font-black text-sm shadow-xs shrink-0">
                         {cust.fullName.charAt(0)}

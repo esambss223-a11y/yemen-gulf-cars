@@ -1,5 +1,6 @@
 "use client";
 
+import { COMPANY_CONTACT } from '@/lib/company-contact';
 import { useEffect, useRef } from "react";
 
 const WHY_ITEMS = [
@@ -84,7 +85,7 @@ export default function WhyChooseUs() {
         {/* CTA نهائي */}
         <div className="mt-12 text-center">
           <a
-            href="https://wa.me/201034025211"
+            href={COMPANY_CONTACT.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-3 px-8 py-3.5 rounded-full bg-[#c5a059] hover:bg-[#d4af37] text-[#060b17] text-sm font-black transition-colors active:scale-95 cursor-pointer shadow-sm shadow-[#c5a059]/15"

@@ -33,7 +33,7 @@ export default function CarsTab({
   onDeleteCar,
 }: CarsTabProps) {
   return (
-    <div className="space-y-5 animate-fadeIn">
+    <div className="admin-section admin-section-cars space-y-5 animate-fadeIn">
       
       {/* شريط الفلترة والأزرار */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">

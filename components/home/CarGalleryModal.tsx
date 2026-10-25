@@ -4,16 +4,19 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Car } from '@/types/fleet';
+import { getCarImages } from '@/lib/car-images';
+import './fleet-carousel.css';
 
 interface CarGalleryModalProps {
   car: Car;
+  initialIndex?: number;
   onClose: () => void;
   onBookNow: () => void;
 }
 
-export default function CarGalleryModal({ car, onClose, onBookNow }: CarGalleryModalProps) {
-  const images = car.images && car.images.length > 0 ? car.images : [car.coverImage || '/car-mercedes.jpg'];
-  const [activeIdx, setActiveIdx] = useState(0);
+export default function CarGalleryModal({ car, initialIndex = 0, onClose, onBookNow }: CarGalleryModalProps) {
+  const images = getCarImages(car);
+  const [activeIdx, setActiveIdx] = useState(() => Math.max(0, Math.min(initialIndex, images.length - 1)));
 
   const prevImage = () => {
     setActiveIdx((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -24,7 +27,7 @@ export default function CarGalleryModal({ car, onClose, onBookNow }: CarGalleryM
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+    <div role="dialog" aria-modal="true" aria-label={`صور ${car.make} ${car.model}`} className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
       <div className="bg-[#070d1a] border border-[#c5a059]/40 rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl relative">
         
         {/* شريط الإغلاق والعنوان */}
@@ -43,6 +46,7 @@ export default function CarGalleryModal({ car, onClose, onBookNow }: CarGalleryM
             </span>
             <button
               onClick={onClose}
+              aria-label="إغلاق معرض الصور"
               className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer transition-colors"
             >
               <X className="w-5 h-5" />
@@ -51,12 +55,12 @@ export default function CarGalleryModal({ car, onClose, onBookNow }: CarGalleryM
         </div>
 
         {/* مساحة العرض الرئيسية للصورة النشطة */}
-        <div className="relative aspect-video w-full bg-black/60 flex items-center justify-center overflow-hidden">
+        <div className="car-gallery-main relative aspect-video w-full bg-black/60 flex items-center justify-center overflow-hidden">
           <Image
             src={images[activeIdx]}
             alt={`${car.make} ${car.model} - صورة ${activeIdx + 1}`}
             fill
-            priority
+            loading="eager"
             className="object-contain"
             sizes="(max-width: 1024px) 100vw, 900px"
           />
@@ -84,12 +88,14 @@ export default function CarGalleryModal({ car, onClose, onBookNow }: CarGalleryM
         </div>
 
         {/* شريط الصور المصغرة بالأسفل */}
-        <div className="p-3 bg-[#0a1224] border-t border-white/10 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+        <div className="p-3 bg-[#0a1224] border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto no-scrollbar py-1">
             {images.map((img, i) => (
               <button
                 key={i}
                 onClick={() => setActiveIdx(i)}
+                aria-label={`عرض الصورة ${i + 1}`}
+                aria-current={activeIdx === i ? "true" : undefined}
                 className={`relative w-16 h-11 rounded-lg overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
                   activeIdx === i ? 'border-[#c5a059] scale-105 shadow-md shadow-[#c5a059]/20' : 'border-transparent opacity-60 hover:opacity-100'
                 }`}

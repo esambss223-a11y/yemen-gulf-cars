@@ -1,5 +1,7 @@
 'use client';
 
+import './admin.css';
+
 import React, { useState, useEffect } from 'react';
 import { useFleet } from '@/context/FleetContext';
 import { Car, Booking, BookingReviewInput, UserRole, VehicleOwner, StaffUser, OwnerCompensationType, Customer, ReturnInspectionPayload } from '@/types/fleet';
@@ -468,7 +470,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#f4f6fa] text-slate-800 flex flex-col md:flex-row font-arabic select-none">
+    <div className="admin-ui admin-shell font-arabic">
       
       {/* 1. الشريط الجانبي الفاخر (Sidebar) */}
       <AdminSidebar
@@ -491,7 +493,7 @@ export default function AdminDashboardPage() {
       />
 
       {/* 2. المحتوى الرئيسي (Main Dashboard Content) */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#f4f6fa]">
+      <main id="admin-main" className="admin-main">
         
         {/* شريط الإجراءات والبحث العلوي */}
         <AdminHeader
@@ -528,7 +530,7 @@ export default function AdminDashboardPage() {
         )}
 
         {/* منطقة المحتوى التفاعلي (Tabs) */}
-        <div className="p-3.5 sm:p-6 flex-1 space-y-6">
+        <div className="admin-content flex-1 space-y-6" key={activeTab}>
 
           {/* TAB 1: الإحصائيات العامة */}
           {activeTab === 'overview' && (

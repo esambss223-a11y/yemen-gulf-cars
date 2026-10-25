@@ -106,42 +106,27 @@ export default function AdminHeader({
   };
 
   return (
-    <header className="h-16 sm:h-20 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between gap-3 sm:gap-6 sticky top-0 z-20 font-arabic shadow-xs">
+    <header className="admin-header">
       
       {/* 1. الجانب الأيمن: شعار وهوية شركة اليمن والخليج في كبسولة كحلية فاخرة */}
       <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={onToggleMobileMenu}
-          className="md:hidden p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 transition-colors shrink-0"
+          className="admin-menu-toggle"
+          aria-label="فتح قائمة الأقسام" aria-controls="admin-navigation"
           title="فتح القائمة"
         >
           <Menu className="w-5 h-5 text-slate-800" />
         </button>
 
-        <div className="flex items-center gap-3 bg-[#081225] text-white py-1.5 px-3 sm:px-4 rounded-2xl shadow-sm">
-          <div className="text-right hidden sm:block">
-            <h1 className="text-xs sm:text-sm font-black text-white leading-tight">
-              شركة اليمن والخليج
-            </h1>
-            <p className="text-[10px] text-[#c5a059] font-medium leading-none mt-0.5">
-              لتأجير السيارات
-            </p>
-          </div>
-          <div className="h-8 sm:h-10 w-auto flex items-center justify-center shrink-0">
-            <Image
-              src="/logo2.png"
-              alt="شركة اليمن والخليج"
-              width={120}
-              height={40}
-              priority
-              className="h-7 sm:h-8 w-auto object-contain"
-            />
-          </div>
-        </div>
+        <button onClick={onOpenProfile} className="admin-brand" title="حساب الموظف">
+          <Image src="/logo2.png" alt="شركة اليمن والخليج لتأجير السيارات" width={1945} height={808} priority />
+          <span>إدارة الأسطول والحجوزات</span>
+        </button>
       </div>
 
       {/* 2. المنتصف: شريط البحث المستدير الأنيق المطابق للصورة */}
-      <div className="flex-1 max-w-xl mx-auto">
+      <div className="admin-header-search">
         <div className="relative w-full">
           <input
             type="text"
@@ -155,10 +140,10 @@ export default function AdminHeader({
       </div>
 
       {/* 3. الجانب الأيسر: زر الإشعارات والأزرار التشغيلية */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className="admin-header-actions">
         
         {/* شارة الاتصال السحابي */}
-        <div className={`hidden lg:flex px-2.5 py-1.5 rounded-full text-[10px] font-bold items-center gap-1.5 border shadow-2xs ${
+        <div className={`admin-cloud-badge hidden lg:flex px-2.5 py-1.5 rounded-full text-[10px] font-bold items-center gap-1.5 border shadow-2xs ${
           isCloudConnected 
             ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
             : 'bg-cyan-50 border-cyan-200 text-cyan-700'
@@ -173,7 +158,7 @@ export default function AdminHeader({
             onClick={() => setNotificationsOpen((open) => !open)}
             aria-label="فتح التنبيهات"
             aria-expanded={notificationsOpen}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200/80 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors relative cursor-pointer"
+            className="admin-notification-toggle w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200/80 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors relative cursor-pointer"
             title="الإشعارات والتنبيهات التشغيلية"
           >
             <Bell className="w-4 h-4" />
@@ -185,7 +170,7 @@ export default function AdminHeader({
           </button>
 
           {notificationsOpen && (
-            <div className="absolute left-0 top-full mt-2 w-[min(24rem,calc(100vw-1.5rem))] bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden text-right">
+            <div className="admin-notifications-panel absolute left-0 top-full mt-2 w-[min(24rem,calc(100vw-1.5rem))] bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden text-right">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                 <button onClick={() => setNotificationsOpen(false)} className="p-1 text-slate-400 hover:text-slate-700" aria-label="إغلاق التنبيهات">
                   <X className="w-4 h-4" />
@@ -197,7 +182,7 @@ export default function AdminHeader({
               </div>
 
               {notificationsError && <p role="alert" className="px-4 py-2 text-xs text-rose-700 bg-rose-50">{notificationsError}</p>}
-              <div className="max-h-[min(65vh,28rem)] overflow-y-auto divide-y divide-slate-100">
+              <div className="admin-notifications-list max-h-[min(65vh,28rem)] overflow-y-auto divide-y divide-slate-100">
                 {notifications.length === 0 ? (
                   <p className="p-6 text-center text-xs text-slate-500">لا توجد تنبيهات حالية.</p>
                 ) : notifications.map((item) => (
@@ -229,7 +214,7 @@ export default function AdminHeader({
         {(currentStaff.role === 'super_admin' || currentStaff.role === 'rental_agent') && (
           <button
             onClick={onOpenAddBooking}
-            className="px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#c5a059] hover:from-[#e0bc43] hover:to-[#cca74a] text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-[#c5a059]/20 transition-all cursor-pointer"
+            className="admin-primary-action px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#c5a059] hover:from-[#e0bc43] hover:to-[#cca74a] text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-[#c5a059]/20 transition-all cursor-pointer"
             title="إنشاء عقد وحجز جديد"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
@@ -241,7 +226,7 @@ export default function AdminHeader({
         {currentStaff.role === 'super_admin' && (
           <button
             onClick={onOpenAddCar}
-            className="hidden xl:flex px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold items-center gap-1.5 transition-all cursor-pointer"
+            className="admin-add-car hidden xl:flex px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold items-center gap-1.5 transition-all cursor-pointer"
             title="إضافة مركبة جديدة للأسطول"
           >
             <Plus className="w-4 h-4" />
