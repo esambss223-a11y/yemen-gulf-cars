@@ -170,8 +170,11 @@ export async function POST(request: Request) {
       const { data: coupon, error: couponError } = await auth.admin.from('coupons')
         .select('active, expires_at').eq('code', submittedCouponCode).maybeSingle();
       if (couponError) return Response.json({ code: 'COUPON_LOOKUP_FAILED', error: 'تعذر التحقق من كود الخصم؛ لم يعتمد الطلب.' }, { status: 503 });
-      const couponIsCurrent = Boolean(coupon?.active) &&
-        (!coupon.expires_at || String(coupon.expires_at).slice(0, 10) >= cairoNowMinute().slice(0, 10));
+      const couponIsCurrent = Boolean(
+        coupon &&
+        coupon.active &&
+        (!coupon.expires_at || String(coupon.expires_at).slice(0, 10) >= cairoNowMinute().slice(0, 10))
+      );
       if (couponIsCurrent) approvedDiscountCode = submittedCouponCode;
       else approvedDiscount = 0;
     }
