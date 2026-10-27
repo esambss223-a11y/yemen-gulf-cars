@@ -1,0 +1,26 @@
+.fleet-contract-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:14px 24px; border-bottom:1px solid var(--fleet-line); background:#fff; flex-shrink:0; }
+.fleet-contract-views { display:flex; gap:5px; padding:4px; background:#eef2f5; border-radius:11px; }
+.admin-ui .fleet-dialog .fleet-contract-views button { display:flex; justify-content:center; align-items:center; gap:7px; min-height:44px; padding:9px 13px; font-size:12px; font-weight:750; color:#52697b; border-radius:8px; }
+.admin-ui .fleet-dialog .fleet-contract-views button.is-selected { color:var(--fleet-ink); background:#fff; box-shadow:0 2px 5px #14263809; }
+.fleet-contract-scroll { overflow-y:auto; overscroll-behavior:contain; min-height:0; flex:1; padding:24px; scrollbar-gutter:stable; }
+.fleet-contract-scroll [hidden] { display:none !important; }
+.fleet-contract-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:17px; }
+.fleet-contract-facts dt { color:var(--fleet-muted); font-size:12px; margin-bottom:5px; }
+.fleet-contract-facts dd { color:var(--fleet-ink); font-size:14px; font-weight:750; min-width:0; overflow-wrap:anywhere; line-height:1.8; }
+.fleet-contract-facts a { color:#426983; text-decoration:underline; text-underline-offset:3px; }
+.fleet-contract-note { color:#80612f; background:#faf4e9; font-size:12px; line-height:1.9; padding:12px; margin-top:16px; border-radius:10px; }
+.fleet-contract-notes { white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.95; color:#52697b; }
+.fleet-contract-footer-note { flex:1; min-width:0; font-size:12px; color:var(--fleet-muted); overflow-wrap:anywhere; }
+.fleet-contract-preview-caption { color:var(--fleet-muted); font-size:12px; line-height:1.9; margin-bottom:15px; text-align:center; }
+.fleet-contract-preview { width:100%; max-width:210mm; margin-inline:auto; overflow:hidden; }
+.fleet-contract-preview-space { position:relative; width:100%; }
+.fleet-contract-preview-sheet { position:absolute; top:0; right:0; width:210mm; padding:10mm; background:white; transform-origin:top right; border:1px solid #d4dce3; box-shadow:0 4px 16px #14263809; }
+@media (max-width:540px) {
+  .fleet-contract-toolbar { padding:12px; gap:10px; }
+  .fleet-contract-views { width:100%; }
+  .fleet-contract-views button { flex:1; }
+  .fleet-contract-toolbar > button { width:100%; }
+  .fleet-contract-scroll { padding:15px 12px; scrollbar-gutter:auto; }
+  .fleet-contract-facts { grid-template-columns:minmax(0,1fr); gap:14px; }
+  .fleet-contract-footer-note { flex-basis:100%; }
+}

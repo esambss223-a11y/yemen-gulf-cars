@@ -1,0 +1,13 @@
+/* Shared visual tokens for vehicle cards, records and booking forms. */
+.admin-ui {
+  --fleet-ink: #142638;
+  --fleet-muted: #66727c;
+  --fleet-gold: #bc9553;
+  --fleet-line: #dde3e8;
+  --fleet-paper: #f2f1eb;
+  --fleet-surface: #ffffff;
+  --fleet-field: #f7f9fb;
+  --fleet-success: #2c795b;
+  --fleet-danger: #9b4e40;
+  --fleet-radius: 16px;
+}

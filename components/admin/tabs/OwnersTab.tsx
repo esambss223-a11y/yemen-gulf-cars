@@ -388,7 +388,7 @@ export default function OwnersTab({
                                 }`}>
                                   {car.status === 'available' ? '● متاح' :
                                    car.status === 'rented' ? '● مؤجر' :
-                                   car.status === 'cleaning' ? '● غسيل' : '● صيانة'}
+                                   car.status === 'cleaning' ? '● غسيل' : car.status === 'archived' ? 'مؤرشفة' : '● صيانة'}
                                 </span>
                               </div>
 

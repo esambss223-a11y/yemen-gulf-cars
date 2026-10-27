@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Booking, BookingReviewInput, ReturnInspectionPayload, Customer, Invoice, Car } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
 import { reportFleetWriteError } from './fleetStorage';
+import { carLifecycleRequest } from '@/lib/car-lifecycle-client';
 
 interface UseFleetBookingsProps {
   cars: Car[];
@@ -60,6 +61,10 @@ export function useFleetBookings({
   }), []);
 
   const addBooking = async (bookingData: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>): Promise<boolean> => {
+    if (cars.find((car) => car.id === bookingData.carId)?.status === 'archived') {
+      reportFleetWriteError('السيارة مؤرشفة ولا يمكن إنشاء حجز عليها.');
+      return false;
+    }
     const seq = bookings.length + 1;
     const bookingNumber = `BK-${new Date().getFullYear()}-${String(seq).padStart(3, '0')}`;
     const newBooking: Booking = {
@@ -372,6 +377,12 @@ export function useFleetBookings({
     logAction('بدء عقد وتسليم سيارة', `${booking.bookingNumber} — ${booking.carName} — ${booking.customer.fullName}`);
   };
 
+  const cancelCarBooking = async (booking: Booking, reason: string): Promise<void> => {
+    const result = await carLifecycleRequest(booking.carId, 'cancel_booking', booking.id, reason);
+    const saved = mapCloudBooking(result.booking);
+    setBookings((previous) => previous.map((item) => item.id === saved.id ? saved : item));
+  };
+
   return {
     bookings,
     setBookings,
@@ -380,5 +391,6 @@ export function useFleetBookings({
     updateBookingStatus,
     reviewPendingBooking,
     activateConfirmedBooking,
+    cancelCarBooking,
   };
 }

@@ -1,0 +1,135 @@
+.fleet-page { max-width: 1500px; margin-inline: auto; color: var(--fleet-ink); }
+.fleet-page *, .fleet-editor * { box-sizing: border-box; }
+.fleet-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 23px; }
+.fleet-eyebrow { font-size: 12px; color: #89724b; font-weight: 700; }
+.fleet-heading h1 { margin-block: 4px; font-size: clamp(27px, 3vw, 39px); font-weight: 850; line-height: 1.5; }
+.fleet-heading h1 > span { color: var(--fleet-gold); }
+.fleet-heading p { font-size: 13px; line-height: 1.8; color: var(--fleet-muted); }
+.admin-ui .admin-content .fleet-page .fleet-button, .admin-ui .admin-content .fleet-editor button { min-height: 46px; }
+.fleet-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid #d8e0e6; background: #f7f9fa; color: #344b5e; padding: 10px 15px; border-radius: 11px; cursor: pointer; font-size: 13px; font-weight: 750; transition: background 160ms, border-color 160ms; }
+.fleet-page .fleet-button-primary { background: var(--fleet-ink); color: #fff; border-color: var(--fleet-ink); }
+.fleet-page .fleet-button-primary:hover:not(:disabled) { background: #25465e; }
+.fleet-page button:disabled { opacity: .45; cursor: not-allowed; }
+.fleet-page button { font-family: inherit; cursor: pointer; }
+.fleet-page :is(button,input,select):focus-visible { outline: 3px solid #bc9553; outline-offset: 3px; }
+.fleet-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 13px; margin-bottom: 22px; }
+.fleet-summary > div { display: grid; grid-template-columns: 1fr 26px; gap: 5px 12px; border: 1px solid var(--fleet-line); background: #fff; padding: 18px 20px; border-radius: 16px; }
+.fleet-summary span { font-size: 12px; color: var(--fleet-muted); }
+.fleet-summary strong { grid-column: 1; font-size: 29px; line-height: 1.5; font-weight: 800; font-variant-numeric: tabular-nums; }
+.fleet-summary svg, .fleet-summary .fleet-dot { grid-column: 2; grid-row: 1 / 3; align-self: center; justify-self: center; color: #a08453; }
+.fleet-dot { width: 10px; height: 10px; border-radius: 50%; background: #a88a57; }
+.fleet-dot.is-available { background: #2e8a68; box-shadow: 0 0 0 6px #ecf6f0; }
+.fleet-dot.is-rented { background: #b88d40; box-shadow: 0 0 0 6px #f9f2e5; }
+.fleet-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid var(--fleet-line); background: #fff; padding: 13px; border-radius: 16px; }
+.fleet-search { display: flex; align-items: center; flex: 1; gap: 10px; min-width: 0; padding-inline: 13px; background: #f4f7f9; border: 1px solid #e4e9ee; border-radius: 11px; color: #7c8a95; }
+.fleet-search input { min-height: 46px; width: 100%; min-width: 0; border: 0; background: transparent; color: #243b4c; font-size: 14px; outline-offset: 0; }
+.fleet-search input::placeholder { color: #788590; }
+.fleet-filters { display: flex; gap: 5px; flex-wrap: wrap; }
+.admin-ui .admin-content .fleet-page .fleet-filters button { min-height: 46px; }
+.fleet-filters button { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 12px; border-radius: 9px; background: transparent; color: #627282; font-size: 12px; font-weight: 700; }
+.fleet-filters button span { font-size: 11px; color: #83909a; }
+.fleet-filters button.is-active { background: #eaf0f5; color: #1b3c55; }
+.fleet-filters button.is-active span { color: #536f83; }
+.fleet-results-label { display: flex; justify-content: space-between; gap: 14px; padding-block: 16px; color: #7b8790; font-size: 11px; line-height: 1.9; }
+.fleet-cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); align-items: start; gap: 20px; }
+.fleet-card { background: #fff; border: 1px solid var(--fleet-line); border-radius: 18px; overflow: hidden; min-width: 0; box-shadow: 0 3px 13px #14263803; }
+.fleet-card.has-management { border-color: #a9bac9; }
+.fleet-card-main { min-width: 0; }
+.fleet-card-photo { width: 100%; height: 185px; display: block; position: relative; overflow: hidden; background: #e3e8ec; border: 0; }
+.fleet-card-photo img { transition: transform 250ms ease; }
+.fleet-card-photo:hover img { transform: scale(1.025); }
+.fleet-card-info { padding: 17px 18px 0; min-width: 0; }
+.fleet-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.fleet-state { display: inline-flex; align-items: center; gap: 6px; color: #348365; background: #eef7f2; padding: 4px 8px; border-radius: 7px; font-size: 11px; font-weight: 750; }
+.fleet-state i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.fleet-state.is-rented { color: #8d6d32; background: #faf3e6; }
+.fleet-state.is-archived { color: #526779; background: #edf0f3; }
+.fleet-removal { margin-top: 16px; padding-top: 16px; border-top: 1px solid #d9e3ec; }
+.fleet-removal h3 { font-size: 15px; font-weight: 800; margin-bottom: 8px; }
+.fleet-removal > p, .fleet-archive-action p { font-size: 12px; line-height: 1.95; color: #526779; }
+.fleet-linked-bookings { display: grid; gap: 10px; margin-top: 12px; }
+.fleet-linked-bookings article { min-width: 0; padding: 13px; background: white; border: 1px solid #dbe3eb; border-radius: 12px; }
+.fleet-linked-heading { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.fleet-linked-heading strong { font-size: 14px; overflow-wrap: anywhere; }
+.fleet-linked-heading span { font-size: 11px; padding: 3px 7px; background: #eef2f5; border-radius: 6px; color: #526779; }
+.fleet-linked-bookings article > p { color: #526779; font-size: 12px; line-height: 1.9; margin-block: 6px; overflow-wrap: anywhere; }
+.fleet-linked-bookings .fleet-linked-note { padding: 9px; border-radius: 7px; background: #faf4e9; color: #76582f; }
+.fleet-linked-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.fleet-linked-actions button { flex: 1; }
+.fleet-cancel-form { border-top: 1px solid #dbe3eb; padding-top: 12px; margin-top: 12px; }
+.fleet-cancel-form label { display: block; font-size: 12px; margin-bottom: 7px; font-weight: 700; }
+.fleet-cancel-form textarea { display: block; width: 100%; min-height: 90px; border: 1px solid #bdcbd6; padding: 10px; border-radius: 8px; background: #f7f9fa; color: #233d50; font-size: 16px; resize: vertical; }
+.fleet-cancel-form p { font-size: 12px; line-height: 1.9; color: #627282; margin-top: 8px; }
+.fleet-archive-blocked { display: flex; gap: 7px; align-items: flex-start; padding-top: 12px; }
+.fleet-archive-blocked svg { flex-shrink: 0; margin-top: 4px; }
+.fleet-archive-action { padding: 12px; margin-top: 12px; background: #edf2f5; border-radius: 10px; }
+.fleet-archive-action > strong { font-size: 13px; }
+.fleet-notice { margin-block: 10px; padding: 13px; border-radius: 10px; background: #eaf5ef; }
+.fleet-card.has-management { grid-column: 1 / -1; }
+@media (min-width: 641px) {
+  .fleet-card.has-management .fleet-card-main { display: grid; grid-template-columns: 160px minmax(0,1fr); gap: 18px; padding: 18px 18px 0; }
+  .fleet-card.has-management .fleet-card-photo { height: 130px; border-radius: 11px; }
+  .fleet-card.has-management .fleet-card-info { padding: 0; }
+  .fleet-card.has-management .fleet-card-facts, .fleet-card.has-management .fleet-card-actions { max-width: 650px; }
+}
+@media (min-width: 900px) {
+  .fleet-linked-bookings { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; }
+}
+.fleet-state:is(.is-maintenance,.is-cleaning) { color: #8c6653; background: #f7eee8; }
+.fleet-year { color: #8c989f; font-size: 12px; }
+.fleet-car-title { display: block; text-align: right; margin-top: 9px; color: #1a2b3d; line-height: 1.5; width: 100%; }
+.fleet-car-title span { display: block; color: #6c7b88; font-size: 12px; }
+.fleet-car-title strong { display: block; font-size: 20px; font-weight: 800; overflow-wrap: anywhere; }
+.fleet-plate { display: inline-block; margin-top: 8px; color: #566976; background: #f5f7f9; border: 1px solid #e5ebef; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; }
+.fleet-owner { margin-top: 8px; font-size: 11px; color: #7a8790; line-height: 1.8; overflow-wrap: anywhere; }
+.fleet-card-facts { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; margin: 17px 18px; padding-block: 14px; border-block: 1px solid #edf0f3; }
+.fleet-card-facts span { display: block; font-size: 10px; color: #7a8792; margin-bottom: 6px; }
+.fleet-card-facts strong { font-size: 15px; font-weight: 800; color: #263e51; }
+.fleet-card-facts small { font-size: 10px; font-weight: 500; color: #8b969f; }
+.fleet-card-actions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; padding: 0 18px 18px; }
+.fleet-card-actions.is-staff { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.fleet-card-actions .fleet-button { padding-inline: 6px; font-size: 12px; gap: 5px; }
+.fleet-card-actions .is-open { background: #e7eef4; border-color: #b9cad7; }
+.fleet-card-actions .is-open > svg:last-child { transform: rotate(180deg); }
+.fleet-management { border-top: 1px solid #d9e3ec; padding: 17px 18px; background: #f6f8fa; }
+.fleet-management-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.fleet-management-title strong { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; }
+.admin-ui .fleet-management-title button { width: 44px; height: 44px; display: grid; place-items: center; color: #6c7d89; }
+.fleet-management > label { display: block; font-size: 12px; color: #52697b; font-weight: 700; margin-bottom: 8px; }
+.fleet-status-editor { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+.fleet-status-editor select { width: 100%; min-width: 0; min-height: 46px; border: 1px solid #ccd8e1; border-radius: 10px; padding: 9px; background: white; color: #304c60; font-size: 13px; }
+.fleet-help { font-size: 11px; color: #798894; line-height: 1.9; margin-top: 9px; }
+.fleet-edit-link { display: inline-flex; gap: 6px; align-items: center; min-height: 44px; font-size: 12px; color: #365c78; margin-top: 8px; text-decoration: underline; }
+.fleet-delete-explanation { margin-top: 12px; padding: 12px; border-radius: 10px; background: #eef2f5; display: flex; gap: 8px; align-items: flex-start; border: 1px solid #dbe3e9; }
+.fleet-delete-explanation svg { flex-shrink: 0; margin-top: 3px; color: #788c9c; }
+.fleet-delete-explanation strong { font-size: 12px; color: #526a7b; }
+.fleet-delete-explanation p, .fleet-delete-confirm p { font-size: 11px; line-height: 1.9; color: #7d8a94; margin-top: 5px; }
+.fleet-delete-area { margin-top: 8px; border-top: 1px solid #e0e7ed; padding-top: 8px; }
+.fleet-delete-trigger { display: inline-flex; align-items: center; gap: 7px; color: #a25b4b; font-size: 12px; min-height: 44px; }
+.fleet-delete-confirm strong { font-size: 13px; color: #884c40; }
+.fleet-delete-confirm > div { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.fleet-page .fleet-button-danger { background: #9b5141; color: white; border-color: #9b5141; }
+.fleet-success { color: #2c795b; display: flex; gap: 5px; margin-top: 10px; font-size: 12px; }
+.fleet-error { color: #9b4e40; background: #fff0eb; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 12px; line-height: 1.9; }
+.fleet-empty { padding: 60px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; color: #7f8d99; border: 1px dashed #cad6df; border-radius: 18px; }
+.fleet-empty h2 { font-size: 20px; font-weight: 800; color: #294254; }
+.fleet-empty p { font-size: 13px; }
+.fleet-editor { max-width: 1100px; margin-inline: auto; color: #263c4d; }
+.fleet-editor > div { border-radius: 18px; overflow: hidden; }
+.fleet-editor .fleet-editor-heading { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 18px; }
+.fleet-editor-heading > button { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 750; }
+.fleet-editor-heading > span { color: #7c8b97; font-size: 12px; }
+.fleet-editor > div:last-child, .fleet-editor form div[class*="bg-"] { background: #fff; border-color: #dce5ed; }
+.admin-ui .fleet-editor form :is(input,select,textarea) { min-height: 46px; background: #f7f9fb; border-color: #cddce7; color: #284a63; font-size: 16px; }
+.admin-ui .fleet-editor form :is(input[type=checkbox],input[type=radio]) { min-height: auto; }
+.admin-ui .fleet-editor form label, .admin-ui .fleet-editor form .text-white, .admin-ui .fleet-editor form [class*="text-slate-"] { color: #506b80; }
+.admin-ui .fleet-editor button[type=submit] { background: #142638; color: white; box-shadow: none; }
+.admin-ui .fleet-editor form button:not([type=submit]) { min-height: 44px; }
+@media (max-width: 1150px) { .fleet-cards { grid-template-columns: repeat(2,minmax(0,1fr)); } .fleet-toolbar { flex-direction: column; align-items: stretch; } .fleet-filters { justify-content: space-between; } }
+@media (max-width: 640px) { .fleet-heading { margin-bottom: 18px; align-items: flex-start; } .fleet-heading h1 { font-size: 29px; } .fleet-heading p { font-size: 12px; max-width: 190px; } .fleet-heading > .fleet-button { padding-inline: 11px; font-size: 12px; margin-top: 12px; } .fleet-summary { gap: 9px; grid-template-columns: repeat(2,minmax(0,1fr)); margin-bottom: 16px; } .fleet-summary > div { padding: 13px 15px; border-radius: 13px; } .fleet-summary strong { font-size: 26px; } .fleet-summary span { font-size: 11px; } .fleet-toolbar { padding: 10px; gap: 9px; } .fleet-search { padding-inline: 10px; } .fleet-search input { font-size: 16px; } .fleet-filters { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; } .fleet-filters button { justify-content: space-between; } .fleet-results-label { flex-direction: column; gap: 0; padding-block: 13px; font-size: 11px; } .fleet-cards { grid-template-columns: 1fr; gap: 14px; } .fleet-card { border-radius: 15px; } .fleet-card-main { display: grid; grid-template-columns: 104px minmax(0,1fr); gap: 13px; padding: 15px 15px 0; align-items: start; } .fleet-card-photo { height: 112px; border-radius: 11px; } .fleet-card-info { padding: 0; } .fleet-car-title { margin-top: 6px; } .fleet-car-title strong { font-size: 18px; line-height: 1.5; } .fleet-car-title span { font-size: 11px; } .fleet-card-meta { gap: 5px; flex-wrap: wrap; } .fleet-state { font-size: 10px; padding-inline: 6px; } .fleet-year { font-size: 10px; } .fleet-plate { margin-top: 5px; font-size: 10px; } .fleet-owner { font-size: 10px; margin-top: 5px; } .fleet-card-facts { margin: 14px 15px; padding-block: 12px; } .fleet-card-actions { padding: 0 15px 15px; gap: 7px; } .fleet-card-facts strong { font-size: 14px; } .fleet-card-actions .fleet-button { font-size: 12px; gap: 4px; } .fleet-management { padding: 15px; } .fleet-status-editor { grid-template-columns: 1fr; } .fleet-status-editor select { font-size: 16px; } .fleet-delete-confirm > div > button { flex: 1; } }
+@media (prefers-reduced-motion: reduce) { .fleet-page *, .fleet-card-photo img { transition: none !important; } }
+@media (max-width: 640px) {
+  .fleet-summary > div { grid-template-columns: minmax(0,1fr) auto; gap: 6px; align-items: center; padding: 11px 12px; }
+  .fleet-summary strong { grid-column: 2; grid-row: 1; font-size: 23px; line-height: 1.4; }
+  .fleet-summary svg, .fleet-summary .fleet-dot { display: none; }
+}

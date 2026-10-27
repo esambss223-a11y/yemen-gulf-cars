@@ -1,8 +1,9 @@
 'use client';
 
 import './admin.css';
+import '@/components/admin/fleet-theme.css';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useFleet } from '@/context/FleetContext';
 import { Car, Booking, BookingReviewInput, UserRole, VehicleOwner, StaffUser, OwnerCompensationType, Customer, ReturnInspectionPayload } from '@/types/fleet';
 
@@ -14,7 +15,7 @@ import AdminFooter from '@/components/admin/AdminFooter';
 
 // Modular Tabs
 import OverviewTab from '@/components/admin/tabs/OverviewTab';
-import CarsTab from '@/components/admin/tabs/CarsTab';
+import CarsTab from '@/components/admin/tabs/FleetCarsTab';
 import BookingsTab from '@/components/admin/tabs/BookingsTab';
 import CustomersTab from '@/components/admin/tabs/CustomersTab';
 import StaffTab from '@/components/admin/tabs/StaffTab';
@@ -22,9 +23,12 @@ import OwnersTab from '@/components/admin/tabs/OwnersTab';
 import AuditTab from '@/components/admin/tabs/AuditTab';
 import ProfileTab from '@/components/admin/tabs/ProfileTab';
 import CouponsTab from '@/components/admin/tabs/CouponsTab';
+import DeveloperCenter from '@/components/admin/tabs/DeveloperCenter';
 
 // Modular Modals
 import CarFormModal, { CarFormState } from '@/components/admin/modals/CarFormModal';
+import CarDetailsView from '@/components/admin/tabs/CarDetailsView';
+import type { CarFleetFilter } from '@/lib/car-lifecycle';
 import StaffFormModal from '@/components/admin/modals/StaffFormModal';
 import OwnerFormModal, { OwnerFormState } from '@/components/admin/modals/OwnerFormModal';
 import CustomerFormModal from '@/components/admin/modals/CustomerFormModal';
@@ -57,6 +61,8 @@ export default function AdminDashboardPage() {
     addCar, 
     updateCar, 
     deleteCar, 
+    setCarArchived,
+    cancelCarBooking,
     bookings, 
     addBooking, 
     updateBookingStatus, 
@@ -76,7 +82,8 @@ export default function AdminDashboardPage() {
 
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [searchQuery, setSearchQuery] = useState('');
-  const [carFilter, setCarFilter] = useState<'all' | 'available' | 'rented' | 'maintenance'>('all');
+  const [carFilter, setCarFilter] = useState<CarFleetFilter>('all');
+  const [carManagementId, setCarManagementId] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // حماية اللوحة وتسجيل الدخول وتفادي Hydration Mismatch
@@ -88,8 +95,24 @@ export default function AdminDashboardPage() {
 
   // النوافذ المنبثقة (Modals Visibility)
   const [isAddCarOpen, setIsAddCarOpen] = useState(false);
+  const [carEditorInline, setCarEditorInline] = useState(false);
   const [editingCar, setEditingCar] = useState<Car | null>(null);
+  const [carDetailsId, setCarDetailsId] = useState<string | null>(null);
+  const carsListScroll = useRef(0);
+  const closeCarDetails = useCallback(() => {
+    setCarDetailsId(null);
+    requestAnimationFrame(() => document.querySelector('.admin-content')?.scrollTo({ top: carsListScroll.current }));
+  }, []);
+  const closeCarEditor = useCallback(() => {
+    setIsAddCarOpen(false);
+    requestAnimationFrame(() => document.querySelector('.admin-content')?.scrollTo({ top: carsListScroll.current }));
+  }, []);
+  const detailsCar = cars.find((car) => car.id === carDetailsId);
+  useEffect(() => {
+    if (carDetailsId || isAddCarOpen) document.querySelector('.admin-content')?.scrollTo({ top: 0 });
+  }, [carDetailsId, isAddCarOpen]);
   const [isAddBookingOpen, setIsAddBookingOpen] = useState(false);
+  const openBookingForm = () => { clearDataOperationError(); setIsAddBookingOpen(true); };
   const [selectedBookingForReturn, setSelectedBookingForReturn] = useState<Booking | null>(null);
   const [selectedBookingForContract, setSelectedBookingForContract] = useState<Booking | null>(null);
   const [selectedOwnerForSettlement, setSelectedOwnerForSettlement] = useState<VehicleOwner | null>(null);
@@ -214,6 +237,8 @@ export default function AdminDashboardPage() {
 
   // معالجات المودال - سيارات
   const openEditCarModal = (car: Car) => {
+    setCarEditorInline(activeTab === 'cars');
+    if (activeTab === 'cars') setCarDetailsId(null);
     setEditingCar(car);
     setCarForm({
       carCode: car.carCode || '',
@@ -252,6 +277,8 @@ export default function AdminDashboardPage() {
   };
 
   const openAddCarModal = () => {
+    setCarEditorInline(activeTab === 'cars');
+    if (activeTab === 'cars') setCarDetailsId(null);
     setEditingCar(null);
     setCarForm({
       carCode: '',
@@ -434,11 +461,9 @@ export default function AdminDashboardPage() {
 
   // تصفية السيارات بالبحث والحالة
   const filteredCars = cars.filter(car => {
-    const matchesSearch = 
-      car.make.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      car.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      car.plateNumber.includes(searchQuery);
-    const matchesFilter = carFilter === 'all' || car.status === carFilter;
+    const matchesSearch = [car.make, car.model, car.plateNumber, car.ownerName, car.carCode].some((value) => value?.toLowerCase().includes(searchQuery.toLowerCase().trim()));
+    const matchesFilter = carFilter === 'archived' ? car.status === 'archived' : car.status !== 'archived' &&
+      (carFilter === 'all' || (carFilter === 'maintenance' ? car.status === 'maintenance' || car.status === 'cleaning' : car.status === carFilter));
     return matchesSearch && matchesFilter;
   });
 
@@ -501,11 +526,12 @@ export default function AdminDashboardPage() {
           setSearchQuery={setSearchQuery}
           isCloudConnected={isCloudConnected}
           currentStaff={currentStaff}
-          onOpenAddBooking={() => setIsAddBookingOpen(true)}
+          onOpenAddBooking={openBookingForm}
           onOpenAddCar={openAddCarModal}
           onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
           onOpenProfile={() => setActiveTab('profile')}
           onOpenTab={(tab) => setActiveTab(tab)}
+          onLogout={handleLogout}
         />
 
         {cloudSyncError && (
@@ -533,7 +559,8 @@ export default function AdminDashboardPage() {
         <div className="admin-content flex-1 space-y-6" key={activeTab}>
 
           {/* TAB 1: الإحصائيات العامة */}
-          {activeTab === 'overview' && (
+          {activeTab === 'overview' && currentStaff.maintenanceAccess && <DeveloperCenter onManageStaff={() => setActiveTab('staff')} />}
+          {activeTab === 'overview' && !currentStaff.maintenanceAccess && (
             <OverviewTab
               totalCars={totalCars}
               availableCars={availableCars}
@@ -547,36 +574,50 @@ export default function AdminDashboardPage() {
               cars={cars}
               bookings={bookings}
               onReturnCar={(bk) => {
+                clearDataOperationError();
                 setSelectedBookingForReturn(bk);
                 setReturnKmInput(String(bk.startKm + 350));
               }}
-              onOpenAddBooking={() => setIsAddBookingOpen(true)}
+              onOpenAddBooking={openBookingForm}
               onOpenContract={(bk) => setSelectedBookingForContract(bk)}
               setActiveTab={setActiveTab}
             />
           )}
 
           {/* TAB 2: إدارة السيارات والأسطول */}
-          {activeTab === 'cars' && (
+          {activeTab === 'cars' && isAddCarOpen && <CarFormModal inline isOpen={isAddCarOpen} onClose={closeCarEditor} editingCar={editingCar} carForm={carForm} setCarForm={setCarForm} owners={owners} onSubmit={handleCarFormSubmit} />}
+          {activeTab === 'cars' && !isAddCarOpen && detailsCar && <CarDetailsView key={detailsCar.id} car={detailsCar} bookings={bookings}
+            owner={owners.find((owner) => owner.id === detailsCar.ownerId)} currentStaff={currentStaff}
+            onClose={closeCarDetails} onEdit={() => openEditCarModal(detailsCar)}
+            onManage={() => { setCarManagementId(detailsCar.id); closeCarDetails(); }}
+            onOpenContract={(booking) => setSelectedBookingForContract(booking)} />}
+          {activeTab === 'cars' && !isAddCarOpen && !detailsCar && (
             <CarsTab
               cars={cars}
               filteredCars={filteredCars}
+              bookings={bookings}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
               carFilter={carFilter}
               setCarFilter={setCarFilter}
+              managementId={carManagementId}
+              onManagementChange={setCarManagementId}
               availableCarsCount={availableCars}
               rentedCarsCount={rentedCars}
               currentStaff={currentStaff}
-              onOpenAddCar={openAddCarModal}
-              onOpenEditCar={openEditCarModal}
+              onOpenAddCar={() => { carsListScroll.current = document.querySelector('.admin-content')?.scrollTop || 0; openAddCarModal(); }}
+              onOpenEditCar={(car) => { carsListScroll.current = document.querySelector('.admin-content')?.scrollTop || 0; openEditCarModal(car); }}
+              onOpenDetails={(car) => { carsListScroll.current = document.querySelector('.admin-content')?.scrollTop || 0; setCarDetailsId(car.id); }}
               onOpenQuickBook={(car) => {
                 setNewBooking(prev => ({ ...prev, carId: car.id }));
-                setIsAddBookingOpen(true);
+                openBookingForm();
               }}
-              onDeleteCar={(id, name) => {
-                if (confirm(`هل أنت متأكد من حذف ${name}؟`)) {
-                  deleteCar(id);
-                }
-              }}
+              onDeleteCar={(id) => deleteCar(id)}
+              onUpdateStatus={(id, status) => updateCar(id, { status })}
+              onArchiveChange={setCarArchived}
+              onCancelBooking={cancelCarBooking}
+              onReturnBooking={(booking) => { clearDataOperationError(); setSelectedBookingForReturn(booking); setReturnKmInput(String(booking.startKm)); }}
+              onOpenContract={setSelectedBookingForContract}
             />
           )}
 
@@ -588,6 +629,7 @@ export default function AdminDashboardPage() {
               currentStaff={currentStaff}
               onOpenContract={(bk) => setSelectedBookingForContract(bk)}
               onReturnCar={(bk) => {
+                clearDataOperationError();
                 setSelectedBookingForReturn(bk);
                 setReturnKmInput(String(bk.startKm + 300));
               }}
@@ -622,7 +664,7 @@ export default function AdminDashboardPage() {
                   nationalId: cust.nationalId,
                   licenseNumber: cust.licenseNumber,
                 }));
-                setIsAddBookingOpen(true);
+                openBookingForm();
               }}
             />
           )}
@@ -747,7 +789,7 @@ export default function AdminDashboardPage() {
       </main>
 
       {/* النوافذ المنبثقة المنفصلة (Modular Modals) */}
-      <CarFormModal
+      {!carEditorInline && <CarFormModal
         isOpen={isAddCarOpen}
         onClose={() => setIsAddCarOpen(false)}
         editingCar={editingCar}
@@ -755,7 +797,7 @@ export default function AdminDashboardPage() {
         setCarForm={setCarForm}
         owners={owners}
         onSubmit={handleCarFormSubmit}
-      />
+      />}
 
       <StaffFormModal
         isOpen={isAddStaffOpen}
@@ -783,7 +825,8 @@ export default function AdminDashboardPage() {
         coupons={coupons}
         newBooking={newBooking}
         setNewBooking={setNewBooking}
-        onSubmit={handleAddBookingSubmit}
+        operationError={dataOperationError}
+        onSubmit={(event) => { clearDataOperationError(); return handleAddBookingSubmit(event); }}
       />
 
       {/* نافذة منبثقة: تسجيل / تعديل عميل */}
@@ -808,7 +851,8 @@ export default function AdminDashboardPage() {
         onClose={() => setSelectedBookingForReturn(null)}
         returnKmInput={returnKmInput}
         setReturnKmInput={setReturnKmInput}
-        onSubmit={handleReturnCarSubmit}
+        operationError={dataOperationError}
+        onSubmit={(event, inspection) => { clearDataOperationError(); return handleReturnCarSubmit(event, inspection); }}
       />
 
       {/* نافذة منبثقة: عقد الإيجار الرسمي للطباعة */}

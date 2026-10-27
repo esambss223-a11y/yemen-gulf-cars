@@ -1,23 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  X, 
-  User, 
-  Phone, 
-  CreditCard, 
-  ShieldCheck, 
-  AlertTriangle, 
-  Star, 
-  CheckCircle2, 
-  UserPlus, 
-  Sparkles,
-  Award,
-  Globe,
-  Tag,
-  Gift
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { CheckCircle2, Gift, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
+import FleetDialog from './FleetDialog';
+import BookingSummary from './booking-form/BookingSummary';
+import './booking-form.css';
 import { Car, Customer, PromoCoupon } from '@/types/fleet';
 
 export interface NewBookingFormState {
@@ -46,19 +34,20 @@ interface AddBookingModalProps {
   coupons: PromoCoupon[];
   newBooking: NewBookingFormState;
   setNewBooking: React.Dispatch<React.SetStateAction<NewBookingFormState>>;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.FormEvent) => void | Promise<void>;
+  operationError?: string;
 }
 
 const COMMON_NATIONALITIES = [
-  { code: 'eg', name: 'مصري 🇪🇬' },
-  { code: 'sa', name: 'سعودي 🇸🇦' },
-  { code: 'ae', name: 'إماراتي 🇦🇪' },
-  { code: 'kw', name: 'كويتي 🇰🇼' },
-  { code: 'qa', name: 'قطري 🇶🇦' },
-  { code: 'ye', name: 'يمني 🇾🇪' },
-  { code: 'om', name: 'عماني 🇴🇲' },
-  { code: 'bh', name: 'بحريني 🇧🇭' },
-  { code: 'other', name: 'أجنبي / أخرى 🌐' },
+  { code: 'eg', name: 'مصري' },
+  { code: 'sa', name: 'سعودي' },
+  { code: 'ae', name: 'إماراتي' },
+  { code: 'kw', name: 'كويتي' },
+  { code: 'qa', name: 'قطري' },
+  { code: 'ye', name: 'يمني' },
+  { code: 'om', name: 'عماني' },
+  { code: 'bh', name: 'بحريني' },
+  { code: 'other', name: 'أجنبي / أخرى' },
 ];
 
 export default function AddBookingModal({
@@ -70,8 +59,10 @@ export default function AddBookingModal({
   newBooking,
   setNewBooking,
   onSubmit,
+  operationError = '',
 }: AddBookingModalProps) {
-  const [matchedCustomer, setMatchedCustomer] = useState<Customer | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
   const [promoMessage, setPromoMessage] = useState<{ text: string; success: boolean } | null>(null);
 
@@ -108,25 +99,16 @@ export default function AddBookingModal({
     }
   };
 
-  // الكشف الفوري التلقائي أثناء الكتابة (الجسد الواحد المتكامل)
-  useEffect(() => {
+  const matchedCustomer = useMemo(() => {
     const cleanPhone = newBooking.customerPhone.trim();
     const cleanId = newBooking.nationalId.trim();
     const cleanName = newBooking.customerName.trim().toLowerCase();
-
-    if (cleanPhone.length >= 4 || cleanId.length >= 4 || cleanName.length >= 3) {
-      const found = customers.find(c => 
-        (cleanPhone.length >= 4 && c.phone.includes(cleanPhone)) ||
-        (cleanId.length >= 4 && c.nationalId.includes(cleanId)) ||
-        (cleanName.length >= 3 && c.fullName.toLowerCase().includes(cleanName))
-      );
-
-      if (found) {
-        setMatchedCustomer(found);
-        return;
-      }
-    }
-    setMatchedCustomer(null);
+    if (cleanPhone.length < 4 && cleanId.length < 4 && cleanName.length < 3) return null;
+    return customers.find((customer) =>
+      (cleanPhone.length >= 4 && customer.phone.includes(cleanPhone)) ||
+      (cleanId.length >= 4 && customer.nationalId.includes(cleanId)) ||
+      (cleanName.length >= 3 && customer.fullName.toLowerCase().includes(cleanName))
+    ) || null;
   }, [newBooking.customerPhone, newBooking.nationalId, newBooking.customerName, customers]);
 
   // حساب الأيام والإيجار الأساسي
@@ -169,7 +151,6 @@ export default function AddBookingModal({
       licenseNumber: cust.licenseNumber,
       nationality: cust.nationality || 'مصري',
     }));
-    setMatchedCustomer(cust);
   };
 
   const currentLoyaltyPoints = matchedCustomer?.loyaltyPoints || 0;
@@ -177,340 +158,106 @@ export default function AddBookingModal({
   const promoDiscount = newBooking.promoDiscountEGP || 0;
   const finalPayable = Math.max(0, baseRentTotal - loyaltyDiscount - promoDiscount);
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-arabic">
-      <div className="bg-[#0b1324] border border-[#c5a059]/40 rounded-2xl w-full max-w-2xl max-h-[94vh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl my-auto animate-scaleUp">
-        
-        {/* الترويسة */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-amber-400" />
-            <h3 className="text-base font-bold text-white">
-              إنشاء عقد وحجز جديد (تسليم سيارة)
-            </h3>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white cursor-pointer">
-            <X className="w-5 h-5" />
-          </button>
+  const displayCar = cars.find((car) => car.id === newBooking.carId);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true); setSubmitError('');
+    try { await onSubmit(event); }
+    catch (error) { setSubmitError(error instanceof Error ? error.message : 'تعذر حفظ الحجز. حاول مجددًا.'); }
+    finally { setIsSubmitting(false); }
+  };
+
+  return <FleetDialog title="إنشاء عقد وحجز جديد" description="تسليم سيارة · بيانات واضحة وخطوات مرتبة قبل اعتماد العقد."
+    titleId="new-booking-title" onClose={onClose} busy={isSubmitting}>
+    <form className="fleet-booking-form" onSubmit={handleSubmit} aria-busy={isSubmitting}>
+      <fieldset className="fleet-booking-scroll" disabled={isSubmitting}><legend className="sr-only">بيانات عقد التأجير الجديد</legend><div className="fleet-booking-layout">
+        <div className="fleet-booking-sections">
+          <BookingSection number="01" title="السيارة" description="اختر السيارة التي ستُسلّم للعميل.">
+            <label className="fleet-booking-field"><span>السيارة المراد تأجيرها *</span>
+              <select required value={newBooking.carId} onChange={(e) => setNewBooking({ ...newBooking, carId: e.target.value })}>
+                <option value="" disabled>اختر سيارة من الأسطول</option>
+                {cars.filter(car => car.status !== 'archived' && (car.status === 'available' || car.id === newBooking.carId)).map(car =>
+                  <option key={car.id} value={car.id}>{car.make} {car.model} · {car.year} · {car.plateNumber} · {car.dailyPriceEGP.toLocaleString()} ج.م/يوم</option>)}
+              </select>
+            </label>
+            {displayCar && <div className="fleet-booking-vehicle">
+              <div className="fleet-booking-vehicle-photo"><Image src={displayCar.coverImage || displayCar.images?.[0] || '/car-mercedes.jpg'} alt={displayCar.make + ' ' + displayCar.model} fill sizes="100px" className="object-cover" /></div>
+              <div><strong>{displayCar.make} {displayCar.model}</strong><p>{displayCar.year} · <bdi>{displayCar.plateNumber}</bdi></p><small>{displayCar.dailyPriceEGP.toLocaleString('ar-EG')} ج.م / يوم</small></div>
+            </div>}
+          </BookingSection>
+
+          <BookingSection number="02" title="بيانات العميل" description="البحث بالاسم أو الهاتف أو الهوية يُظهر بيانات العميل المسجلة ونقاط ولائه.">
+            {matchedCustomer && <div className="fleet-booking-match">
+              <div className="fleet-booking-match-title"><strong>{matchedCustomer.fullName}</strong>
+                <span className={'fleet-booking-badge' + (matchedCustomer.tier === 'blacklist' ? ' is-blocked' : matchedCustomer.tier === 'vip_gold' ? ' is-gold' : '')}>
+                  <ShieldCheck size={14} aria-hidden="true" />{matchedCustomer.tier === 'blacklist' ? 'عميل في القائمة السوداء' : matchedCustomer.tier === 'vip_gold' ? 'عميل VIP ذهبي' : matchedCustomer.tier === 'vip_silver' ? 'عميل VIP فضي' : 'عميل مسجل'}
+                </span>
+              </div>
+              <div className="fleet-booking-customer-meta"><span>{matchedCustomer.nationality || 'مصري'}</span><span>الهاتف: <bdi>{matchedCustomer.phone}</bdi></span><span>الهوية: <bdi>{matchedCustomer.nationalId}</bdi></span><span>نقاط الثقة: {matchedCustomer.trustScore ?? 85}%</span></div>
+              <button className="fleet-booking-button" type="button" onClick={() => handleSelectCustomer(matchedCustomer)}>تعبئة بيانات العميل المسجلة</button>
+              {currentLoyaltyPoints > 0 && <div className="fleet-booking-loyalty">
+                <p><Gift size={17} aria-hidden="true" />رصيد الولاء: {currentLoyaltyPoints.toLocaleString('ar-EG')} نقطة، بقيمة {currentLoyaltyPoints.toLocaleString('ar-EG')} ج.م.</p>
+                <label className="fleet-booking-checkbox"><input type="checkbox" checked={useLoyaltyPoints} onChange={(e) => setUseLoyaltyPoints(e.target.checked)} /><span>تطبيق خصم نقاط الولاء على الفاتورة</span></label>
+              </div>}
+            </div>}
+            <div className="fleet-booking-fields">
+              <BookingInput label="اسم العميل بالكامل *" required value={newBooking.customerName} onChange={(e) => setNewBooking({ ...newBooking, customerName: e.target.value })} autoComplete="name" placeholder="الاسم كما هو في الهوية" />
+              <label className="fleet-booking-field"><span>الجنسية *</span><select value={newBooking.nationality || 'مصري'} onChange={(e) => setNewBooking({ ...newBooking, nationality: e.target.value })}>
+                {COMMON_NATIONALITIES.map(nat => <option key={nat.code} value={nat.name.split(' ')[0]}>{nat.name}</option>)}
+              </select></label>
+              <BookingInput label="رقم الهاتف / الواتساب *" type="tel" required dir="ltr" autoComplete="tel" value={newBooking.customerPhone} onChange={(e) => setNewBooking({ ...newBooking, customerPhone: e.target.value })} placeholder="+20 100 000 0000" />
+              <BookingInput label="الرقم القومي / جواز السفر *" required value={newBooking.nationalId} onChange={(e) => setNewBooking({ ...newBooking, nationalId: e.target.value })} placeholder="رقم الهوية أو الجواز" />
+              <BookingInput label="رقم رخصة القيادة السارية *" wide required value={newBooking.licenseNumber} onChange={(e) => setNewBooking({ ...newBooking, licenseNumber: e.target.value })} placeholder="رقم رخصة القيادة" />
+            </div>
+          </BookingSection>
+
+          <BookingSection number="03" title="الاستلام والإرجاع" description="حدّد التاريخ والوقت المتفق عليهما مع العميل.">
+            <div className="fleet-booking-date-group"><h4>الاستلام والتسليم للعميل</h4><div className="fleet-booking-dates">
+              <label><span>تاريخ الاستلام</span><input type="date" required value={newBooking.startDate} onChange={(e) => setNewBooking({ ...newBooking, startDate: e.target.value })} /></label>
+              <label><span>وقت الاستلام</span><input type="time" required value={newBooking.startTime} onChange={(e) => setNewBooking({ ...newBooking, startTime: e.target.value })} /></label>
+            </div></div>
+            <div className="fleet-booking-date-group"><h4>الإرجاع المقرر</h4><div className="fleet-booking-dates">
+              <label><span>تاريخ الإرجاع</span><input type="date" required value={newBooking.endDate} onChange={(e) => setNewBooking({ ...newBooking, endDate: e.target.value })} /></label>
+              <label><span>وقت الإرجاع</span><input type="time" required value={newBooking.endTime} onChange={(e) => setNewBooking({ ...newBooking, endTime: e.target.value })} /></label>
+            </div></div>
+          </BookingSection>
+
+          <BookingSection number="04" title="الخصومات والملاحظات" description="أضف كود الخصم المتاح وأي ملاحظات تخص تسليم السيارة.">
+            <label className="fleet-booking-field" htmlFor="new-booking-promo"><span>كود الخصم الترويجي</span></label>
+            <div className="fleet-booking-promo-entry"><input id="new-booking-promo" type="text" value={newBooking.discountCode} onChange={(e) => {
+              setNewBooking({ ...newBooking, discountCode: e.target.value.toUpperCase() });
+              if (!e.target.value) { setNewBooking(prev => ({ ...prev, discountCode: '', promoDiscountEGP: 0 })); setPromoMessage(null); }
+            }} placeholder="أدخل كود الخصم" dir="ltr" autoCapitalize="characters" />
+              <button className="fleet-booking-button" type="button" onClick={() => handleApplyPromo()}>تطبيق الخصم</button>
+            </div>
+            {promoMessage && <p className={'fleet-booking-feedback ' + (promoMessage.success ? 'is-success' : 'is-error')} role={promoMessage.success ? 'status' : 'alert'}>{promoMessage.text}</p>}
+            <div className="fleet-booking-coupons" aria-label="أكواد الخصم المتاحة">{availableCoupons.length ? availableCoupons.map(coupon =>
+              <button key={coupon.code} type="button" className={'fleet-booking-coupon' + (newBooking.discountCode === coupon.code ? ' is-selected' : '')} aria-pressed={newBooking.discountCode === coupon.code} onClick={() => handleApplyPromo(coupon.code)}>
+                <bdi>{coupon.code}</bdi> · {coupon.discountType === 'percentage' ? coupon.discountValue + '%' : coupon.discountValue.toLocaleString('ar-EG') + ' ج.م'}
+              </button>) : <p className="fleet-booking-empty-note">لا توجد أكواد خصم فعّالة حاليًا.</p>}
+            </div>
+            <label className="fleet-booking-field fleet-booking-notes"><span>ملاحظات التسليم <small>(اختياري)</small></span><textarea value={newBooking.notes} onChange={(e) => setNewBooking({ ...newBooking, notes: e.target.value })} placeholder="أي تفاصيل متفق عليها مع العميل…" /></label>
+          </BookingSection>
         </div>
+        <BookingSummary car={displayCar} days={calculatedDays} baseRent={baseRentTotal} promoDiscount={promoDiscount} loyaltyDiscount={loyaltyDiscount} loyaltyPoints={newBooking.loyaltyPointsRedeemed} discountCode={newBooking.discountCode} total={finalPayable} />
+      </div></fieldset>
+      {(submitError || operationError) && <p className="fleet-booking-submit-error" role="alert">{submitError || operationError}</p>}
+      <footer className="fleet-booking-footer">
+        <div className="fleet-booking-footer-total"><span>صافي الإيجار <small>التأمين منفصل</small></span><strong>{displayCar ? finalPayable.toLocaleString('ar-EG') : '—'} <small>ج.م</small></strong></div>
+        <button className="fleet-booking-button" type="button" onClick={onClose} disabled={isSubmitting}>إلغاء</button>
+        <button className="fleet-booking-button is-primary" type="submit" disabled={isSubmitting}><CheckCircle2 size={18} aria-hidden="true" />{isSubmitting ? 'جارٍ حفظ العقد…' : 'تأكيد الحجز والتسليم'}</button>
+      </footer>
+    </form>
+  </FleetDialog>;
+}
 
-        <form onSubmit={onSubmit} className="space-y-4 text-xs">
-          
-          {/* 1. اختيار السيارة المراد تأجيرها */}
-          <div>
-            <label className="block text-slate-300 font-bold mb-1">السيارة المراد تأجيرها:</label>
-            <select
-              required
-              value={newBooking.carId}
-              onChange={(e) => setNewBooking({ ...newBooking, carId: e.target.value })}
-              className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-400 text-xs font-bold cursor-pointer"
-            >
-              {cars.filter(c => c.status === 'available' || c.id === newBooking.carId).map(car => (
-                <option key={car.id} value={car.id}>
-                  {car.make} {car.model} {car.year} ({car.plateNumber}) - {car.dailyPriceEGP.toLocaleString()} ج.م/يوم
-                </option>
-              ))}
-            </select>
-          </div>
+function BookingSection({ number, title, description, children }: { number: string; title: string; description: string; children: React.ReactNode }) {
+  return <section className="fleet-booking-section" aria-labelledby={'booking-section-' + number}>
+    <header className="fleet-booking-section-heading"><span aria-hidden="true">{number}</span><div><h3 id={'booking-section-' + number}>{title}</h3><p>{description}</p></div></header>{children}
+  </section>;
+}
 
-          {/* ========================================================
-              2. نظام التعرف اللحظي والربط الذكي بالعميل (الجسد الواحد)
-              ======================================================== */}
-          <div className="p-4 bg-slate-900/90 rounded-2xl border border-slate-700/80 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-amber-400 font-bold flex items-center gap-1.5 text-xs">
-                <Sparkles className="w-4 h-4 text-amber-400" /> التعرف الذكي ونقاط ولاء العميل (Live CRM & Rewards)
-              </span>
-
-              {/* بطاقة الحالة التلقائية للعميل */}
-              {matchedCustomer ? (
-                <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 ${
-                  matchedCustomer.tier === 'blacklist' 
-                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
-                    : matchedCustomer.tier === 'vip_gold'
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                }`}>
-                  {matchedCustomer.tier === 'blacklist' ? '⚠️ عميل محظور (قائمة سوداء)' :
-                   matchedCustomer.tier === 'vip_gold' ? '⭐ عميل VIP ذهبي' :
-                   matchedCustomer.tier === 'vip_silver' ? '🥈 عميل VIP فضي' : '✓ عميل مسجل'}
-                </span>
-              ) : (
-                <span className="text-[10px] text-slate-400 font-medium">
-                  عميل جديد (سيحصل على 50 نقطة ترحيبية وتوثيق تلقائي)
-                </span>
-              )}
-            </div>
-
-            {/* إذا تم التعرف على عميل مسجل مسبقاً */}
-            {matchedCustomer && (
-              <div className="p-3 bg-[#0e1b36] border border-amber-400/40 rounded-xl space-y-2 animate-fadeIn">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <strong className="text-white text-sm">{matchedCustomer.fullName}</strong>
-                      <span className="text-[10px] text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded">
-                        {matchedCustomer.nationality || 'مصري'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-[11px] text-slate-300 mt-1 font-mono">
-                      <span>الهاتف: {matchedCustomer.phone}</span>
-                      <span>الرقم القومي: {matchedCustomer.nationalId}</span>
-                      <span>نقاط الثقة: {matchedCustomer.trustScore ?? 85}%</span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSelectCustomer(matchedCustomer)}
-                    className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-xs cursor-pointer shadow-xs"
-                  >
-                    تعبئة بياناته المعتمدة ✓
-                  </button>
-                </div>
-
-                {/* استبدال نقاط الولاء إن وجدت */}
-                {currentLoyaltyPoints > 0 && (
-                  <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs text-amber-300">
-                      <Gift className="w-4 h-4 text-amber-400" />
-                      <span>رصيد نقاط الولاء المتاح: <strong className="font-mono text-white">{currentLoyaltyPoints} نقطة</strong> (تساوي {currentLoyaltyPoints} ج.م)</span>
-                    </div>
-
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={useLoyaltyPoints}
-                        onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
-                        className="w-4 h-4 text-amber-500 rounded bg-slate-900 border-slate-700 focus:ring-0 cursor-pointer"
-                      />
-                      <span className="text-xs text-slate-200 font-bold">تطبيق خصم النقاط على الفاتورة</span>
-                    </label>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* الحقول الأساسية لبيانات العميل (تتسجل وتتطابق أوتوماتيكياً) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">اسم العميل بالكامل *</label>
-                <input
-                  type="text"
-                  required
-                  value={newBooking.customerName}
-                  onChange={(e) => setNewBooking({ ...newBooking, customerName: e.target.value })}
-                  placeholder="مثال: محمد عبد الرحمن القحطاني"
-                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">الجنسية *</label>
-                <select
-                  value={newBooking.nationality || 'مصري'}
-                  onChange={(e) => setNewBooking({ ...newBooking, nationality: e.target.value })}
-                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-bold cursor-pointer"
-                >
-                  {COMMON_NATIONALITIES.map(nat => (
-                    <option key={nat.code} value={nat.name.split(' ')[0]}>
-                      {nat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">رقم الهاتف / الواتساب *</label>
-                <input
-                  type="text"
-                  required
-                  value={newBooking.customerPhone}
-                  onChange={(e) => setNewBooking({ ...newBooking, customerPhone: e.target.value })}
-                  placeholder="+20 100 000 0000"
-                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs dir-ltr text-right font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">الرقم القومي / جواز السفر *</label>
-                <input
-                  type="text"
-                  required
-                  value={newBooking.nationalId}
-                  onChange={(e) => setNewBooking({ ...newBooking, nationalId: e.target.value })}
-                  placeholder="الرقم القومي أو رقم الجواز"
-                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-slate-300 font-semibold mb-1">رقم رخصة القيادة السارية *</label>
-                <input
-                  type="text"
-                  required
-                  value={newBooking.licenseNumber}
-                  onChange={(e) => setNewBooking({ ...newBooking, licenseNumber: e.target.value })}
-                  placeholder="رقم رخصة القيادة المعتمدة"
-                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 3. فترات ومواعيد الاستلام والإرجاع */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">تاريخ ووقت الاستلام:</label>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="date"
-                  required
-                  value={newBooking.startDate}
-                  onChange={(e) => setNewBooking({ ...newBooking, startDate: e.target.value })}
-                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono"
-                />
-                <input
-                  type="time"
-                  required
-                  value={newBooking.startTime}
-                  onChange={(e) => setNewBooking({ ...newBooking, startTime: e.target.value })}
-                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-300 font-semibold mb-1">تاريخ ووقت الإرجاع المقرر:</label>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="date"
-                  required
-                  value={newBooking.endDate}
-                  onChange={(e) => setNewBooking({ ...newBooking, endDate: e.target.value })}
-                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono"
-                />
-                <input
-                  type="time"
-                  required
-                  value={newBooking.endTime}
-                  onChange={(e) => setNewBooking({ ...newBooking, endTime: e.target.value })}
-                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 3.1 كود الخصم الترويجي (Promo Code) */}
-          <div className="p-3 bg-[#070e1c] border border-amber-500/30 rounded-xl space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-slate-300 font-bold text-xs flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-amber-400" /> كود الخصم الترويجي (Promo Code):
-              </label>
-              {promoMessage && (
-                <span className={`text-[11px] font-bold ${promoMessage.success ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {promoMessage.text}
-                </span>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newBooking.discountCode}
-                onChange={(e) => {
-                  setNewBooking({ ...newBooking, discountCode: e.target.value.toUpperCase() });
-                  if (!e.target.value) {
-                    setNewBooking(prev => ({ ...prev, discountCode: '', promoDiscountEGP: 0 }));
-                    setPromoMessage(null);
-                  }
-                }}
-                placeholder="أدخل كودًا فعّالًا من قائمة الأكواد"
-                className="flex-1 bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono tracking-wider uppercase"
-              />
-              <button
-                type="button"
-                onClick={() => handleApplyPromo()}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-colors cursor-pointer"
-              >
-                تطبيق الخصم
-              </button>
-            </div>
-
-            {/* أزرار سريعة للأكواد المعتمدة */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-1">
-              <span className="text-[10px] text-slate-400">أكواد سريعة:</span>
-              {availableCoupons.length === 0 ? (
-                <span className="text-[10px] text-slate-400">لا توجد أكواد خصم فعّالة حاليًا.</span>
-              ) : availableCoupons.map(cp => (
-                <button
-                  key={cp.code}
-                  type="button"
-                  onClick={() => handleApplyPromo(cp.code)}
-                  className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition-all cursor-pointer ${
-                    newBooking.discountCode === cp.code
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500 font-bold'
-                      : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:border-amber-400/50'
-                  }`}
-                >
-                  {cp.code} ({cp.discountType === 'percentage' ? `${cp.discountValue}%` : `${cp.discountValue.toLocaleString()} ج.م`})
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 4. الحساب المالي المباشر ونقاط الخصم */}
-          <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1.5 text-xs">
-            <div className="flex justify-between text-slate-400">
-              <span>مدة الإيجار ({calculatedDays} أيام × {(selectedCar?.dailyPriceEGP || 5000).toLocaleString()} ج.م):</span>
-              <span className="font-mono text-white font-bold">{baseRentTotal.toLocaleString()} ج.م</span>
-            </div>
-
-            {newBooking.promoDiscountEGP && newBooking.promoDiscountEGP > 0 ? (
-              <div className="flex justify-between text-emerald-400 font-bold">
-                <span>خصم كود البروموكود ({newBooking.discountCode}):</span>
-                <span className="font-mono">-{newBooking.promoDiscountEGP.toLocaleString()} ج.م</span>
-              </div>
-            ) : null}
-
-            {newBooking.loyaltyDiscountEGP && newBooking.loyaltyDiscountEGP > 0 ? (
-              <div className="flex justify-between text-emerald-400 font-bold">
-                <span>خصم نقاط الولاء المستبدلة ({newBooking.loyaltyPointsRedeemed} نقطة):</span>
-                <span className="font-mono">-{newBooking.loyaltyDiscountEGP.toLocaleString()} ج.م</span>
-              </div>
-            ) : null}
-
-            <div className="flex justify-between text-amber-400 font-bold text-sm pt-1 border-t border-slate-800">
-              <span>صافي الإجمالي المستحق:</span>
-              <span className="font-mono font-black text-white text-base">{finalPayable.toLocaleString()} ج.م</span>
-            </div>
-
-            <div className="flex justify-between text-slate-400 text-[11px] pt-1 border-t border-slate-800/60">
-              <span>مبلغ التأمين المسترد المحتجز:</span>
-              <span className="font-mono font-bold text-slate-200">{(selectedCar?.securityDepositEGP || 10000).toLocaleString()} ج.م</span>
-            </div>
-          </div>
-
-          {/* 5. أزرار الإجراء والاعتماد */}
-          <div className="pt-3 border-t border-slate-800 flex justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold cursor-pointer transition-colors"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/20 cursor-pointer transition-all flex items-center gap-1.5"
-            >
-              <CheckCircle2 className="w-4 h-4" /> تأكيد الصفقة وتوثيق العميل ونقاطه تلقائياً ✓
-            </button>
-          </div>
-
-        </form>
-
-      </div>
-    </div>
-  );
+function BookingInput({ label, wide = false, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; wide?: boolean }) {
+  return <label className={'fleet-booking-field' + (wide ? ' is-wide' : '')}><span>{label}</span><input {...props} /></label>;
 }

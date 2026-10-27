@@ -15,10 +15,11 @@ export interface StaffUser {
   password?: string;
   avatar?: string;
   active: boolean;
+  maintenanceAccess?: boolean;
 }
 
 // 2. حالة المركبة
-export type CarStatus = 'available' | 'rented' | 'maintenance' | 'cleaning';
+export type CarStatus = 'available' | 'rented' | 'maintenance' | 'cleaning' | 'archived';
 export type CarCategory = 'vip' | 'suv' | 'luxury_sedan' | 'economy';
 export type OwnershipType = 'company' | 'investor';
 

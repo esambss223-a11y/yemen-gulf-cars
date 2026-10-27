@@ -34,7 +34,7 @@ export default function FeaturedFleet() {
   const [selectedCarForGallery, setSelectedCarForGallery] = useState<{ car: Car; initialIndex: number } | null>(null);
 
   // تحويل سيارات النظام إلى بنية العرض في الكتالوج مع دعم تعدد الصور
-  const displayCars: FleetCar[] = cars.map(car => {
+  const displayCars: FleetCar[] = cars.filter(car => car.status !== 'archived').map(car => {
     const carImages = getCarImages(car);
     return {
       id: car.id,

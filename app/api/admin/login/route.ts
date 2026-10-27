@@ -64,5 +64,8 @@ export async function POST(request: Request) {
     return Response.json({ code: 'AUTH_ACCOUNT_MISMATCH', error: 'حساب الدخول لا يطابق سجل الموظف' }, { status: 403 });
   }
 
-  return Response.json({ session: authResult.session, staff });
+  return Response.json({ session: authResult.session, staff: {
+    ...staff,
+    maintenanceAccess: staff.role === 'super_admin' && authResult.user.app_metadata?.maintenance_access === true,
+  } });
 }

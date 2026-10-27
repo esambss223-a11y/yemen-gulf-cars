@@ -55,6 +55,8 @@ export interface FleetContextType {
   addCar: (car: Omit<Car, 'id'>) => Promise<boolean>;
   updateCar: (id: string, car: Partial<Car>) => Promise<boolean>;
   deleteCar: (id: string) => Promise<boolean>;
+  setCarArchived: (id: string, archived: boolean) => Promise<boolean>;
+  cancelCarBooking: (booking: Booking, reason: string) => Promise<void>;
 
   // الحجوزات والعقود
   bookings: Booking[];
@@ -166,7 +168,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         const hasSession = Boolean(session?.user);
         const [{ data: cloudCars, error: carsErr }, privateResults] = await Promise.all([
-          supabase.from('cars').select(hasSession ? '*' : PUBLIC_CAR_FIELDS),
+          hasSession ? supabase.from('cars').select('*') : supabase.from('cars').select(PUBLIC_CAR_FIELDS).neq('status', 'archived'),
           hasSession
             ? Promise.all([
                 supabase.from('bookings').select('*'),
@@ -356,6 +358,8 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         addCar: fleetCars.addCar,
         updateCar: fleetCars.updateCar,
         deleteCar: fleetCars.deleteCar,
+        setCarArchived: fleetCars.setCarArchived,
+        cancelCarBooking: fleetBookings.cancelCarBooking,
         bookings: fleetBookings.bookings,
         addBooking: fleetBookings.addBooking,
         updateBookingStatus: fleetBookings.updateBookingStatus,

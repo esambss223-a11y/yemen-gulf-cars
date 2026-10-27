@@ -54,7 +54,7 @@ export default function AdminSidebar({
   }, []);
 
   const allNavItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number | string }[] = [
-    { id: 'overview', label: 'الرئيسية', icon: LayoutDashboard },
+    { id: 'overview', label: currentStaff.maintenanceAccess ? 'مركز المبرمج' : 'الرئيسية', icon: LayoutDashboard },
     { id: 'cars', label: 'السيارات', icon: CarIcon, badge: totalCarsCount },
     { id: 'bookings', label: 'الحجوزات والعقود', icon: Calendar, badge: activeBookingsCount },
     { id: 'customers', label: 'دليل العملاء (CRM)', icon: Users, badge: customersCount },
@@ -76,7 +76,7 @@ export default function AdminSidebar({
   const allowed = allowedTabsByRole[userRole] || allowedTabsByRole.rental_agent;
   const navItems = allNavItems.filter((item) => allowed.includes(item.id));
 
-  const roleLabel = {
+  const roleLabel = currentStaff.maintenanceAccess ? 'مبرمج النظام' : {
     super_admin: 'مدير عام', rental_agent: 'موظف تأجير', accountant: 'محاسب مالي',
   }[userRole] || 'موظف';
 

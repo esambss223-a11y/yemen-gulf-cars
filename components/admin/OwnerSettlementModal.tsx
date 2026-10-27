@@ -85,7 +85,7 @@ export default function OwnerSettlementModal({ owner, cars, bookings, onClose }:
 
               <div className="text-center sm:text-left flex flex-col items-center sm:items-end">
                 <div className="admin-settlement-logo w-16 h-16 relative mb-1">
-                  <Image src="/logo2.png" alt="شعار الشركة" width={64} height={64} sizes="132px" className="object-contain" />
+                  <Image src="/logoexe.png" alt="شعار الشركة" width={64} height={64} sizes="132px" className="object-contain" priority />
                 </div>
                 <div className="bg-[#f8f5eb] border border-[#c5a059]/60 px-3 py-1 rounded text-center">
                   <span className="text-[10px] text-slate-600 block">كشف حساب مستثمر رقم</span>

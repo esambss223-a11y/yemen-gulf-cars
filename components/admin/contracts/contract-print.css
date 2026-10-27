@@ -1,0 +1,20 @@
+/* A body-level document keeps both the print button and Ctrl+P independent of dialogs. */
+.fleet-contract-native-print { display: none; }
+@page rental-contract { size: A4 portrait; margin: 10mm; }
+@media print {
+  html:has(.fleet-contract-native-print), body:has(> .fleet-contract-native-print) {
+    height: auto !important; min-height: 0 !important; width: auto !important;
+    margin: 0 !important; padding: 0 !important; overflow: visible !important;
+    background: white !important; color: #182c3d !important;
+  }
+  body:has(> .fleet-contract-native-print) > *:not(.fleet-contract-native-print) { display: none !important; }
+  body > .fleet-contract-native-print {
+    display: block !important; position: static !important; page: rental-contract;
+    width: 190mm !important; max-width: none !important; height: auto !important;
+    margin: 0 !important; padding: 0 !important; overflow: visible !important;
+    background: white !important; transform: none !important;
+  }
+  .fleet-contract-native-print, .fleet-contract-native-print * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .fleet-contract-native-print .rd-section thead { display: table-header-group !important; }
+  .fleet-contract-native-print .rental-document { width: 100%; max-width: none; }
+}

@@ -51,5 +51,8 @@ export async function authorizeStaffRequest(request: Request, requireAdmin = fal
     return { ok: false as const, status: 403, error: 'Administrator access required' };
   }
 
-  return { ok: true as const, admin, user, staff };
+  return { ok: true as const, admin, user, staff: {
+    ...staff,
+    maintenanceAccess: staff.role === 'super_admin' && user.app_metadata?.maintenance_access === true,
+  } };
 }

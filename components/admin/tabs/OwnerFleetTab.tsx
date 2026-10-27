@@ -233,7 +233,7 @@ export default function OwnerFleetTab({
                         'bg-amber-500 text-black'
                       }`}>
                         {car.status === 'available' ? '● متاح' :
-                         car.status === 'rented' ? '● مؤجر حالياً' : '● صيانة'}
+                         car.status === 'rented' ? '● مؤجر حالياً' : car.status === 'archived' ? 'مؤرشفة' : '● صيانة'}
                       </span>
                     </div>
 

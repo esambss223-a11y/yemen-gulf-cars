@@ -25,6 +25,7 @@ export function useFleetAuth({ onSignedIn, logAction }: UseFleetAuthProps) {
     role: (row.role as UserRole) ?? 'rental_agent',
     phone: String(row.phone ?? ''),
     active: Boolean(row.active),
+    maintenanceAccess: row.maintenanceAccess === true,
   }), []);
 
   const loadStaffList = useCallback(async () => {

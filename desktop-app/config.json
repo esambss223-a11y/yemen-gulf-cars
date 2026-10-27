@@ -1,0 +1,7 @@
+{
+  "liveUrl": "https://ygcarss.com/admin",
+  "localUrl": "http://localhost:3000/admin",
+  "mode": "live",
+  "autoReconnect": true,
+  "reconnectIntervalSeconds": 5
+}

@@ -50,7 +50,7 @@ export async function GET(request: Request) {
       .eq('status', 'pending_approval')
       .order('created_at', { ascending: false }),
     auth.admin.from('cars')
-      .select('id, make, model, license_expiry_date, insurance_expiry_date, contract_end_date'),
+      .select('id, make, model, license_expiry_date, insurance_expiry_date, contract_end_date').neq('status', 'archived'),
   ]);
 
   if (bookingsError || carsError) {

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Search, Plus, Menu, Bell, X, Check, XCircle, CalendarClock, ClipboardList, ShieldCheck } from 'lucide-react';
+import { Search, Plus, Menu, Bell, X, Check, XCircle, CalendarClock, ClipboardList, ShieldCheck, LogOut } from 'lucide-react';
 import { StaffUser } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
 
@@ -25,6 +25,7 @@ interface AdminHeaderProps {
   onToggleMobileMenu?: () => void;
   onOpenProfile?: () => void;
   onOpenTab: (tab: 'bookings' | 'cars' | 'staff') => void;
+  onLogout?: () => void;
 }
 
 export default function AdminHeader({
@@ -37,6 +38,7 @@ export default function AdminHeader({
   onToggleMobileMenu,
   onOpenProfile,
   onOpenTab,
+  onLogout,
 }: AdminHeaderProps) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -231,6 +233,18 @@ export default function AdminHeader({
           >
             <Plus className="w-4 h-4" />
             <span>إضافة سيارة</span>
+          </button>
+        )}
+
+        {/* زر تسجيل الخروج الصريح */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="admin-logout-header px-2.5 sm:px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            title="تسجيل الخروج من لوحة التحكم"
+          >
+            <LogOut className="w-4 h-4 text-rose-600" />
+            <span className="hidden sm:inline">خروج</span>
           </button>
         )}
 

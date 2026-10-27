@@ -197,7 +197,120 @@
 @media (prefers-reduced-motion: reduce) { .admin-ui *, .admin-ui *::before, .admin-ui *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 
 }
-@media print { .admin-shell { height: auto; overflow: visible; display: block; } .admin-content { overflow: visible; } .admin-navigation, .admin-header, .admin-footer { display: none !important; } }
+/* =========================================================
+   نظام الطباعة المتطور والمعاينة القياسية A4
+   يمنع تكرار الصفحات ويضبط المقاسات بدقة متناهية
+   ========================================================= */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm 8mm 10mm;
+  }
+
+  /* 1. ضبط الصفحة الأساسية بالكامل */
+  html, body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .admin-shell {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    background: transparent !important;
+  }
+
+  .admin-content {
+    overflow: visible !important;
+  }
+
+  /* 2. إخفاء جميع عناصر الواجهة الخارجية وشريط المهام والأزرار */
+  .admin-navigation,
+  .admin-header,
+  .admin-footer,
+  .admin-menu-toggle,
+  .admin-cloud-badge,
+  .no-print,
+  button {
+    display: none !important;
+  }
+
+  /* 3. منع تكرار ترويسة الجدول في كل صفحة */
+  thead {
+    display: table-row-group !important;
+  }
+
+  tr, td, th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* 4. إلغاء التثبيت (Fixed Overlay) عند الطباعة لمنع تكرار الخلفية السوداء */
+  .fixed.inset-0 {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* 5. جعل حاوية التقرير أو العقد تملأ ورقة A4 بدون قص أو تكرار */
+  .fixed.inset-0 > div {
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .admin-main:has(.fixed.inset-0) > *:not(.fixed) {
+    display: none !important;
+  }
+
+  /* محتوى ورقة الطباعة الرسمي */
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+  .print\:m-0 {
+    margin: 0 !important;
+  }
+  .print\:border-none {
+    border: none !important;
+  }
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  /* ضمان ظهور الإطارات والألوان الرسمية */
+  .border, .border-b, .border-t, .border-l, .border-r {
+    border-color: #cbd5e1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
 
 @media screen {
   .admin-ui .booking-review-overlay { overflow-y: auto; overflow-x: hidden; align-items: flex-start; overscroll-behavior: contain; scroll-padding-block: 110px 130px; padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }

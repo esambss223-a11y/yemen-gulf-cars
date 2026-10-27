@@ -341,19 +341,6 @@ export default function CarBasicInfoSection({
           </select>
         </div>
 
-        <div>
-          <label className="block text-slate-400 text-[10px] mb-1">حالة التوفر:</label>
-          <select
-            value={carForm.status}
-            onChange={(e) => setCarForm({ ...carForm, status: e.target.value as any })}
-            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
-          >
-            <option value="available">متاحة للإيجار فوراً</option>
-            <option value="rented">مؤجرة حالياً</option>
-            <option value="maintenance">تحت الصيانة</option>
-            <option value="cleaning">تحت التجهيز والغسيل</option>
-          </select>
-        </div>
       </div>
 
     </div>

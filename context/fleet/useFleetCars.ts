@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Car } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
 import { reportFleetWriteError } from './fleetStorage';
+import { carLifecycleRequest } from '@/lib/car-lifecycle-client';
 
 interface UseFleetCarsProps {
   logAction: (action: string, details: string) => void;
@@ -107,6 +108,10 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
   };
 
   const updateCar = async (id: string, partial: Partial<Car>): Promise<boolean> => {
+    if (partial.status === 'archived' || (cars.find((car) => car.id === id)?.status === 'archived' && partial.status)) {
+      reportFleetWriteError('استخدم إجراء الأرشفة أو الإعادة من الأرشيف؛ تغيير حالة التشغيل لا يلغي الحجوزات.');
+      return false;
+    }
     try {
       const payload: Record<string, unknown> = {};
       if (partial.carCode !== undefined) payload.car_code = partial.carCode;
@@ -162,24 +167,20 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
 
   const deleteCar = async (id: string): Promise<boolean> => {
     try {
-      const { data: linkedBookings, error: bookingError } = await supabase
-        .from('bookings').select('id').eq('car_id', id).limit(1);
-      if (bookingError) throw bookingError;
-      if (linkedBookings?.length) {
-        reportFleetWriteError('لا يمكن حذف هذه السيارة لوجود حجوزات مرتبطة بها؛ غيّر حالتها إلى صيانة أو غير متاحة للحفاظ على سجل العقود.');
-        return false;
-      }
-      const { data, error } = await supabase.from('cars').delete().eq('id', id).select('id').maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error('CAR_NOT_FOUND');
+      await carLifecycleRequest(id, 'delete');
     } catch (error) {
-      console.warn('Cloud car deletion failed:', error);
-      reportFleetWriteError('تعذر حذف السيارة من قاعدة البيانات؛ لم يُحذف السجل.');
+      reportFleetWriteError(error instanceof Error ? error.message : 'تعذر حذف السيارة؛ لم يُحذف السجل.');
       return false;
     }
 
     setCars((prev) => prev.filter((c) => c.id !== id));
-    logAction('حذف سيارة', `تم حذف السيارة ID: ${id}`);
+    return true;
+  };
+
+  const setCarArchived = async (id: string, archived: boolean): Promise<boolean> => {
+    const result = await carLifecycleRequest(id, archived ? 'archive' : 'restore');
+    const saved = mapCloudCar(result.car);
+    setCars((previous) => previous.map((car) => car.id === saved.id ? saved : car));
     return true;
   };
 
@@ -190,5 +191,6 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
     addCar,
     updateCar,
     deleteCar,
+    setCarArchived,
   };
 }

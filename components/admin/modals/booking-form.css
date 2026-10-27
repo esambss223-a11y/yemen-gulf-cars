@@ -1,0 +1,123 @@
+.admin-ui .fleet-dialog {
+  width: min(1120px, calc(100vw - 40px));
+  height: min(900px, calc(100dvh - 40px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  margin: auto;
+  border: 1px solid var(--fleet-line);
+  border-radius: 22px;
+  background: var(--fleet-paper);
+  color: var(--fleet-ink);
+  box-shadow: 0 30px 100px #14263840;
+  font-family: inherit;
+  color-scheme: light;
+}
+.fleet-dialog::backdrop { background: #0b1829b8; backdrop-filter: blur(6px); }
+.fleet-dialog *, .fleet-dialog *::before, .fleet-dialog *::after { box-sizing: border-box; }
+.fleet-dialog-shell { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.fleet-dialog-header { display: flex; align-items: center; flex-shrink: 0; gap: 20px; padding: 22px 28px; border-bottom: 1px solid var(--fleet-line); background: var(--fleet-surface); }
+.fleet-dialog-title { min-width: 0; flex: 1; }
+.fleet-dialog-eyebrow { color: #89724b; font-size: 11px; font-weight: 750; }
+.fleet-dialog-header h2 { color: var(--fleet-ink); font-size: 24px; font-weight: 850; line-height: 1.6; outline: none; }
+.fleet-dialog-header p { color: var(--fleet-muted); font-size: 12px; line-height: 1.8; }
+.fleet-dialog-logo { width: 126px; height: 58px; object-fit: contain; padding: 8px; border-radius: 11px; background: var(--fleet-ink); }
+.admin-ui .fleet-dialog .fleet-dialog-close { width: 46px; min-height: 46px; flex-shrink: 0; border: 1px solid var(--fleet-line); background: var(--fleet-field); border-radius: 11px; display: grid; place-items: center; color: var(--fleet-muted); }
+.fleet-booking-form { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.fleet-booking-scroll { min-height: 0; min-width: 0; margin: 0; border: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 24px; }
+.fleet-booking-layout { display: grid; grid-template-columns: minmax(0,1fr) 295px; gap: 20px; align-items: start; }
+.fleet-booking-sections { display: grid; gap: 16px; min-width: 0; }
+.fleet-booking-section { min-width: 0; background: var(--fleet-surface); border: 1px solid var(--fleet-line); border-radius: var(--fleet-radius); padding: 20px; }
+.fleet-booking-section-heading { display: flex; gap: 12px; align-items: start; margin-bottom: 18px; }
+.fleet-booking-section-heading > span { flex-shrink: 0; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: #f8f3e9; color: #89724b; font-size: 12px; font-weight: 800; }
+.fleet-booking-section-heading h3 { color: var(--fleet-ink); font-size: 16px; line-height: 1.6; font-weight: 800; }
+.fleet-booking-section-heading p { color: var(--fleet-muted); font-size: 12px; line-height: 1.9; margin-top: 3px; }
+.fleet-booking-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.fleet-booking-field { display: block; min-width: 0; }
+.fleet-booking-field > span { display: block; font-size: 12px; line-height: 1.8; color: #40586b; font-weight: 750; margin-bottom: 7px; }
+.fleet-booking-field.is-wide { grid-column: 1 / -1; }
+.admin-ui .fleet-dialog :is(input,select,textarea):not([type=checkbox]) { width: 100%; min-width: 0; min-height: 48px; border: 1px solid #cdd8e1; background: var(--fleet-field); border-radius: 10px; color: var(--fleet-ink); padding: 11px 12px; font: inherit; font-size: 15px; color-scheme: light; }
+.fleet-dialog :is(input,textarea)::placeholder { color: #7c8993; opacity: 1; }
+.fleet-dialog textarea { resize: vertical; min-height: 92px; }
+.admin-ui .fleet-dialog :is(button,input,select,textarea,a):focus-visible { outline: 3px solid var(--fleet-gold); outline-offset: 3px; }
+.fleet-booking-dates { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 10px; }
+.fleet-booking-dates > label > span { color: var(--fleet-muted); font-size: 12px; display: block; margin-bottom: 6px; }
+.fleet-booking-date-group > h4 { font-size: 13px; font-weight: 800; margin-bottom: 10px; }
+.fleet-booking-date-group + .fleet-booking-date-group { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--fleet-line); }
+.fleet-booking-vehicle { display: flex; align-items: center; gap: 14px; padding: 13px; margin-top: 14px; border-radius: 12px; background: #f0f4f7; }
+.fleet-booking-vehicle-photo { position: relative; width: 98px; height: 78px; overflow: hidden; border-radius: 9px; flex-shrink: 0; background: #dfe6ed; }
+.fleet-booking-vehicle strong { font-size: 17px; display: block; line-height: 1.6; overflow-wrap: anywhere; }
+.fleet-booking-vehicle p { color: #52697b; font-size: 12px; line-height: 1.8; }
+.fleet-booking-vehicle small { color: #7f6944; font-size: 12px; }
+.fleet-booking-match { border: 1px solid #d9e2e8; border-radius: 12px; padding: 14px; background: #f5f8fa; margin-bottom: 17px; }
+.fleet-booking-match-title { display: flex; justify-content: space-between; align-items: start; gap: 10px; flex-wrap: wrap; }
+.fleet-booking-match-title strong { font-size: 14px; color: var(--fleet-ink); }
+.fleet-booking-badge { display: inline-flex; gap: 6px; align-items: center; font-size: 11px; padding: 4px 8px; border-radius: 7px; background: #eaf5ef; color: var(--fleet-success); }
+.fleet-booking-badge.is-gold { background: #faf1e2; color: #80612b; }
+.fleet-booking-badge.is-blocked { background: #fbece7; color: var(--fleet-danger); }
+.fleet-booking-customer-meta { display: flex; gap: 5px 15px; flex-wrap: wrap; color: #52697b; font-size: 12px; line-height: 1.9; margin-block: 10px; overflow-wrap: anywhere; }
+.fleet-booking-loyalty { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--fleet-line); }
+.fleet-booking-loyalty > p { display: flex; gap: 7px; color: #7d6237; align-items: start; font-size: 12px; line-height: 1.9; }
+.fleet-booking-checkbox { display: flex; align-items: center; gap: 10px; min-height: 46px; cursor: pointer; font-size: 12px; color: #40586b; font-weight: 700; }
+.admin-ui .fleet-dialog input[type=checkbox] { width: 19px; height: 19px; min-height: 19px; flex-shrink: 0; accent-color: var(--fleet-ink); }
+.admin-ui .fleet-dialog .fleet-booking-button { min-height: 46px; display: inline-flex; justify-content: center; align-items: center; gap: 7px; padding: 10px 14px; border-radius: 10px; border: 1px solid #cdd8e1; background: var(--fleet-field); color: #344b5e; font-family: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
+.admin-ui .fleet-dialog .fleet-booking-button.is-primary { background: var(--fleet-ink); border-color: var(--fleet-ink); color: white; }
+.fleet-dialog button:disabled { opacity: .5; cursor: not-allowed; }
+.fleet-booking-promo-entry { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 9px; }
+.fleet-booking-coupons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.admin-ui .fleet-dialog .fleet-booking-coupon { min-height: 44px; padding: 9px 11px; border: 1px solid var(--fleet-line); border-radius: 8px; background: #f8f9fa; color: #52697b; font-size: 12px; }
+.admin-ui .fleet-dialog .fleet-booking-coupon.is-selected { color: #7b5d2e; border-color: #b99a66; background: #faf4e9; }
+.fleet-booking-empty-note { color: var(--fleet-muted); font-size: 12px; line-height: 1.9; }
+.fleet-booking-feedback { font-size: 12px; line-height: 1.9; padding: 10px 12px; border-radius: 9px; margin-top: 12px; overflow-wrap: anywhere; }
+.fleet-booking-feedback.is-success { background: #eaf5ef; color: var(--fleet-success); }
+.fleet-booking-feedback.is-error { background: #fbece7; color: var(--fleet-danger); }
+.fleet-booking-summary { position: sticky; top: 0; padding: 22px; border-radius: var(--fleet-radius); background: var(--fleet-ink); color: white; }
+.fleet-booking-summary > span { color: #dac39e; font-size: 11px; font-weight: 700; }
+.fleet-booking-summary h3 { font-size: 19px; margin-top: 6px; font-weight: 800; }
+.fleet-booking-summary-car { font-size: 13px; margin-top: 14px; color: #d5e0e9; line-height: 1.9; overflow-wrap: anywhere; }
+.fleet-booking-summary dl { display: grid; gap: 14px; margin-top: 22px; font-size: 12px; }
+.fleet-booking-summary dl > div { display: flex; justify-content: space-between; gap: 14px; line-height: 1.8; }
+.fleet-booking-summary dt { color: #c4d1dd; }
+.fleet-booking-summary dd { text-align: end; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.fleet-booking-summary dt { min-width: 0; overflow-wrap: anywhere; }
+.fleet-booking-notes { margin-top: 18px; }
+.fleet-booking-summary .is-discount :is(dt,dd) { color: #a8dfc5; }
+.fleet-booking-summary .is-total { border-top: 1px solid #ffffff26; padding-top: 18px; align-items: center; }
+.fleet-booking-summary .is-total dd { font-size: 25px; font-weight: 850; color: white; }
+.fleet-booking-summary .is-total small { font-size: 12px; font-weight: 500; }
+.fleet-booking-summary .is-deposit { border-top: 1px solid #ffffff26; padding-top: 14px; }
+.fleet-booking-summary > p:last-child { font-size: 11px; color: #b6c5d1; line-height: 1.9; margin-top: 17px; }
+.fleet-booking-footer { display: flex; align-items: center; gap: 12px; flex-shrink: 0; border-top: 1px solid var(--fleet-line); background: white; padding: 16px 24px; }
+.fleet-booking-footer-total { flex: 1; min-width: 0; }
+.fleet-booking-footer-total > span { font-size: 11px; display: block; color: var(--fleet-muted); }
+.fleet-booking-footer-total strong { font-size: 21px; color: var(--fleet-ink); font-weight: 850; }
+.fleet-booking-footer-total small { font-size: 11px; color: var(--fleet-muted); font-weight: 500; margin-inline-start: 6px; }
+.fleet-booking-submit-error { padding: 9px 24px; background: #fbece7; color: var(--fleet-danger); font-size: 12px; flex-shrink: 0; }
+@media (max-width: 850px) {
+  .fleet-booking-layout { grid-template-columns: minmax(0,1fr); }
+  .fleet-booking-summary { position: static; }
+  .fleet-dialog-logo { display: none; }
+}
+@media (max-width: 540px) {
+  .admin-ui .fleet-dialog { width: 100%; height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+  .fleet-dialog-header { gap: 10px; padding: max(15px,env(safe-area-inset-top)) 16px 15px; align-items: start; }
+  .fleet-dialog-header h2 { font-size: 20px; }
+  .fleet-dialog-header p { font-size: 11px; }
+  .fleet-booking-scroll { padding: 15px 12px; scrollbar-gutter: auto; }
+  .fleet-booking-section { padding: 16px 13px; border-radius: 13px; }
+  .fleet-booking-fields { grid-template-columns: minmax(0,1fr); gap: 14px; }
+  .fleet-booking-field.is-wide { grid-column: auto; }
+  .admin-ui .fleet-dialog :is(input,select,textarea):not([type=checkbox]) { font-size: 16px; }
+  .fleet-booking-vehicle { padding: 10px; gap: 10px; }
+  .fleet-booking-vehicle-photo { width: 80px; height: 76px; }
+  .fleet-booking-vehicle strong { font-size: 15px; }
+  .fleet-booking-promo-entry { grid-template-columns: minmax(0,1fr); }
+  .fleet-booking-footer { flex-wrap: wrap; gap: 9px; padding: 12px 14px max(12px,env(safe-area-inset-bottom)); }
+  .fleet-booking-footer-total { flex-basis: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .fleet-booking-footer-total strong { font-size: 21px; }
+  .fleet-booking-footer > button { flex: 1; }
+  .fleet-booking-footer > button[type=submit] { flex: 2; }
+}
+@media (max-width: 360px) {
+  .fleet-booking-dates { grid-template-columns: minmax(0,1fr); }
+}

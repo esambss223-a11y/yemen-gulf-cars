@@ -111,7 +111,12 @@ export default function ProfileTab({
   };
 
   // رمز وألوان الرتبة الوظيفية
-  const roleConfig = {
+  const roleConfig = currentStaff.maintenanceAccess ? {
+    title: 'مبرمج النظام ومركز الصيانة',
+    badge: 'مبرمج النظام',
+    icon: ShieldCheck,
+    description: 'مركز صيانة خاص لتشخيص الحالة والنسخ والاستعادة وإعادة الضبط، مع إدارة المدراء والموظفين.',
+  } : {
     super_admin: {
       title: 'المدير العام للمنظومة (Super Admin)',
       badge: 'مدير عام',

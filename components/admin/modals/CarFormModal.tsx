@@ -54,6 +54,7 @@ interface CarFormModalProps {
   setCarForm: React.Dispatch<React.SetStateAction<CarFormState>>;
   owners: VehicleOwner[];
   onSubmit: (e: React.FormEvent) => void;
+  inline?: boolean;
 }
 
 export default function CarFormModal({
@@ -64,6 +65,7 @@ export default function CarFormModal({
   setCarForm,
   owners,
   onSubmit,
+  inline = false,
 }: CarFormModalProps) {
   // 1. Hooks (جميع الهوكس في البداية دوماً)
   const [isUploading, setIsUploading] = useState(false);
@@ -147,8 +149,9 @@ export default function CarFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-hidden font-arabic">
-      <div className="bg-[#0b1322] border border-[#c5a059]/40 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl my-auto text-slate-200 overflow-hidden">
+    <div className={inline ? 'fleet-editor font-arabic' : 'fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-hidden font-arabic'}>
+      {inline && <div className="fleet-editor-heading"><button type="button" onClick={onClose}>← رجوع إلى السيارات</button><span>{editingCar ? 'السيارات / تعديل البيانات' : 'السيارات / إضافة سيارة'}</span></div>}
+      <div className={`bg-[#0b1322] border border-[#c5a059]/40 rounded-2xl w-full flex flex-col text-slate-200 ${inline ? '' : 'max-w-2xl max-h-[90vh] shadow-2xl my-auto overflow-hidden'}`}>
         
         {/* الترويسة المدمجة الأنيقة والمثبتة بالأعلى */}
         <div className="flex items-center justify-between border-b border-slate-800 p-4 sm:px-6 sm:py-4 shrink-0 bg-[#0b1322]">
@@ -165,17 +168,32 @@ export default function CarFormModal({
               </p>
             </div>
           </div>
-          <button
+          {!inline && <button
             type="button"
             onClick={onClose}
+            aria-label={inline ? 'رجوع إلى السيارات' : 'إغلاق تعديل السيارة'}
             className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
-          </button>
+          </button>}
         </div>
 
         {/* جسم الاستمارة القابل للتمرير الانسيابي الفاخر */}
-        <form id="car-form-modal" onSubmit={onSubmit} className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-4 text-xs">
+        <form id="car-form-modal" onSubmit={onSubmit} className={`flex-1 p-4 sm:p-6 space-y-4 text-xs ${inline ? '' : 'overflow-y-auto overflow-x-hidden'}`}>
+          <section className="rounded-xl border border-[#c5a059]/40 bg-[#070d19] p-4" aria-labelledby="car-status-label">
+            <label id="car-status-label" htmlFor="car-availability-status" className="mb-2 block text-sm font-bold text-white">حالة السيارة والتوفر</label>
+            <select id="car-availability-status" value={carForm.status}
+              onChange={(event) => setCarForm({ ...carForm, status: event.target.value as CarFormState['status'] })}
+              aria-describedby="car-status-help"
+              className="min-h-11 w-full rounded-lg border border-slate-600 bg-[#0b1322] px-3 py-2 text-base text-white focus:outline-2 focus:outline-[#c5a059]">
+              <option value="available">متاحة للإيجار فوراً</option>
+              <option value="rented">مؤجرة حالياً</option>
+              <option value="maintenance">تحت الصيانة</option>
+              <option value="cleaning">تحت التجهيز والغسيل</option>
+              {carForm.status === 'archived' && <option value="archived" disabled>مؤرشفة — أعدها من الأرشيف أولًا</option>}
+            </select>
+            <p id="car-status-help" className="mt-2 text-xs leading-6 text-slate-300">الصيانة أو التجهيز يجعلان السيارة غير متاحة للتأجير، مع الاحتفاظ بسجل العقود. اختر الحالة ثم احفظ التعديل.</p>
+          </section>
           
           {/* 1. قسم بيانات المركبة الأساسية والكود مع البحث السريع والاقتراحات الذكية */}
           <CarBasicInfoSection

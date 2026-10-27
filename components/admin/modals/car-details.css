@@ -1,0 +1,215 @@
+.car-record-layer { position: fixed; inset: 0; z-index: 100; overflow-y: auto; overscroll-behavior: contain; background: #101d22c9; color: #243027; padding: 24px; scrollbar-gutter: stable; }
+.car-record-layer * { box-sizing: border-box; }
+.car-record-dialog { max-width: 1180px; margin: 0 auto; background: #f1f3ec; border-radius: 24px; box-shadow: 0 30px 100px #07150b50; min-width: 0; }
+.car-record-dialog button { cursor: pointer; font-family: inherit; }
+.car-record-dialog :is(button, a, input, select, summary):focus-visible { outline: 3px solid #789e42; outline-offset: 3px; }
+.car-record-dialog button:disabled { cursor: not-allowed; opacity: .45; }
+.car-record-header { position: sticky; top: -24px; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 15px; background: #1e3027; color: #fffdf6; padding: 16px 26px; border-radius: 24px 24px 0 0; }
+.car-record-header > div:first-child { min-width: 0; }
+.car-record-header span { font-size: 12px; color: #cfdfbd; }
+.car-record-header h2 { font-size: 18px; font-weight: 800; line-height: 1.7; overflow-wrap: anywhere; }
+.car-record-header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.car-record-button, .car-record-close { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 11px; }
+.car-record-button { gap: 7px; padding: 10px 14px; border: 1px solid #d1e6b648; background: #c6e77a; color: #263720; font-size: 12px; font-weight: 800; }
+.car-record-close { width: 44px; border: 1px solid #ffffff30; background: #ffffff0b; color: white; }
+.car-record-body { padding: 26px; }
+.car-record-hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 34px; align-items: center; }
+.car-record-photo { position: relative; aspect-ratio: 1.45; overflow: hidden; border-radius: 20px; background: #dbe1d7; }
+.car-record-photo::after { content: ''; position: absolute; inset: 65% 0 0; background: linear-gradient(transparent, #1322198c); pointer-events: none; }
+.car-record-status { position: absolute; z-index: 1; top: 16px; right: 16px; background: #f0f7dd; border: 1px solid #c1d795; color: #385223; padding: 7px 12px; border-radius: 20px; font-size: 12px; font-weight: 800; }
+.car-record-status.is-rented { background: #fff0c7; border-color: #e4c773; color: #795712; }
+.car-record-status:is(.is-maintenance, .is-cleaning) { background: #fff0ec; color: #8e4636; border-color: #d9b0a5; }
+.car-record-photo-count { position: absolute; bottom: 15px; left: 15px; z-index: 1; background: #17271ebf; color: white; padding: 5px 10px; border-radius: 8px; font-size: 12px; }
+.car-record-thumbnails { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.car-record-thumbnails button { width: 60px; height: 48px; border-radius: 9px; overflow: hidden; position: relative; border: 2px solid transparent; opacity: .65; }
+.car-record-thumbnails button.is-selected { border-color: #668931; opacity: 1; }
+.car-record-intro { min-width: 0; }
+.car-record-eyebrow { color: #5a6c4e; font-size: 12px; font-weight: 700; }
+.car-record-intro h3 { font-size: clamp(25px, 3vw, 40px); font-weight: 500; line-height: 1.4; margin: 13px 0; overflow-wrap: anywhere; }
+.car-record-intro h3 strong { font-weight: 850; }
+.car-record-identifiers { display: flex; gap: 8px; flex-wrap: wrap; }
+.car-record-identifiers span { border: 1px solid #cbd3c3; background: #fcfcf6; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; }
+.car-record-owner-summary { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
+.car-record-owner-summary small, .car-record-owner-summary strong { display: block; line-height: 1.9; }
+.car-record-owner-summary small { color: #687260; font-size: 11px; }
+.car-record-owner-summary strong { font-size: 14px; }
+.car-record-price { font-size: 31px; font-weight: 800; margin-top: 15px; }
+.car-record-price span { font-size: 13px; font-weight: 500; color: #67745e; }
+.car-record-next { margin-top: 16px; padding: 14px; border: 1px solid #d3dcc4; background: #e9efdf; border-radius: 13px; display: flex; align-items: flex-start; gap: 10px; }
+.car-record-next svg { flex-shrink: 0; margin-top: 4px; }
+.car-record-next strong, .car-record-next span { display: block; font-size: 12px; line-height: 1.9; }
+.car-record-next strong { font-size: 13px; }
+.car-record-next .car-record-overdue { margin-top: 7px; color: #934b2b; font-weight: 700; }
+.car-record-no-next { margin-top: 15px; font-size: 12px; line-height: 1.9; color: #67745e; }
+.car-record-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-block: 25px; }
+.car-record-metrics article { padding: 18px; background: #fffefa; border: 1px solid #dce2d1; border-radius: 16px; min-width: 0; }
+.car-record-metrics article > span { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #59644f; }
+.car-record-metrics strong { display: block; font-size: clamp(24px, 2.8vw, 36px); font-weight: 800; margin-block: 8px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.car-record-metrics small { display: block; font-size: 11px; line-height: 1.8; color: #6b7465; }
+.car-record-metrics article.car-record-value { background: #c6e77a; border-color: #b9d574; }
+.car-record-value small, .car-record-value > span { color: #42572b !important; }
+.car-record-nav { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+.car-record-nav button { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; border: 1px solid #d0d9c6; background: #fffefa; border-radius: 10px; padding: 10px 14px; font-size: 12px; font-weight: 700; }
+.car-record-panel { border: 1px solid #dce2d1; border-radius: 20px; background: #fffefa; padding: 24px; margin-bottom: 22px; min-width: 0; }
+.car-record-dialog :is(section[id], article[id]) { scroll-margin-top: 105px; }
+.car-record-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+.car-record-section-heading > div:first-child { min-width: 0; }
+.car-record-section-heading > div > span { font-size: 11px; color: #6c795d; font-weight: 700; }
+.car-record-section-heading h3 { display: flex; align-items: center; gap: 8px; font-size: 21px; font-weight: 800; line-height: 1.7; margin-top: 5px; }
+.car-record-section-heading p { color: #6b7465; font-size: 12px; line-height: 1.9; margin-top: 5px; }
+.car-record-month-controls { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.car-record-month-controls button { width: 44px; height: 44px; background: #edf1e6; color: #405431; display: grid; place-items: center; border-radius: 10px; }
+.car-record-month-controls strong { min-width: 112px; text-align: center; font-size: 14px; }
+.car-record-weekdays, .car-record-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 7px; }
+.car-record-weekdays span { padding-bottom: 10px; font-size: 12px; text-align: center; color: #68755d; }
+.car-record-days button { min-height: 52px; border: 1px solid #e4e8dd; border-radius: 10px; background: #f5f7f0; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.car-record-days button.is-booked { background: #e2ebce; color: #304f1e; border-color: #adc785; }
+.car-record-days button.is-completed { background: #e5e9eb; color: #455a63; border-color: #c7d2d8; }
+.car-record-days button.is-pending { background: #fff5d9; color: #795d21; border: 1px dashed #c8a151; }
+.car-record-days button.is-today { box-shadow: inset 0 0 0 2px #54722f; }
+.car-record-days button.is-chosen { box-shadow: inset 0 0 0 3px #202d24; }
+.car-record-days i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.car-record-legend { display: flex; flex-wrap: wrap; gap: 15px; margin-block: 17px 10px; }
+.car-record-legend span { display: flex; align-items: center; gap: 7px; color: #616f55; font-size: 11px; }
+.car-record-legend i { width: 12px; height: 12px; border-radius: 4px; border: 1px solid #a1bc79; background: #e2ebce; }
+.car-record-legend i.is-completed { background: #e5e9eb; border-color: #c7d2d8; }
+.car-record-legend i.is-pending { background: #fff5d9; border: 1px dashed #c8a151; }
+.car-record-caption { display: flex; align-items: flex-start; gap: 7px; color: #6a7561; font-size: 12px; line-height: 1.9; margin-top: 13px; overflow-wrap: anywhere; }
+.car-record-caption svg { flex-shrink: 0; margin-top: 4px; }
+.car-record-count { color: #4d663a; background: #eef3e5; border-radius: 20px; padding: 7px 12px; font-size: 12px; white-space: nowrap; }
+.car-record-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.car-record-filters label { display: block; font-size: 12px; color: #526348; font-weight: 700; min-width: 0; }
+.car-record-filters :is(input, select) { width: 100%; min-width: 0; max-width: 100%; min-inline-size: 0; display: block; background: #f5f7ef; border: 1px solid #d2dcc5; border-radius: 10px; min-height: 45px; margin-top: 7px; padding: 10px 12px; color: #293c26; font-size: 14px; }
+.car-record-filters input::-webkit-date-and-time-value { min-width: 0; }
+.car-record-search { grid-column: 1 / -1; }
+.car-record-search > span { display: flex; align-items: center; gap: 5px; }
+.car-record-filter-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-block: 12px 18px; }
+.car-record-filter-note p { color: #758069; font-size: 11px; line-height: 1.9; }
+.car-record-filter-note button { font-size: 12px; color: #4b672f; text-decoration: underline; min-height: 44px; flex-shrink: 0; }
+.car-record-range-error { background: #fff0e8; color: #974a2b; padding: 12px; border-radius: 9px; margin-bottom: 15px; font-size: 13px; }
+.car-record-bookings { display: grid; gap: 13px; }
+.car-record-booking { border: 1px solid #e0e5d7; border-inline-start: 3px solid #8f9d81; border-radius: 13px; padding: 17px; }
+.car-record-booking.booking-active { border-inline-start-color: #6c8f3d; }
+.car-record-booking.booking-cancelled { border-inline-start-color: #ba8b7c; }
+.car-record-booking-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.car-record-booking-status { font-size: 11px; font-weight: 700; border-radius: 20px; padding: 5px 10px; background: #eef1e8; color: #58674a; }
+.car-record-booking-status.is-active { background: #e4efcf; color: #456524; }
+.car-record-booking-status.is-confirmed { background: #e4edf1; color: #3b6376; }
+.car-record-booking-status.is-pending_approval { background: #fff2cc; color: #856321; }
+.car-record-booking-status.is-cancelled { background: #fae9e3; color: #965845; }
+.car-record-booking-number { font-size: 11px; color: #78836e; overflow-wrap: anywhere; }
+.car-record-booking-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, .65fr); gap: 18px; align-items: start; }
+.car-record-renter > :is(small, strong, span) { display: block; }
+.car-record-renter small { font-size: 11px; color: #6c795e; line-height: 1.9; }
+.car-record-renter > strong { font-size: 16px; margin-block: 3px 7px; overflow-wrap: anywhere; }
+.car-record-customer-phone { display: flex !important; align-items: center; gap: 5px; font-size: 12px; color: #536346; margin-bottom: 8px; }
+.car-record-booking-period { display: grid; grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr); gap: 12px; align-items: center; background: #f5f7ef; padding: 12px; border-radius: 10px; }
+.car-record-booking-period :is(small, strong, span) { display: block; line-height: 1.9; }
+.car-record-booking-period small { font-size: 10px; color: #6b795e; }
+.car-record-booking-period strong { font-size: 12px; }
+.car-record-booking-period span { font-size: 12px; text-align: right; color: #637456; }
+.car-record-booking-amount > :is(strong, span) { display: block; font-size: 15px; font-weight: 700; line-height: 1.9; }
+.car-record-booking-amount small { font-size: 10px; color: #738168; font-weight: 500; }
+.car-record-booking-amount span small { display: block; }
+.car-record-booking-amount button { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #45632c; text-decoration: underline; }
+.car-record-return { margin-top: 12px; display: flex; align-items: center; gap: 6px; color: #536d3d; font-size: 11px; }
+.car-record-booking-notes { border-top: 1px solid #e5eadc; margin-top: 12px; font-size: 12px; color: #677459; }
+.car-record-booking-notes summary { padding-block: 12px; cursor: pointer; min-height: 44px; }
+.car-record-booking-notes p { padding-bottom: 12px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
+.car-record-empty { padding: 30px 15px; text-align: center; color: #6b7c5c; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.car-record-empty strong { font-size: 14px; }
+.car-record-empty p { font-size: 12px; line-height: 1.9; }
+.car-record-pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; gap: 12px; }
+.car-record-pagination button { min-height: 44px; padding: 8px 17px; background: #edf2e4; color: #4a6533; border-radius: 9px; font-size: 12px; }
+.car-record-pagination span { font-size: 12px; color: #748167; }
+.car-record-spec-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.car-record-spec-grid .car-record-panel { margin: 0; }
+.car-record-spec-grid .car-record-section-heading h3 { font-size: 18px; }
+.car-record-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px 18px; margin: 0; }
+.car-record-facts div { min-width: 0; padding-bottom: 12px; border-bottom: 1px solid #edf0e7; }
+.car-record-facts dt { font-size: 11px; color: #6a775f; margin-bottom: 6px; }
+.car-record-facts dd { font-size: 13px; font-weight: 600; line-height: 1.8; overflow-wrap: anywhere; margin: 0; }
+.car-record-features { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.car-record-features span { display: flex; align-items: center; gap: 5px; background: #f0f4e7; padding: 5px 8px; border-radius: 7px; font-size: 11px; color: #5d7049; }
+.car-record-footer { text-align: center; padding: 23px 0 2px; color: #708061; font-size: 11px; line-height: 1.9; }
+@media (max-width: 1000px) { .car-record-booking-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); } .car-record-booking-amount { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; } .car-record-booking-amount button { margin-inline-start: auto; } .car-record-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .car-record-layer { padding: 0; scrollbar-gutter: auto; } .car-record-dialog { min-height: 100dvh; border-radius: 0; } .car-record-header { top: 0; border-radius: 0; padding: 12px 16px; } .car-record-header h2 { font-size: 15px; } .car-record-header-actions { gap: 7px; } .car-record-header .car-record-button { padding-inline: 9px; font-size: 11px; } .car-record-body { padding: 18px; } .car-record-hero { grid-template-columns: 1fr; gap: 20px; } .car-record-photo { aspect-ratio: 1.6; border-radius: 15px; } .car-record-intro h3 { font-size: 29px; } .car-record-intro h3 br { display: none; } .car-record-intro h3 strong::before { content: ' '; } .car-record-spec-grid { grid-template-columns: 1fr; } .car-record-section-heading { flex-wrap: wrap; gap: 14px; } .car-record-month-controls { justify-content: space-between; width: 100%; } .car-record-panel { padding: 18px; border-radius: 16px; } .car-record-nav button { flex: 1 1 auto; padding-inline: 10px; } .car-record-booking-grid { grid-template-columns: 1fr; gap: 14px; } .car-record-booking { padding: 14px; } .car-record-booking-amount { grid-column: auto; } .car-record-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .car-record-filters label:nth-child(3) { grid-column: 1 / -1; } .car-record-filters :is(input, select) { font-size: 16px; padding-inline: 7px; } .car-record-filter-note { align-items: flex-start; flex-direction: column; gap: 2px; } .car-record-section-heading h3 { font-size: 19px; } .car-record-weekdays, .car-record-days { gap: 4px; } .car-record-weekdays span { font-size: 10px; } .car-record-days button { min-height: 40px; font-size: 12px; flex-direction: column; gap: 2px; border-radius: 7px; } .car-record-metrics article { padding: 14px; } .car-record-metrics article > span { font-size: 11px; } .car-record-metrics strong { font-size: 27px; } .car-record-metrics small { font-size: 10px; } }
+@media (prefers-reduced-motion: reduce) { .car-record-layer, .car-record-layer * { scroll-behavior: auto !important; } }
+
+/* Inline vehicle workspace: uses the admin page's single scroll container. */
+.car-record-page { position: static; inset: auto; z-index: auto; overflow: visible; overscroll-behavior: auto; background: transparent; padding: 0; color: #142638; max-width: 1300px; margin-inline: auto; scrollbar-gutter: auto; }
+.car-record-page .car-record-dialog { max-width: none; margin: 0; background: transparent; border-radius: 0; box-shadow: none; min-height: 0; }
+.car-record-page .car-record-dialog [hidden] { display: none !important; }
+.car-record-page .car-record-header { position: static; top: auto; background: transparent; color: #142638; border-radius: 0; padding: 0; margin-bottom: 22px; }
+.car-record-page .car-record-header > div > span { color: #917644; }
+.car-record-page .car-record-header h2 { font-size: 24px; }
+.car-record-page .car-record-body { padding: 0; }
+.car-record-page .car-record-close { width: auto; min-height: 46px; gap: 7px; padding: 10px 14px; background: white; border: 1px solid #d9e2e9; color: #36536a; font-size: 12px; white-space: nowrap; }
+.car-record-page .car-record-close span { color: inherit; }
+.car-record-page .car-record-button { background: #142638; border-color: #142638; color: white; min-height: 46px; }
+.car-record-page .car-record-hero { grid-template-columns: minmax(0,.8fr) minmax(0,1.2fr); background: #fff; border: 1px solid #dde5eb; padding: 24px; border-radius: 18px; gap: 26px; }
+.car-record-page .car-record-photo { aspect-ratio: 1.7; border-radius: 13px; }
+.car-record-page .car-record-intro h3 { font-size: 28px; margin-block: 8px; color: #172d40; }
+.car-record-page .car-record-intro h3 br { display: none; }
+.car-record-page .car-record-intro h3 strong::before { content: ' '; }
+.car-record-page .car-record-eyebrow { color: #877048; }
+.car-record-page .car-record-owner-summary { margin-top: 12px; }
+.car-record-page .car-record-price { font-size: 25px; margin-top: 9px; }
+.car-record-page .car-record-next { padding: 10px 13px; margin-top: 10px; background: #f5f7fa; border-color: #dde5ec; }
+.car-record-page .car-record-metrics { gap: 12px; margin-block: 18px; }
+.car-record-page .car-record-metrics article { border-color: #dde5eb; background: #fff; padding: 16px; }
+.car-record-page .car-record-metrics strong { font-size: 29px; }
+.car-record-page .car-record-metrics article.car-record-value { background: #142638; border-color: #142638; color: white; }
+.car-record-page .car-record-value > span, .car-record-page .car-record-value small { color: #c4d1dc !important; }
+.car-record-page .car-record-nav { background: #fff; border: 1px solid #dde5eb; border-radius: 13px; padding: 6px; gap: 5px; margin-bottom: 18px; }
+.admin-ui .car-record-page .car-record-nav button { min-height: 46px; }
+.car-record-page .car-record-nav button { flex: 1; border: 0; background: transparent; color: #73818c; font-size: 13px; border-radius: 9px; }
+.car-record-page .car-record-nav button[aria-pressed=true] { background: #edf2f6; color: #183b55; box-shadow: inset 0 -2px #bc9553; }
+.car-record-page .car-record-panel { background: #fff; border-color: #dde5eb; border-radius: 17px; }
+.car-record-page .car-record-section-heading > div > span { color: #98804e; }
+.car-record-page .car-record-count { color: #3e5d76; background: #ecf2f7; }
+.car-record-page .car-record-booking { border-color: #e0e7ec; border-inline-start-color: #9db1bf; }
+.car-record-page .car-record-booking-period { background: #f3f6f8; }
+.car-record-page .car-record-filters :is(input,select) { background: #f7f9fb; border-color: #d5e0e8; color: #294558; }
+.car-record-page .car-record-nav button svg { flex-shrink: 0; }
+.admin-ui .admin-content .car-record-page .car-record-header button, .admin-ui .admin-content .car-record-page .car-record-pagination button, .admin-ui .admin-content .car-record-page .car-record-nav button { min-height: 46px; }
+.car-record-page .car-record-status.is-archived { color: #526779; background: #edf0f3; }
+.car-record-page .car-record-filters label { color: #5d7485; }
+.car-record-page .car-record-month-controls button, .car-record-page .car-record-pagination button { color: #365b75; background: #edf2f7; }
+.car-record-page .car-record-days button.is-booked { background: #e4edf4; border-color: #b5c9d9; color: #315773; }
+.car-record-page .car-record-days button.is-chosen { box-shadow: inset 0 0 0 3px #bc9553; }
+.car-record-page .car-record-days button.is-today { box-shadow: inset 0 0 0 2px #536d82; }
+.car-record-page .car-record-legend .is-booked { background: #e4edf4; border-color: #b5c9d9; }
+.car-record-page .car-record-footer { color: #83919b; }
+@media (max-width: 760px) {
+  .car-record-page .car-record-header { flex-direction: column; align-items: stretch; gap: 13px; margin-bottom: 16px; }
+  .car-record-page .car-record-header h2 { font-size: 21px; }
+  .car-record-page .car-record-header-actions { justify-content: space-between; }
+  .car-record-page .car-record-header-actions > button { flex: 1; font-size: 12px; }
+  .car-record-page .car-record-hero { grid-template-columns: 100px minmax(0,1fr); padding: 15px; gap: 14px; align-items: start; }
+  .car-record-page .car-record-photo { aspect-ratio: 1; min-height: 112px; }
+  .car-record-page .car-record-status { top: 5px; right: 5px; max-width: calc(100% - 10px); font-size: 9px; padding: 4px 6px; }
+  .car-record-page .car-record-photo-count { bottom: 6px; left: 6px; font-size: 10px; padding: 3px 6px; }
+  .car-record-page .car-record-intro h3 { font-size: 19px; line-height: 1.5; margin-block: 6px; }
+  .car-record-page .car-record-eyebrow { font-size: 10px; }
+  .car-record-page .car-record-identifiers span { padding: 3px 7px; font-size: 10px; }
+  .car-record-page .car-record-owner-summary { margin-top: 8px; gap: 6px; }
+  .car-record-page .car-record-owner-summary svg { width: 14px; flex-shrink: 0; }
+  .car-record-page .car-record-owner-summary small { font-size: 9px; }
+  .car-record-page .car-record-owner-summary strong { font-size: 11px; }
+  .car-record-page .car-record-price { font-size: 20px; margin-top: 7px; }
+  .car-record-page .car-record-price span { font-size: 10px; }
+  .car-record-page .car-record-next { display: none; }
+  .car-record-page .car-record-no-next { font-size: 10px; }
+  .car-record-page .car-record-thumbnails { gap: 5px; }
+  .car-record-page .car-record-thumbnails button { width: 44px; height: 44px; }
+  .car-record-page .car-record-metrics { gap: 9px; margin-block: 13px; }
+  .car-record-page .car-record-metrics article { padding: 12px; border-radius: 12px; }
+  .car-record-page .car-record-metrics strong { font-size: 25px; margin-block: 5px; }
+  .car-record-page .car-record-metrics small { font-size: 10px; }
+  .car-record-page .car-record-nav { gap: 3px; padding: 5px; flex-wrap: nowrap; }
+  .car-record-page .car-record-nav button { padding-inline: 5px; font-size: 11px; line-height: 1.6; gap: 5px; }
+  .car-record-page .car-record-nav button svg { display: none; }
+  .car-record-page .car-record-panel { padding: 16px; }
+  .car-record-page .car-record-section-heading h3 { font-size: 18px; }
+}

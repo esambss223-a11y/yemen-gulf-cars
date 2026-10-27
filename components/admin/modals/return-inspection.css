@@ -1,0 +1,18 @@
+.fleet-return-identity { padding: 14px; margin-bottom: 18px; background: #f0f4f7; border-radius: 11px; }
+.fleet-return-identity > strong { font-size: 18px; display: block; }
+.fleet-return-identity > bdi { display: inline-block; font-size: 12px; color: #7f6944; margin-block: 6px; }
+.fleet-return-identity p { color: var(--fleet-muted); font-size: 12px; line-height: 1.9; }
+.fleet-return-distance { display: flex; flex-direction: column; justify-content: center; gap: 5px; color: var(--fleet-muted); font-size: 12px; }
+.fleet-return-distance strong { font-size: 24px; color: var(--fleet-ink); }
+.fleet-inspection-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.fleet-inspection-options.is-three { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.admin-ui .fleet-dialog .fleet-inspection-choice { min-height: 52px; padding: 12px 9px; color: #52697b; background: var(--fleet-field); border: 1px solid var(--fleet-line); border-radius: 10px; font-size: 12px; line-height: 1.8; font-weight: 700; }
+.admin-ui .fleet-dialog .fleet-inspection-choice.is-selected { background: #eaf0f5; color: var(--fleet-ink); border-color: #849eb2; box-shadow: inset 0 0 0 1px #849eb2; }
+.fleet-inspection-choice small { font-size: 11px; font-weight: 500; display: block; margin-top: 3px; }
+.fleet-inspection-extra { display: grid; gap: 15px; padding-top: 15px; margin-top: 15px; border-top: 1px solid var(--fleet-line); }
+.fleet-return-notice { padding: 10px; color: #80612f; background: #faf4e9; border-radius: 8px; font-size: 12px; }
+.fleet-inspection-subtitle { font-size: 13px; font-weight: 800; margin-block: 20px 10px; }
+.fleet-inspection-rating { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; margin-bottom: 17px; }
+.admin-ui .fleet-dialog .fleet-inspection-rating button { min-width: 44px; min-height: 46px; display: grid; place-items: center; color: #b08541; border-radius: 8px; }
+.fleet-inspection-rating strong { font-size: 12px; color: var(--fleet-muted); margin-inline-start: 8px; }
+@media (max-width: 540px) { .fleet-inspection-options.is-three { grid-template-columns: minmax(0,1fr); } }
