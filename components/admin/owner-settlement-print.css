@@ -1,0 +1,75 @@
+@page owner-settlement { size: A4 portrait; margin: 11mm 10mm 12mm; }
+
+@media print {
+  html:has(.owner-settlement-overlay),
+  body:has(> .owner-settlement-overlay) {
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    scroll-snap-type: none !important;
+  }
+
+  body:has(> .owner-settlement-overlay) { page: owner-settlement; gap: 0 !important; }
+  body:has(> .owner-settlement-overlay) > *:not(.owner-settlement-overlay) { display: none !important; }
+
+  body > .owner-settlement-overlay,
+  body > .owner-settlement-overlay > .owner-settlement-dialog,
+  .owner-settlement-scroll,
+  .owner-settlement-sheet {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    transform: none !important;
+    animation: none !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  body > .owner-settlement-overlay { page: owner-settlement; border: 0 !important; backdrop-filter: none !important; }
+  .owner-settlement-dialog,
+  .owner-settlement-sheet { border: 0 !important; border-radius: 0 !important; }
+  .owner-settlement-sheet { color: #17212e !important; font-size: 10px !important; }
+  .owner-settlement-sheet * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .owner-settlement-dialog > header { display: none !important; }
+
+  .owner-settlement-brand { display: flex !important; flex-direction: row !important; align-items: flex-start !important; break-inside: avoid; }
+  .owner-settlement-brand h1 { font-size: 15px !important; }
+  .owner-settlement-details { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 7px !important; padding: 10px !important; break-inside: avoid; }
+  .owner-settlement-details strong { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; overflow-wrap: anywhere; }
+  .owner-settlement-summary { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 7px !important; break-inside: avoid; }
+  .owner-settlement-summary > div { padding: 9px !important; }
+  .owner-settlement-summary strong { font-size: 12px !important; }
+
+  .owner-settlement-ledger { display: block !important; overflow: visible !important; border-radius: 0 !important; }
+  .owner-settlement-table { width: 100% !important; table-layout: fixed; border-collapse: collapse !important; font-size: 9px !important; }
+  .owner-settlement-table thead { display: table-header-group !important; }
+  .owner-settlement-table tbody { display: table-row-group !important; }
+  .owner-settlement-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+  .owner-settlement-table th,
+  .owner-settlement-table td { padding: 6px 4px !important; overflow-wrap: anywhere; vertical-align: top; }
+  .owner-settlement-table th:first-child,
+  .owner-settlement-table td:first-child { width: 18%; }
+  .owner-settlement-table th:nth-child(2),
+  .owner-settlement-table td:nth-child(2) { width: 29%; }
+  .owner-settlement-table th:nth-child(3),
+  .owner-settlement-table td:nth-child(3) { width: 15%; }
+  .owner-settlement-table th:nth-child(4),
+  .owner-settlement-table td:nth-child(4) { width: 18%; }
+  .owner-settlement-table th:nth-child(5),
+  .owner-settlement-table td:nth-child(5) { width: 20%; }
+  .owner-settlement-signatures { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 24px !important; padding-top: 18px !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+}

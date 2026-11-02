@@ -1,9 +1,8 @@
 'use client';
 
+import { useState, useRef } from 'react';
 import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import './fleet-carousel.css';
 
 interface CarImageCarouselProps {
   images: string[];
@@ -12,79 +11,145 @@ interface CarImageCarouselProps {
   onOpen: (index: number) => void;
 }
 
-export default function CarImageCarousel({ images, name, preload = false, onOpen }: CarImageCarouselProps) {
-  const track = useRef<HTMLDivElement>(null);
-  const trackWidth = useRef(0);
-  const currentIndex = useRef(0);
-  const gesture = useRef({ x: 0, y: 0, dragged: false });
+export default function CarImageCarousel({
+  images,
+  name,
+  preload = false,
+  onOpen,
+}: CarImageCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const isSwiping = useRef(false);
 
-  useEffect(() => {
-    const element = track.current;
-    if (!element) return;
-    const observer = new ResizeObserver(() => {
-      trackWidth.current = element.clientWidth;
-      element.scrollTo({ left: currentIndex.current * element.clientWidth, behavior: 'instant' });
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+  const total = images.length || 1;
+  const currentIdx = Math.max(0, Math.min(activeIndex, total - 1));
 
-  const goTo = (index: number) => {
-    const element = track.current;
-    if (!element) return;
-    const target = (index + images.length) % images.length;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    element.scrollTo({ left: target * element.clientWidth, behavior: reduceMotion ? 'instant' : 'smooth' });
+  const goTo = (index: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setActiveIndex((index + total) % total);
   };
-  const firstDot = Math.max(0, Math.min(activeIndex - 3, images.length - 7));
+
+  // Ultra-fluid mobile touch swipe detection
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isSwiping.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const diffX = e.touches[0].clientX - touchStartX.current;
+    const diffY = e.touches[0].clientY - touchStartY.current;
+
+    // Distinguish horizontal swipe from vertical page scrolling
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
+      isSwiping.current = true;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const endX = e.changedTouches[0].clientX;
+    const diffX = endX - touchStartX.current;
+
+    if (Math.abs(diffX) > 25) {
+      // Swiped right or left
+      if (diffX > 0) {
+        // In RTL, swiping right goes to previous photo
+        setActiveIndex((prev) => (prev === 0 ? total - 1 : prev - 1));
+      } else {
+        // Swiping left goes to next photo
+        setActiveIndex((prev) => (prev === total - 1 ? 0 : prev + 1));
+      }
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  const currentImage = images[currentIdx] || '/car-mercedes.jpg';
 
   return (
-    <div className="car-image-carousel" role="region" aria-roledescription="عارض صور" aria-label={`صور ${name}`}>
-      <div ref={track} className="car-image-track" dir="ltr"
-        onScroll={(event) => {
-          const element = event.currentTarget;
-          if (!element.clientWidth || element.clientWidth !== trackWidth.current) return;
-          const index = Math.max(0, Math.min(images.length - 1, Math.round(element.scrollLeft / element.clientWidth)));
-          currentIndex.current = index;
-          setActiveIndex(index);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-            event.preventDefault();
-            goTo(currentIndex.current + (event.key === 'ArrowLeft' ? 1 : -1));
-          }
-        }}>
-        {images.map((source, index) => (
-          <button key={source} type="button" className="car-image-slide" dir="rtl" tabIndex={index === activeIndex ? 0 : -1}
-            aria-label={`تكبير صورة ${index + 1} من ${images.length} لـ ${name}`}
-            onPointerDown={(event) => { gesture.current = { x: event.clientX, y: event.clientY, dragged: false }; }}
-            onPointerMove={(event) => {
-              if (Math.abs(event.clientX - gesture.current.x) > 8 || Math.abs(event.clientY - gesture.current.y) > 8) gesture.current.dragged = true;
-            }}
-            onPointerCancel={() => { gesture.current.dragged = true; }}
-            onClick={(event) => { if (event.detail === 0 || !gesture.current.dragged) onOpen(event.detail === 0 ? currentIndex.current : index); }}>
-            <Image src={source} alt={`${name} - صورة ${index + 1}`} fill
-              sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw"
-              preload={preload && index === 0} loading={preload && index === 0 ? undefined : 'lazy'}
-              draggable={false} className="object-cover object-center" />
-          </button>
-        ))}
+    <div
+      className="relative w-full h-full overflow-hidden select-none bg-[#071726] group cursor-pointer"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onClick={(e) => {
+        if (!isSwiping.current) {
+          onOpen(currentIdx);
+        }
+      }}
+      role="region"
+      aria-roledescription="عارض صور"
+      aria-label={`صور ${name}`}
+    >
+      {/* 1. Ambient blurred background for off-ratio / portrait photos */}
+      <Image
+        src={currentImage}
+        alt=""
+        fill
+        sizes="80px"
+        aria-hidden="true"
+        className="object-cover scale-125 blur-xl opacity-25 brightness-75 pointer-events-none transition-all duration-300"
+      />
+      <div className="absolute inset-0 bg-[#071726]/30 pointer-events-none" />
+
+      {/* 2. Sharp foreground vehicle image with smooth fade */}
+      <div className="relative w-full h-full flex items-center justify-center p-1">
+        <Image
+          src={currentImage}
+          alt={`${name} - صورة ${currentIdx + 1}`}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          preload={preload && currentIdx === 0}
+          loading={preload && currentIdx === 0 ? undefined : 'lazy'}
+          className="object-contain object-center transition-all duration-200 drop-shadow-sm"
+          draggable={false}
+        />
       </div>
-      {images.length > 1 && <>
-        <button type="button" className="car-image-arrow is-previous" onClick={() => goTo(currentIndex.current - 1)} aria-label={`الصورة السابقة لـ ${name}`}><ChevronRight size={18} /></button>
-        <button type="button" className="car-image-arrow is-next" onClick={() => goTo(currentIndex.current + 1)} aria-label={`الصورة التالية لـ ${name}`}><ChevronLeft size={18} /></button>
-        <div className="car-image-dots" aria-label="اختيار صورة السيارة">
-          {images.slice(firstDot, firstDot + 7).map((source, offset) => {
-            const index = firstDot + offset;
-            return <button key={source} type="button" onClick={() => goTo(index)}
-              aria-label={`عرض الصورة ${index + 1} لـ ${name}`} aria-current={index === activeIndex ? 'true' : undefined}>
-              <span className={index === activeIndex ? 'is-active' : ''} />
-            </button>;
-          })}
-        </div>
-        <span className="sr-only" aria-live="polite" aria-atomic="true">الصورة {activeIndex + 1} من {images.length}</span>
-      </>}
+
+      {/* 3. Delicate Small Navigation Arrows (Hidden on mobile touch, subtle and small on desktop hover) */}
+      {total > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => goTo(currentIdx - 1, e)}
+            className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-sm hover:scale-105 active:scale-95 items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 z-20 cursor-pointer"
+            aria-label="الصورة السابقة"
+          >
+            <ChevronRight size={13} />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => goTo(currentIdx + 1, e)}
+            className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/90 hover:bg-white text-slate-800 shadow-sm hover:scale-105 active:scale-95 items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 z-20 cursor-pointer"
+            aria-label="الصورة التالية"
+          >
+            <ChevronLeft size={13} />
+          </button>
+
+          {/* 4. Delicate Micro-dots (Apple/Airbnb style - tiny and unobtrusive) */}
+          <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-1 z-20 pointer-events-none">
+            {images.slice(0, 5).map((_, i) => (
+              <span
+                key={i}
+                className={`rounded-full transition-all duration-150 ${
+                  i === (currentIdx % 5)
+                    ? 'w-2 h-0.5 bg-white shadow-xs'
+                    : 'w-1 h-0.5 bg-white/50'
+                }`}
+              />
+            ))}
+          </div>
+
+          {/* Micro index counter for mobile view */}
+          <div className="sm:hidden absolute bottom-2 left-2 px-1.5 py-0.5 rounded-full bg-black/40 text-[9px] font-mono text-white/90 backdrop-blur-xs pointer-events-none">
+            {currentIdx + 1}/{total}
+          </div>
+        </>
+      )}
     </div>
   );
 }

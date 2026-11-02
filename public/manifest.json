@@ -1,0 +1,29 @@
+{
+  "name": "شركة اليمن والخليج لتأجير وتوريد السيارات",
+  "short_name": "اليمن والخليج للسيارات",
+  "description": "تأجير سيارات فاخرة وحديثة مع سائق خاص وخدمة استقبال مطار القاهرة وسفنكس",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060b17",
+  "theme_color": "#060b17",
+  "dir": "rtl",
+  "lang": "ar-EG",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-512.webp",
+      "sizes": "512x512",
+      "type": "image/webp"
+    }
+  ]
+}

@@ -1,13 +1,17 @@
+---
+name: frontend-design-system
+description: "Tailored frontend design system rules and brand principles for Yemen & Gulf Cars (شركة اليمن والخليج لتوريد السيارات). Enforces premium editorial automotive styling, avoids generic AI patterns, and governs composition, typography, and motion."
+---
+
 # Frontend Design System Skill
 
 ## Project
 
 This project is the official website for:
 
-شركة اليمن والخليج لتوريد السيارات
+**شركة اليمن والخليج لتوريد السيارات**
 
 The website must feel premium, modern, trustworthy, automotive, and editorial.
-
 The design must NOT look like a generic AI-generated website.
 
 ## Core Design Principles
@@ -29,15 +33,12 @@ Every visual decision must have a clear design reason.
 ## Brand First
 
 The design system must be established before building the complete website.
-
 Do not invent brand colors, typography, imagery, or visual language without discussing them first.
-
 Once a design decision is approved, treat it as part of the design system and do not change it without approval.
 
 ## Layout
 
 Prioritize:
-
 - Strong composition
 - Clear hierarchy
 - Generous whitespace
@@ -50,11 +51,8 @@ Prioritize:
 ## Motion
 
 Motion must be intentional and subtle.
-
 Do not animate every element.
-
 Use animation to:
-
 - establish hierarchy
 - guide attention
 - reveal content
@@ -80,7 +78,6 @@ Do not install GSAP, Lenis, Swiper, Three.js, React Three Fiber, Framer Motion, 
 ## Important Rule
 
 Before implementing a major visual feature:
-
 1. Explain the intended design.
 2. Explain which files will be changed.
 3. Explain which libraries are required.

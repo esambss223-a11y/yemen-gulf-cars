@@ -1,0 +1,45 @@
+.fleet-car-pricing { padding: 18px; background: #fff; border: 1px solid var(--fleet-line); border-radius: var(--fleet-radius); }
+.car-offer-table { display: grid; border: 1px solid var(--fleet-line); border-radius: 12px; overflow: hidden; }
+.car-offer-row { display: grid; grid-template-columns: 85px minmax(0,1fr) 110px minmax(0,1fr); gap: 14px; padding: 16px; align-items: start; }
+.car-offer-row + .car-offer-row { border-top: 1px solid var(--fleet-line); }
+.car-offer-row.has-offer { background: #faf8f2; }
+.car-offer-period { padding-top: 24px; }
+.car-offer-period strong { display: block; font-size: 14px; }
+.car-offer-period small, .car-offer-price small { display: block; font-size: 11px; line-height: 1.8; color: var(--fleet-muted); }
+.car-offer-price { display: grid; min-width: 0; gap: 6px; }
+.car-offer-price > span { font-size: 12px; color: #40586b; font-weight: 700; }
+.car-offer-switch { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; min-height: 48px; margin-top: 24px; padding: 6px; font-size: 12px; cursor: pointer; }
+.car-offer-switch small { display: none; }
+.admin-ui .fleet-car-pricing .car-offer-switch input { width: 20px; min-height: 20px; height: 20px; padding: 0; flex-shrink: 0; accent-color: var(--fleet-ink); }
+.car-offer-no-discount { margin-top: 24px; min-height: 48px; display: grid; align-items: center; color: var(--fleet-muted); font-size: 12px; }
+.car-offer-explanation { display: flex; align-items: flex-start; gap: 8px; }
+.car-offer-explanation svg { flex-shrink: 0; margin-top: 4px; }
+.car-offer-policy { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--fleet-line); }
+.car-offer-policy small { color: var(--fleet-muted); font-size: 11px; line-height: 1.8; display: block; margin-top: 6px; }
+.car-extra-periods { margin-top: 18px; }
+.car-extra-periods > summary { padding: 12px; border: 1px solid var(--fleet-line); border-radius: 10px; min-height: 44px; cursor: pointer; font-size: 13px; }
+@media (max-width: 680px) {
+  .car-offer-row { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; padding: 12px; }
+  .car-offer-period { padding-top: 0; }
+  .car-offer-switch { grid-column: 2; grid-row: 1; margin: 0; justify-content: flex-end; }
+  .car-offer-price { grid-row: 2; }
+  .car-offer-no-discount { grid-row: 2; margin-top: 24px; text-align: center; }
+}
+.fleet-car-pricing h3 { display: flex; align-items: center; gap: 8px; color: var(--fleet-ink); font-size: 15px; font-weight: 800; }
+.fleet-car-pricing h3 svg { color: #98783e; }
+.fleet-car-pricing > p { font-size: 12px; line-height: 1.9; color: var(--fleet-muted); margin-block: 8px 15px; }
+.fleet-car-pricing-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 15px; }
+.fleet-car-pricing-fields label { display: block; min-width: 0; }
+.fleet-car-pricing-fields label > span { display: block; margin-bottom: 7px; font-size: 12px; font-weight: 750; color: #40586b; }
+.admin-ui .fleet-car-pricing input { width: 100%; min-width: 0; min-height: 48px; border: 1px solid #cdd8e1; border-radius: 10px; padding: 11px 12px; font-size: 16px; color: var(--fleet-ink); background: var(--fleet-field); font-variant-numeric: tabular-nums; }
+@media (max-width: 540px) { .fleet-car-pricing-fields { grid-template-columns: minmax(0,1fr); } }
+/* Independent duration totals, using the existing editor tokens. */
+.car-duration-prices { display: grid; gap: 12px; margin-top: 18px; padding: 16px; border: 1px solid var(--fleet-line); border-radius: 12px; min-width: 0; }
+.car-duration-prices legend { padding-inline: 6px; font-size: 14px; font-weight: 750; }
+.car-duration-prices p { font-size: 12px; line-height: 1.8; color: var(--fleet-muted); }
+.car-duration-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto; gap: 10px; align-items: end; }
+.car-duration-row label { display: grid; min-width: 0; gap: 6px; font-size: 12px; }
+.car-duration-row input { width: 100%; min-width: 0; }
+.car-duration-prices button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--fleet-line); border-radius: 8px; color: var(--fleet-ink); background: var(--fleet-field); }
+.car-duration-prices button:disabled { opacity: .5; }
+@media (max-width: 420px) { .car-duration-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .car-duration-row > button { grid-column: 1 / -1; } }

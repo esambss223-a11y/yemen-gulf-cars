@@ -33,7 +33,7 @@ export default function FleetDialog({ title, description, titleId, onClose, busy
       <header className="fleet-dialog-header">
         <div className="fleet-dialog-title"><span className="fleet-dialog-eyebrow">اليمن والخليج / إدارة التأجير</span>
           <h2 id={titleId} tabIndex={-1} autoFocus>{title}</h2><p id={titleId + '-description'}>{description}</p></div>
-        <Image className="fleet-dialog-logo" src="/logo2.png" alt="شركة اليمن والخليج" width={144} height={60} />
+        <Image className="fleet-dialog-logo" src="/logonew.png" alt="شركة اليمن والخليج" width={60} height={60} />
         <button type="button" className="fleet-dialog-close" aria-label={closeLabel} disabled={busy} onClick={onClose}><X size={20} aria-hidden="true" /></button>
       </header>
       {children}

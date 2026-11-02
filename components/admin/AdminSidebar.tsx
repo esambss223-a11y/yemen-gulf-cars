@@ -1,13 +1,28 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Car as CarIcon, Calendar, Users, UserCheck, BarChart3,
-  Settings, LogOut, ExternalLink, Key, Tag, X } from 'lucide-react';
-import { StaffUser } from '@/types/fleet';
-
-export type AdminTab = 'overview' | 'cars' | 'bookings' | 'customers' | 'owners' | 'staff' | 'coupons' | 'audit' | 'profile';
+import { 
+  LayoutDashboard, 
+  Car, 
+  Calendar, 
+  Users, 
+  UserCheck, 
+  BarChart3, 
+  Settings, 
+  ExternalLink, 
+  Key, 
+  Tag, 
+  X, 
+  PanelRightClose, 
+  PanelRightOpen, 
+  Plus, 
+  ClipboardList 
+} from 'lucide-react';
+import type { StaffUser } from '@/types/fleet';
+import { type AdminTab, getAdminSections } from './admin-navigation';
+export type { AdminTab } from './admin-navigation';
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -22,8 +37,21 @@ interface AdminSidebarProps {
   couponsCount?: number;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
-  handleLogout: () => void;
+  onOpenAddBooking: () => void;
+  onOpenAddCar: () => void;
 }
+
+const icons: Record<AdminTab, React.ElementType> = {
+  overview: LayoutDashboard,
+  cars: Car,
+  bookings: Calendar,
+  customers: Users,
+  owners: Key,
+  staff: UserCheck,
+  coupons: Tag,
+  audit: BarChart3,
+  profile: Settings,
+};
 
 export default function AdminSidebar({
   activeTab,
@@ -37,106 +65,197 @@ export default function AdminSidebar({
   couponsCount = 0,
   isMobileOpen = false,
   onCloseMobile,
-  handleLogout,
+  onOpenAddBooking,
+  onOpenAddCar,
 }: AdminSidebarProps) {
-  const [timeStr, setTimeStr] = useState('');
-  const [dateStr, setDateStr] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
 
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      setTimeStr(now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }));
-      setDateStr(now.toISOString().split('T')[0]);
-    };
-    updateClock();
-    const interval = setInterval(updateClock, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const allNavItems: { id: AdminTab; label: string; icon: React.ElementType; badge?: number | string }[] = [
-    { id: 'overview', label: currentStaff.maintenanceAccess ? 'مركز المبرمج' : 'الرئيسية', icon: LayoutDashboard },
-    { id: 'cars', label: 'السيارات', icon: CarIcon, badge: totalCarsCount },
-    { id: 'bookings', label: 'الحجوزات والعقود', icon: Calendar, badge: activeBookingsCount },
-    { id: 'customers', label: 'دليل العملاء (CRM)', icon: Users, badge: customersCount },
-    { id: 'owners', label: 'الملاك والشركاء', icon: Key, badge: ownersCount },
-    { id: 'staff', label: 'فريق العمل والصلاحيات', icon: UserCheck, badge: staffCount },
-    { id: 'coupons', label: 'العروض وأكواد الخصم', icon: Tag, badge: couponsCount },
-    { id: 'audit', label: 'التقارير وسجل الرقابة', icon: BarChart3 },
-    { id: 'profile', label: 'الإعدادات وحسابي', icon: Settings },
-  ];
-
-  // تصفية القوائم حسب صلاحية الرتبة الوظيفية
-  const allowedTabsByRole: Record<string, AdminTab[]> = {
-    super_admin: ['overview', 'cars', 'bookings', 'customers', 'owners', 'staff', 'coupons', 'audit', 'profile'],
-    rental_agent: ['overview', 'cars', 'bookings', 'customers', 'profile'],
-    accountant: ['overview', 'bookings', 'cars', 'customers', 'owners', 'profile'],
-  };
-
-  const userRole = currentStaff.role || 'rental_agent';
-  const allowed = allowedTabsByRole[userRole] || allowedTabsByRole.rental_agent;
-  const navItems = allNavItems.filter((item) => allowed.includes(item.id));
-
-  const roleLabel = currentStaff.maintenanceAccess ? 'مبرمج النظام' : {
-    super_admin: 'مدير عام', rental_agent: 'موظف تأجير', accountant: 'محاسب مالي',
-  }[userRole] || 'موظف';
-
-  // The drawer only changes presentation; permissions and actions remain shared.
-  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!isMobileOpen) return;
+    const wideScreen = window.matchMedia('(min-width: 1200px)');
+    if (wideScreen.matches) { onCloseMobile?.(); return; }
     const previousFocus = document.activeElement as HTMLElement | null;
     closeButtonRef.current?.focus();
+    const closeOnDesktop = () => { if (wideScreen.matches) onCloseMobile?.(); };
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseMobile?.();
+      if (event.key === 'Escape') { event.preventDefault(); onCloseMobile?.(); }
       if (event.key !== 'Tab') return;
-      const drawer = closeButtonRef.current?.closest('aside');
-      const targets = drawer?.querySelectorAll<HTMLElement>('button, a[href]');
-      if (!targets?.length) return;
+      const targets = Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>('button, a[href]') || [])
+        .filter((element) => element.getClientRects().length > 0);
+      if (!targets.length) return;
       const first = targets[0];
       const last = targets[targets.length - 1];
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
+    wideScreen.addEventListener('change', closeOnDesktop);
     document.addEventListener('keydown', handleKey);
-    return () => { document.removeEventListener('keydown', handleKey); previousFocus?.focus(); };
+    return () => {
+      wideScreen.removeEventListener('change', closeOnDesktop);
+      document.removeEventListener('keydown', handleKey);
+      previousFocus?.focus();
+    };
   }, [isMobileOpen, onCloseMobile]);
 
-  const openTab = (tab: AdminTab) => { setActiveTab(tab); onCloseMobile?.(); };
+  const badges: Partial<Record<AdminTab, number>> = {
+    cars: totalCarsCount,
+    bookings: activeBookingsCount,
+    customers: customersCount,
+    staff: staffCount,
+    owners: ownersCount,
+    coupons: couponsCount,
+  };
+
+  const openTab = (tab: AdminTab) => {
+    setActiveTab(tab);
+    onCloseMobile?.();
+  };
+
+  const canBook = currentStaff.role === 'super_admin' || currentStaff.role === 'rental_agent';
 
   return (
     <>
-      {isMobileOpen && <button className="admin-drawer-backdrop" onClick={onCloseMobile} aria-label="إغلاق القائمة" tabIndex={-1} />}
-      <aside id="admin-navigation" className={`admin-navigation ${isMobileOpen ? 'is-open' : ''}`}
-        role={isMobileOpen ? 'dialog' : undefined} aria-modal={isMobileOpen ? true : undefined} aria-label="أقسام لوحة التحكم">
-        <div className="admin-drawer-brand">
-          <button ref={closeButtonRef} onClick={onCloseMobile} aria-label="إغلاق القائمة"><X size={22} /></button>
-          <Image src="/logo2.png" alt="شركة اليمن والخليج لتأجير السيارات" width={180} height={75} />
+      {isMobileOpen && (
+        <button
+          type="button"
+          className="admin-drawer-backdrop"
+          onClick={onCloseMobile}
+          aria-label="إغلاق القائمة"
+          tabIndex={-1}
+        />
+      )}
+
+      <aside
+        ref={sidebarRef}
+        id="admin-navigation"
+        className={`admin-navigation ${isCollapsed ? 'is-collapsed' : ''} ${isMobileOpen ? 'is-open' : ''}`}
+        role={isMobileOpen ? 'dialog' : undefined}
+        aria-modal={isMobileOpen ? true : undefined}
+        aria-label="أقسام لوحة التحكم"
+      >
+        {/* Brand Header */}
+        <div className="admin-navigation-brand">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 shrink-0 flex items-center justify-center">
+              <Image
+                src="/logonew.png"
+                alt="شركة اليمن والخليج"
+                width={1254}
+                height={1254}
+                className="w-full h-full object-contain"
+                priority
+              />
+            </div>
+            <div className="admin-brand-text min-w-0 leading-tight">
+              <span className="text-sm font-black text-slate-900 tracking-tight block truncate">اليمن والخليج</span>
+              <span className="text-[11px] text-slate-500 block truncate font-medium">لتأجير وتوريد السيارات</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="admin-sidebar-collapse"
+            onClick={() => setIsCollapsed((collapsed) => !collapsed)}
+            title={isCollapsed ? 'توسيع القائمة' : 'تصغير القائمة'}
+            aria-label={isCollapsed ? 'توسيع القائمة' : 'تصغير القائمة'}
+            aria-expanded={!isCollapsed}
+          >
+            {isCollapsed ? <PanelRightOpen size={16} /> : <PanelRightClose size={16} />}
+          </button>
+
+          <button
+            ref={closeButtonRef}
+            type="button"
+            className="admin-drawer-close"
+            onClick={onCloseMobile}
+            aria-label="إغلاق القائمة"
+          >
+            <X size={18} />
+          </button>
         </div>
+
+        {/* Section Caption */}
+        <p className="admin-navigation-caption">مساحة العمل</p>
+
+        {/* Navigation Tabs */}
         <nav aria-label="التنقل الرئيسي" className="admin-nav-tabs">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return <button key={item.id} onClick={() => openTab(item.id)} aria-current={activeTab === item.id ? 'page' : undefined}
-              className={`admin-nav-tab ${activeTab === item.id ? 'is-active' : ''}`}>
-              <Icon size={17} aria-hidden="true" /><span>{item.label}</span>
-              {item.badge !== undefined && <span className="admin-nav-count">{item.badge}</span>}
-            </button>;
+          {getAdminSections(currentStaff).map((item) => {
+            const Icon = icons[item.id];
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                type="button"
+                key={item.id}
+                onClick={() => openTab(item.id)}
+                aria-current={isActive ? 'page' : undefined}
+                aria-label={item.label}
+                title={item.label}
+                className={`admin-nav-tab ${isActive ? 'is-active' : ''}`}
+              >
+                <Icon size={17} aria-hidden="true" />
+                <span className="admin-nav-label">{item.label}</span>
+                {badges[item.id] !== undefined && (
+                  <span className="admin-nav-count">{badges[item.id]}</span>
+                )}
+              </button>
+            );
           })}
         </nav>
+
+        {/* Mobile Quick Action Drawer Items */}
+        {canBook && (
+          <div className="admin-navigation-create" aria-label="إجراءات جديدة">
+            <span>إنشاء جديد</span>
+            <button
+              type="button"
+              onClick={() => {
+                onCloseMobile?.();
+                onOpenAddBooking();
+              }}
+            >
+              <ClipboardList size={16} aria-hidden="true" />
+              <span>عقد وحجز جديد</span>
+            </button>
+            {currentStaff.role === 'super_admin' && (
+              <button
+                type="button"
+                onClick={() => {
+                  onCloseMobile?.();
+                  onOpenAddCar();
+                }}
+              >
+                <Plus size={16} aria-hidden="true" />
+                <span>إضافة سيارة</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Bottom Utilities */}
         <div className="admin-nav-utilities">
-          <button onClick={() => openTab('profile')} className="admin-nav-profile" title="ملف الموظف">
-            <span className="admin-avatar">{currentStaff.name.charAt(0)}</span>
-            <span><strong>{currentStaff.name}</strong><small>{roleLabel}</small></span>
-          </button>
-          <div className="admin-nav-clock"><ClockIcon /><span>{timeStr || '—'}<small>{dateStr || '—'}</small></span></div>
-          <span className="admin-nav-system"><i />النظام يعمل بشكل طبيعي</span>
-          <Link href="/" title="معاينة الموقع" className="admin-utility-link"><ExternalLink size={16} /><span>عرض الموقع</span></Link>
-          <button onClick={handleLogout} className="admin-utility-link admin-logout"><LogOut size={16} /><span>خروج</span></button>
+          <Link
+            href="/"
+            title="عرض موقع العملاء"
+            aria-label="عرض موقع العملاء"
+            className="admin-public-site"
+          >
+            <ExternalLink size={15} aria-hidden="true" />
+            <span>عرض موقع العملاء</span>
+          </Link>
+
+          <div className="admin-status-pill px-2.5 py-1.5 flex items-center justify-between text-[11px] text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="text-[10px] text-slate-600 font-semibold">النظام نشط</span>
+            </span>
+            <span className="text-[9px] font-mono font-bold text-slate-400 bg-slate-100 px-1 py-0.5 rounded">
+              ERP v2.4
+            </span>
+          </div>
         </div>
       </aside>
     </>
   );
-}
-
-function ClockIcon() {
-  return <span className="admin-clock-dot" aria-hidden="true" />;
 }

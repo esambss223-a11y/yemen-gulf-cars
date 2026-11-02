@@ -4,6 +4,7 @@ import { authorizeStaffRequest } from '@/lib/server/staff-auth';
 import { SUPABASE_PUBLIC_KEY, SUPABASE_URL } from '@/lib/supabase-config';
 import { makeBackup, makeTicket, readTicket, validateBackup, MAX_MAINTENANCE_BYTES } from '@/lib/server/maintenance-format';
 import { MAINTENANCE_TABLES, MAINTENANCE_PHRASES, type MaintenanceHealth, type MaintenanceOperation, type MaintenanceSnapshot } from '@/types/maintenance';
+import { normalizeContractBackup, normalizeDurationPriceBackup } from '@/lib/maintenance-contract-compat';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -116,9 +117,18 @@ export async function POST(request: Request) {
     if (checked.error || checked.data.user?.id !== user.id) return json({ error: 'كلمة مرور حساب المبرمج غير صحيحة.' }, 401);
     const logout = await verifier.auth.signOut({ scope: 'local' });
     if (logout.error) return json({ error: 'تعذر إنهاء جلسة التحقق. لم تبدأ العملية.' }, 503);
+    let restoreTables = restore?.tables ?? null;
+    if (restoreTables) {
+      const schema = await admin.from('bookings').select('contract_record').limit(0);
+      if (!schema.error) restoreTables = normalizeContractBackup(restoreTables);
+      else if (!['42703', 'PGRST204'].includes(schema.error.code)) return json({ error: 'تعذر فحص توافق نسخة العقود. لم تبدأ الاستعادة.' }, 503);
+      const carSchema = await admin.from('cars').select('rental_price_tiers').limit(0);
+      if (!carSchema.error) restoreTables = normalizeDurationPriceBackup(restoreTables);
+      else if (!['42703', 'PGRST204'].includes(carSchema.error.code)) return json({ error: 'تعذر فحص توافق أسعار السيارات. لم تبدأ الاستعادة.' }, 503);
+    }
     const applied = await admin.rpc('maintenance_apply', { operation_name: ticket.operation,
       expected_fingerprint: ticket.fingerprint, expected_staff_fingerprint: ticket.staffFingerprint,
-      ticket_id: ticket.id, actor: user.id, restore_data: restore?.tables ?? null });
+      ticket_id: ticket.id, actor: user.id, restore_data: restoreTables });
     if (applied.error) {
       if (applied.error.message.includes('DATA_CHANGED_RETRY_BACKUP')) throw new Error('DATA_CHANGED_RETRY_BACKUP');
       if (applied.error.code === '23505') throw new Error('INVALID_TICKET');

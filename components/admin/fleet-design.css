@@ -1,0 +1,86 @@
+/* Shared fleet presentation. Booking, pricing and persistence stay in their existing modules. */
+.fleet-workspace, .fleet-editor-v2, .car-record-page { --car-accent: #9b783f; --car-soft: #f6f8fa; --car-border: #dfe6ec; }
+/* Inline editor: one work area with a quiet progress rail. */
+.admin-ui .fleet-editor-v2 .fleet-car-editor-panel { border-radius: 18px; overflow: hidden; }
+.admin-ui .fleet-editor-v2 .fleet-car-editor-header { padding: 18px 22px; }
+.admin-ui .fleet-editor-v2 .fleet-car-editor-header h3 { font-size: 21px; overflow-wrap: anywhere; }
+.admin-ui .fleet-editor-v2 .fleet-car-editor-header > div { min-width: 0; }
+.admin-ui .fleet-editor-v2 .fleet-car-editor-header p { margin-top: 3px; }
+.admin-ui .fleet-editor-v2 .car-editor-steps strong { font-size: 13px; font-weight: 750; color: #0f172a; }
+.admin-ui .fleet-editor-v2 .car-editor-steps small { display: block; font-size: 11px; font-weight: 500; color: #64748b; margin-top: 3px; line-height: 1.5; }
+.admin-ui .fleet-editor-v2 .car-editor-steps button { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 8px; transition: all 0.2s; }
+.admin-ui .fleet-editor-v2 .car-editor-steps button[aria-current=step] { background: #0f172a !important; color: #ffffff !important; box-shadow: 0 4px 14px rgba(15,23,42,0.18); border: 1px solid #0f172a !important; }
+.admin-ui .fleet-editor-v2 .car-editor-steps button[aria-current=step] strong { color: #ffffff !important; }
+.admin-ui .fleet-editor-v2 .car-editor-steps button[aria-current=step] small { color: #cbd5e1 !important; }
+.admin-ui .fleet-editor-v2 .car-editor-steps button[aria-current=step] span { background: #d4af37 !important; color: #0f172a !important; border-color: #d4af37 !important; }
+.admin-ui .fleet-editor-v2 .fleet-car-editor-form { padding: 24px; min-width: 0; margin: 0; background: #fff; }
+.admin-ui .fleet-editor-v2 .car-editor-step { gap: 22px; }
+.admin-ui .fleet-editor-v2 .car-editor-availability { border: 1px solid var(--car-border); background: var(--car-soft); padding: 16px; border-radius: 12px; }
+.admin-ui .fleet-editor-v2 .car-editor-availability label { color: var(--fleet-ink); }
+.admin-ui .fleet-editor-v2 .car-editor-availability p { color: var(--fleet-muted); }
+.admin-ui .fleet-editor-v2 .car-editor-extra { background: var(--car-soft); padding: 8px; }
+.admin-ui .fleet-editor-v2 .car-editor-extra[open] { background: white; }
+.admin-ui .fleet-editor-v2 .fleet-car-editor-footer { padding: 14px 22px; gap: 10px; }
+.admin-ui .fleet-editor-v2 .fleet-car-editor-footer button { padding: 10px 20px; font-size: 14px; }
+@media (min-width: 1000px) {
+  .admin-ui .fleet-editor-v2.fleet-editor .fleet-car-editor-panel { display: grid; grid-template-columns: 210px minmax(0,1fr); align-items: start; }
+  .admin-ui .fleet-editor-v2.fleet-editor .fleet-car-editor-header { grid-column: 1 / -1; }
+  .admin-ui .fleet-editor-v2.fleet-editor .car-editor-steps { display: flex; flex-direction: column; padding: 20px 12px; border-bottom: 0; background: var(--car-soft); align-self: stretch; border-inline-end: 1px solid var(--car-border); }
+  .admin-ui .fleet-editor-v2.fleet-editor .car-editor-steps button { justify-content: start; text-align: start; padding: 14px 10px; }
+  .admin-ui .fleet-editor-v2.fleet-editor .fleet-car-editor-footer { grid-column: 1 / -1; }
+}
+
+/* Record: a compact vehicle passport followed by the working tabs. */
+.admin-ui .car-record-page .car-record-header { padding: 0; margin-bottom: 16px; align-items: center; }
+.admin-ui .car-record-page .car-record-header h2 { font-size: 23px; line-height: 1.6; }
+.admin-ui .car-record-page .car-record-header-actions { gap: 8px; flex-wrap: wrap; }
+.admin-ui .car-record-page .car-record-header-actions button { min-height: 44px; border-radius: 10px; font-size: 13px; }
+.admin-ui .car-record-page .car-record-hero { display: grid; grid-template-columns: 210px minmax(0,1fr); padding: 18px; gap: 24px; border-radius: 18px; background: #fff; border: 1px solid var(--car-border); align-items: start; }
+.admin-ui .car-record-page .car-record-photo { min-height: 0; aspect-ratio: 4 / 3; border-radius: 12px; }
+.admin-ui .car-record-page .car-record-intro { min-width: 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px 20px; align-items: start; }
+.admin-ui .car-record-page .car-record-intro h3 { font-size: 22px; margin: 0; grid-column: 1 / -1; line-height: 1.5; overflow-wrap: anywhere; }
+.admin-ui .car-record-page .car-record-eyebrow { grid-column: 1 / -1; font-size: 12px; }
+.admin-ui .car-record-page .car-record-owner-summary { margin: 0; }
+.admin-ui .car-record-page .car-record-owner-summary small { font-size: 12px; }
+.admin-ui .car-record-page .car-record-owner-summary strong { font-size: 14px; }
+.admin-ui .car-record-page .car-record-price { margin: 0; font-size: 23px; }
+.admin-ui .car-record-page .car-record-next { display: flex; margin: 0; padding: 12px; grid-column: 1 / -1; border-radius: 10px; background: var(--car-soft); }
+.admin-ui .car-record-page .car-record-next span { font-size: 12px; }
+.admin-ui .car-record-page .car-record-no-next { margin: 0; font-size: 12px; }
+.admin-ui .car-record-page .car-record-metrics { gap: 0; margin-block: 16px; border: 1px solid var(--car-border); border-radius: 14px; background: #fff; overflow: hidden; }
+.admin-ui .car-record-page .car-record-metrics article { padding: 14px 18px; border: 0; border-inline-end: 1px solid var(--car-border); border-radius: 0; background: transparent; }
+.admin-ui .car-record-page .car-record-metrics article:last-child { border-inline-end: 0; }
+.admin-ui .car-record-page .car-record-metrics strong { font-size: 25px; margin-block: 4px; }
+.admin-ui .car-record-page .car-record-metrics small { font-size: 12px; }
+.admin-ui .car-record-page .car-record-nav { position: static; padding: 0; gap: 6px; border: 0; border-radius: 0; background: transparent; margin-bottom: 14px; }
+.admin-ui .car-record-page .car-record-nav button { min-height: 46px; border: 1px solid var(--car-border); background: #fff; border-radius: 10px; color: var(--fleet-ink); }
+.admin-ui .car-record-page .car-record-nav button[aria-pressed=true] { background: var(--fleet-ink); color: white; border-color: var(--fleet-ink); }
+.admin-ui .car-record-page .car-record-panel { padding: 22px; border-radius: 16px; }
+.admin-ui .car-record-page .car-record-section-heading h3 { font-size: 19px; }
+@media (max-width: 760px) {
+  .admin-ui .car-record-page .car-record-header { align-items: stretch; }
+  .admin-ui .car-record-page .car-record-header-actions button { flex: 1 1 auto; }
+  .admin-ui .car-record-page .car-record-hero { grid-template-columns: 110px minmax(0,1fr); gap: 14px; padding: 14px; }
+  .admin-ui .car-record-page .car-record-intro { display: flex; flex-direction: column; gap: 8px; }
+  .admin-ui .car-record-page .car-record-intro h3 { font-size: 18px; }
+  .admin-ui .car-record-page .car-record-next { padding: 9px; }
+  .admin-ui .car-record-page .car-record-next > svg { display: none; }
+  .admin-ui .car-record-page .car-record-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .admin-ui .car-record-page .car-record-metrics article { padding: 12px; border-bottom: 1px solid var(--car-border); }
+  .admin-ui .car-record-page .car-record-metrics article:nth-child(even) { border-inline-end: 0; }
+  .admin-ui .car-record-page .car-record-metrics article:nth-child(n+3) { border-bottom: 0; }
+  .admin-ui .car-record-page .car-record-metrics article span { font-size: 12px; }
+  .admin-ui .car-record-page .car-record-nav button { font-size: 12px; padding: 8px; }
+  .admin-ui .car-record-page .car-record-panel { padding: 14px; }
+  .admin-ui .fleet-editor-v2 .fleet-car-editor-header { padding: 14px; }
+  .admin-ui .fleet-editor-v2 .fleet-car-editor-header h3 { font-size: 18px; }
+  .admin-ui .fleet-editor-v2 .fleet-car-editor-form { padding: 14px; }
+  .admin-ui .fleet-editor-v2 .car-editor-steps small { display: none; }
+  .admin-ui .fleet-editor-v2 .car-editor-steps strong { font-size: 12px; }
+  .admin-ui .fleet-editor-v2 .fleet-car-editor-footer { padding: 12px; flex-wrap: wrap; }
+  .admin-ui .fleet-editor-v2 .fleet-car-editor-footer button { flex: 1; padding-inline: 10px; }
+}
+@media (max-width: 380px) {
+  .admin-ui .car-record-page .car-record-hero { grid-template-columns: minmax(0,1fr); }
+  .admin-ui .car-record-page .car-record-gallery { max-width: 260px; width: 100%; }
+}

@@ -1,0 +1,496 @@
+/* =========================================================================
+   VIP AIRPORT ARRIVAL SERVICE — SEAMLESS EDITORIAL PROTOCOL
+   Continuous Atmospheric Flow: Zero hard cuts top/bottom/sides.
+   Fully responsive across PC (Desktop), Tablet, and Mobile.
+   ========================================================================= */
+
+/* 1. Main Section Container with Seamless Vertical Gradients */
+.arrival-service {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  /* Seamless transition from FeaturedFleet (#071726) down to HowToBook (#060b17) */
+  background: linear-gradient(180deg, #071726 0%, #0a1827 20%, #091522 50%, #08121d 80%, #060b17 100%);
+  color: #ffffff;
+  padding: 90px 0 100px;
+  scroll-margin-top: 90px;
+  font-family: inherit;
+}
+
+/* Atmospheric Ambient Warm Glow (Centered Behind Chauffeur & Stage) */
+.arrival-service::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(ellipse 75% 65% at 52% 50%, rgba(22, 44, 63, 0.5) 0%, rgba(12, 28, 44, 0.3) 42%, transparent 78%);
+  pointer-events: none;
+}
+
+/* Subtle Top & Bottom Seamless Fog Blends */
+.arrival-service::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, #071726 0%, transparent 18%, transparent 82%, #060b17 100%);
+  pointer-events: none;
+}
+
+/* 2. Inner Main Frame */
+.arrival-inner {
+  position: relative;
+  max-width: 1320px;
+  min-height: 580px;
+  margin: 0 auto;
+  padding: 30px 48px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  direction: rtl;
+}
+
+/* =========================================================================
+   3. THE CHAUFFEUR PHOTO STAGE (4-Way Seamless Feathering: NO HARD EDGES)
+   ========================================================================= */
+
+.arrival-photo {
+  position: absolute;
+  inset: -20px 32% -20px -6%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.arrival-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 45% center;
+  /* 4-Directional Mask: Smoothly feathers Top, Bottom, Left, and Right into the dark background */
+  mask-image: 
+    linear-gradient(to right, transparent 0%, #000 12%, #000 70%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 14%, #000 84%, transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-image: 
+    linear-gradient(to right, transparent 0%, #000 12%, #000 70%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 14%, #000 84%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  filter: contrast(1.04) brightness(0.98);
+}
+
+/* Additional Soft Ambient Shading to dissolve asphalt and sky smoothly */
+.arrival-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(180deg, #071726 0%, transparent 22%, transparent 72%, #060b17 100%),
+    linear-gradient(270deg, #091522 0%, transparent 35%);
+  pointer-events: none;
+}
+
+/* =========================================================================
+   4. ROUTE INDICATOR (VIP ─────── باب إقامتك)
+   ========================================================================= */
+
+.arrival-route {
+  position: absolute;
+  z-index: 3;
+  bottom: 54px;
+  left: 14%;
+  right: 25%;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  direction: rtl;
+  color: #f1f5f9;
+}
+
+.arrival-route span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.arrival-route small {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd5e1;
+  letter-spacing: 0.5px;
+}
+
+.arrival-route bdi {
+  font-size: clamp(28px, 2.8vw, 36px);
+  font-weight: 800;
+  letter-spacing: 2px;
+  line-height: 1.1;
+  color: #ffffff;
+  font-family: monospace;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+}
+
+.arrival-route strong {
+  font-size: clamp(14px, 1.3vw, 17px);
+  font-weight: 700;
+  white-space: nowrap;
+  color: #ffffff;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+}
+
+.arrival-route i {
+  position: relative;
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, rgba(221, 189, 128, 0.75) 0%, rgba(255, 255, 255, 0.25) 100%);
+  min-width: 40px;
+}
+
+/* =========================================================================
+   5. EDITORIAL VIP COPY (من لحظة وصولك، أنت ضيفنا)
+   ========================================================================= */
+
+.arrival-copy {
+  position: relative;
+  z-index: 2;
+  width: 44%;
+  max-width: 480px;
+  text-align: right;
+  direction: rtl;
+}
+
+/* Eyebrow: — استقبال خاص 24/7 */
+.arrival-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #DDBD80;
+  margin-bottom: 8px;
+}
+
+.arrival-eyebrow > span {
+  width: 24px;
+  height: 1.5px;
+  background: #DDBD80;
+}
+
+.arrival-eyebrow bdi {
+  margin-right: auto;
+  font-size: 12px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+/* Main Heading */
+.arrival-copy h2 {
+  font-size: clamp(38px, 4.4vw, 62px);
+  line-height: 1.26;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin: 18px 0 16px;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.arrival-copy h2 span {
+  color: #DDBD80;
+  display: inline-block;
+}
+
+/* Subtitle Description */
+.arrival-copy p {
+  font-size: clamp(14px, 1.25vw, 16px);
+  line-height: 1.85;
+  color: #C0CFDF;
+  font-weight: 500;
+  margin: 0 0 28px;
+}
+
+/* Airport Selector */
+.arrival-airports {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  margin: 0 0 24px;
+}
+
+.arrival-airports legend {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #C0CFDF;
+  margin-bottom: 12px;
+  padding: 0;
+}
+
+.arrival-airports > div {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.arrival-airports button {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-bottom: 2.5px solid transparent;
+  background: transparent;
+  color: #A9BACB;
+  padding: 8px 4px 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  outline: none;
+  text-align: center;
+}
+
+.arrival-airports button bdi {
+  display: block;
+  font-size: 18px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  font-family: monospace;
+}
+
+.arrival-airports button span {
+  font-size: 11px;
+  font-weight: 600;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.arrival-airports button:hover {
+  color: #ffffff;
+  border-bottom-color: rgba(221, 189, 128, 0.5);
+}
+
+.arrival-airports button[aria-pressed="true"] {
+  color: #ffffff;
+  border-bottom-color: #DDBD80;
+}
+
+.arrival-airports button[aria-pressed="true"] bdi {
+  color: #ffffff;
+}
+
+/* Primary Action Button */
+.arrival-book {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  background: #DDBD80;
+  color: #101C29 !important;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 900;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: all 0.22s ease;
+  cursor: pointer;
+}
+
+.arrival-book:hover {
+  background: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(221, 189, 128, 0.3);
+}
+
+.arrival-book:active {
+  transform: translateY(0);
+}
+
+.arrival-book svg {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.arrival-book:hover svg {
+  transform: translate(-3px, -3px);
+}
+
+/* Micro Note */
+.arrival-note {
+  display: block;
+  color: #A9BACB;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 12px;
+  text-align: center;
+}
+
+.arrival-service :focus-visible {
+  outline: 2px solid #DDBD80;
+  outline-offset: 4px;
+}
+
+/* =========================================================================
+   6. RESPONSIVE DESIGN (PC, TABLET & MOBILE)
+   ========================================================================= */
+
+/* Large Screens (> 1600px) */
+@media (min-width: 1600px) {
+  .arrival-inner {
+    max-width: 1440px;
+    min-height: 640px;
+  }
+  .arrival-photo {
+    inset: -30px 34% -30px -8%;
+  }
+}
+
+/* Tablets (1024px and below) */
+@media (max-width: 1024px) {
+  .arrival-service {
+    padding: 70px 0 80px;
+  }
+  .arrival-inner {
+    padding: 20px 32px;
+    min-height: 520px;
+  }
+  .arrival-copy {
+    width: 48%;
+  }
+  .arrival-copy h2 {
+    font-size: 42px;
+  }
+  .arrival-photo {
+    inset: -15px 32% -15px -12%;
+  }
+  .arrival-route {
+    right: 28%;
+    left: 18%;
+    gap: 14px;
+    bottom: 40px;
+  }
+  .arrival-route bdi {
+    font-size: 26px;
+  }
+  .arrival-route strong {
+    font-size: 13.5px;
+  }
+}
+
+/* Mobile & Small Tablets (768px and below) */
+@media (max-width: 768px) {
+  .arrival-service {
+    padding: 50px 0 60px;
+  }
+  .arrival-service::before {
+    background: radial-gradient(ellipse 100% 50% at 50% 35%, rgba(22, 44, 63, 0.5) 0%, rgba(12, 28, 44, 0.3) 45%, transparent 85%);
+  }
+  .arrival-inner {
+    display: flex;
+    flex-direction: column;
+    padding: 0 20px;
+    min-height: auto;
+    gap: 0;
+  }
+  
+  /* Photo placed in flow at top with smooth top/bottom feathering */
+  .arrival-photo {
+    position: relative;
+    inset: auto;
+    width: calc(100% + 40px);
+    margin: 0 -20px 24px;
+    height: 310px;
+    order: -1;
+  }
+  .arrival-photo img {
+    object-position: 48% center;
+    /* Soft 4-directional fade on mobile */
+    mask-image: 
+      linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%),
+      linear-gradient(to bottom, transparent 0%, #000 12%, #000 86%, transparent 100%);
+    -webkit-mask-image: 
+      linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%),
+      linear-gradient(to bottom, transparent 0%, #000 12%, #000 86%, transparent 100%);
+  }
+  .arrival-photo::after {
+    background: linear-gradient(180deg, #071726 0%, transparent 22%, transparent 74%, #08121d 100%);
+  }
+
+  /* Route Bar on Mobile: cleanly centered at bottom of photo */
+  .arrival-route {
+    bottom: 18px;
+    left: 20px;
+    right: 20px;
+    gap: 12px;
+  }
+  .arrival-route bdi {
+    font-size: 24px;
+  }
+  .arrival-route strong {
+    font-size: 13px;
+  }
+  .arrival-route small {
+    font-size: 9.5px;
+  }
+
+  /* Copy on Mobile */
+  .arrival-copy {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 4px;
+  }
+  .arrival-copy h2 {
+    font-size: 36px;
+    line-height: 1.32;
+    margin: 12px 0 14px;
+  }
+  .arrival-copy p {
+    font-size: 13.5px;
+    margin-bottom: 22px;
+  }
+
+  /* Airport Selector on Mobile */
+  .arrival-airports button {
+    padding: 8px 2px 10px;
+  }
+  .arrival-airports button bdi {
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+  .arrival-airports button span {
+    font-size: 10.5px;
+  }
+
+  /* Booking Button on Mobile */
+  .arrival-book {
+    padding: 15px 20px;
+    font-size: 14.5px;
+  }
+}
+
+/* Small Phones (< 380px) */
+@media (max-width: 380px) {
+  .arrival-copy h2 {
+    font-size: 30px;
+  }
+  .arrival-route bdi {
+    font-size: 20px;
+  }
+  .arrival-route strong {
+    font-size: 12px;
+  }
+  .arrival-airports button bdi {
+    font-size: 14px;
+  }
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  .arrival-service *,
+  .arrival-photo img,
+  .arrival-book,
+  .arrival-book svg {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
-import { Users, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { Users, X, Save, UserRound, Phone, CreditCard, DollarSign, Calendar, FileText } from 'lucide-react';
 import { VehicleOwner } from '@/types/fleet';
 
 export interface OwnerFormState {
@@ -34,162 +35,246 @@ export default function OwnerFormModal({
   setOwnerForm,
   onSubmit,
 }: OwnerFormModalProps) {
+  const [mounted, setMounted] = useState(false);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      closeBtnRef.current?.focus();
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#0b1324] border border-[#c5a059]/40 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-[#c5a059]" /> {editingOwner ? `تعديل بيانات: ${editingOwner.name}` : 'إضافة مالك/مستثمر جديد'}
-          </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white cursor-pointer">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={onSubmit} className="space-y-4 text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  const modalJSX = (
+    <div 
+      className="fixed inset-0 z-[100] bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-hidden font-arabic text-xs"
+      dir="rtl"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div 
+        className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)] animate-in fade-in zoom-in-95 duration-150"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="owner-form-title"
+      >
+        {/* Header - Unified Deep Slate Luxury Automotive Tone */}
+        <header className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-slate-800 text-amber-300 border border-slate-700 flex items-center justify-center font-bold">
+              <UserRound size={16} />
+            </div>
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">اسم المالك / المستثمر:</label>
+              <h3 id="owner-form-title" className="text-sm font-bold text-white block">
+                {editingOwner ? `تعديل بيانات الشريك: ${editingOwner.name}` : 'تسجيل مالك / شريك استثماري جديد'}
+              </h3>
+              <span className="text-[10px] text-slate-400 block">
+                بيانات التعاقد، الحسابات البنكية، ونموذج احتساب وصرف الأرباح
+              </span>
+            </div>
+          </div>
+          <button
+            ref={closeBtnRef}
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg grid place-items-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label="إغلاق النافذة"
+          >
+            <X size={18} />
+          </button>
+        </header>
+
+        {/* Scrollable Form Body */}
+        <form onSubmit={onSubmit} id="owner-edit-form" className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-3.5 text-xs">
+          
+          {/* الاسم والرقم القومي */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1 text-[11px]">اسم المالك / المستثمر *</label>
               <input
                 type="text"
                 required
                 value={ownerForm.name}
                 onChange={(e) => setOwnerForm({ ...ownerForm, name: e.target.value })}
-                placeholder="مثال: الشيخ عبد الله بن ناصر"
-                className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#c5a059]"
+                placeholder="اسم الشريك أو الشركة المالكة"
+                className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 text-xs"
               />
             </div>
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">الرقم القومي / جواز السفر:</label>
+              <label className="block text-slate-700 font-bold mb-1 text-[11px]">الرقم القومي / جواز السفر</label>
               <input
                 type="text"
                 value={ownerForm.nationalId || ''}
                 onChange={(e) => setOwnerForm({ ...ownerForm, nationalId: e.target.value })}
-                placeholder="14 رقم للبطاقة المصرية أو رقم الجواز"
-                className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-[#c5a059]"
+                placeholder="الرقم القومي أو الجواز"
+                className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 text-xs"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* الهاتف والحساب البنكي */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">رقم الهاتف / الواتساب:</label>
+              <label className="block text-slate-700 font-bold mb-1 text-[11px]">رقم الهاتف / الواتساب *</label>
               <input
                 type="text"
                 required
                 value={ownerForm.phone}
                 onChange={(e) => setOwnerForm({ ...ownerForm, phone: e.target.value })}
-                placeholder="مثال: +20 100 123 4567"
-                className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#c5a059]"
+                placeholder="+20 100 000 0000"
+                className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 text-xs dir-ltr text-right"
               />
             </div>
 
             <div>
-              <label className="block text-slate-300 font-semibold mb-1">يوم صرف المرتب الشهري:</label>
+              <label className="block text-slate-700 font-bold mb-1 text-[11px]">الحساب البنكي / التحويل</label>
               <input
-                type="number"
-                min="1"
-                max="31"
-                value={ownerForm.monthlyPayoutDay || 1}
-                onChange={(e) => setOwnerForm({ ...ownerForm, monthlyPayoutDay: parseInt(e.target.value) || 1 })}
-                placeholder="يوم 1 أو 5 من كل شهر"
-                className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-[#c5a059]"
+                type="text"
+                value={ownerForm.bankAccount || ''}
+                onChange={(e) => setOwnerForm({ ...ownerForm, bankAccount: e.target.value })}
+                placeholder="اسم البنك ورقم الحساب أو IBAN"
+                className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 text-xs"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-slate-300 font-semibold mb-1">نظام المحاسبة والعقد (الخيار ج):</label>
-            <select
-              value={ownerForm.commissionModel || 'fixed_monthly'}
-              onChange={(e) => setOwnerForm({ ...ownerForm, commissionModel: e.target.value as any })}
-              className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#c5a059]"
-            >
-              <option value="fixed_monthly">إيجار شهري ثابت للمالك (عقد تشغيل شهري)</option>
-              <option value="fixed_daily">إيجار يومي مقطوع للمالك (عن كل يوم تأجير فعلي)</option>
-              <option value="percentage">نسبة مئوية من إيراد التأجير (%)</option>
-            </select>
+          {/* نموذج احتساب العائد المالي */}
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+            <span className="font-bold text-slate-800 text-xs block">
+              نموذج العقد وتقاسم العوائد المالية:
+            </span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-slate-600 font-medium mb-1 text-[10px]">نوع ونموذج العقد</label>
+                <select
+                  value={ownerForm.commissionModel}
+                  onChange={(e) => setOwnerForm({ ...ownerForm, commissionModel: e.target.value as VehicleOwner['commissionModel'] })}
+                  className="w-full h-8 px-2 rounded-lg border border-slate-200 bg-white text-slate-800 font-bold focus:outline-none focus:ring-1 focus:ring-slate-900 text-xs"
+                >
+                  <option value="fixed_monthly">مرتب شهري ثابت لكل سيارة</option>
+                  <option value="percentage">نسبة مئوية من صافي إيراد التأجير</option>
+                  <option value="fixed_daily">إيجار يومي مقطوع</option>
+                </select>
+              </div>
+
+              {ownerForm.commissionModel === 'fixed_monthly' && (
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1 text-[10px]">المرتب الشهري الثابت (ج.م)</label>
+                  <input
+                    type="number"
+                    value={ownerForm.fixedMonthlyRateEGP || 35000}
+                    onChange={(e) => setOwnerForm({ ...ownerForm, fixedMonthlyRateEGP: Number(e.target.value) || 0 })}
+                    className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-900 font-mono font-bold text-xs"
+                  />
+                </div>
+              )}
+
+              {ownerForm.commissionModel === 'percentage' && (
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1 text-[10px]">نسبة المالك من الإيراد (%)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={ownerForm.ownerSharePercent || 75}
+                    onChange={(e) => setOwnerForm({ ...ownerForm, ownerSharePercent: Number(e.target.value) || 75 })}
+                    className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-900 font-mono font-bold text-xs"
+                  />
+                </div>
+              )}
+
+              {ownerForm.commissionModel === 'fixed_daily' && (
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1 text-[10px]">المقطوع اليومي الثابت (ج.م)</label>
+                  <input
+                    type="number"
+                    value={ownerForm.fixedDailyRateEGP || 1200}
+                    onChange={(e) => setOwnerForm({ ...ownerForm, fixedDailyRateEGP: Number(e.target.value) || 0 })}
+                    className="w-full h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-900 font-mono font-bold text-xs"
+                  />
+                </div>
+              )}
+            </div>
+
+            {ownerForm.commissionModel === 'fixed_monthly' && (
+              <div>
+                <label className="block text-slate-600 font-medium mb-1 text-[10px]">يوم استحقاق وصرف المرتب الشهري من كل شهر</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={ownerForm.monthlyPayoutDay || 1}
+                  onChange={(e) => setOwnerForm({ ...ownerForm, monthlyPayoutDay: parseInt(e.target.value) || 1 })}
+                  className="w-32 h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-slate-900 font-mono text-xs"
+                />
+              </div>
+            )}
           </div>
 
-          {ownerForm.commissionModel === 'fixed_monthly' && (
-            <div className="animate-fadeIn">
-              <label className="block text-[#c5a059] font-bold mb-1">قيمة الإيجار الشهري للمالك (ج.م):</label>
-              <input
-                type="number"
-                required
-                value={ownerForm.fixedMonthlyRateEGP || 0}
-                onChange={(e) => setOwnerForm({ ...ownerForm, fixedMonthlyRateEGP: parseInt(e.target.value) || 0 })}
-                placeholder="مثال: 35000"
-                className="w-full bg-[#0e172a] border border-[#c5a059] rounded-xl px-3 py-2 text-white font-mono font-bold focus:outline-none"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">يُدفع للمالك شهرياً بصفة ثابتة بغض النظر عن نسبة التشغيل.</p>
-            </div>
-          )}
-
-          {ownerForm.commissionModel === 'fixed_daily' && (
-            <div className="animate-fadeIn">
-              <label className="block text-[#c5a059] font-bold mb-1">قيمة الإيجار اليومي للمالك (ج.م):</label>
-              <input
-                type="number"
-                required
-                value={ownerForm.fixedDailyRateEGP || 0}
-                onChange={(e) => setOwnerForm({ ...ownerForm, fixedDailyRateEGP: parseInt(e.target.value) || 0 })}
-                placeholder="مثال: 1200"
-                className="w-full bg-[#0e172a] border border-[#c5a059] rounded-xl px-3 py-2 text-white font-mono font-bold focus:outline-none"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">يُحسب للمالك عن كل يوم يتم تأجير السيارة فيه للعميل.</p>
-            </div>
-          )}
-
-          {ownerForm.commissionModel === 'percentage' && (
-            <div className="animate-fadeIn">
-              <label className="block text-[#c5a059] font-bold mb-1">نسبة أرباح المالك من الإيراد (%):</label>
-              <input
-                type="number"
-                required
-                min="1"
-                max="99"
-                value={ownerForm.ownerSharePercent || 75}
-                onChange={(e) => setOwnerForm({ ...ownerForm, ownerSharePercent: parseInt(e.target.value) || 75 })}
-                className="w-full bg-[#0e172a] border border-[#c5a059] rounded-xl px-3 py-2 text-white font-mono font-bold focus:outline-none"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                حصة شركة يمن الخليج التلقائية ستكون: <strong className="text-emerald-400 font-mono">{100 - (ownerForm.ownerSharePercent || 75)}%</strong>
-              </p>
-            </div>
-          )}
-
+          {/* ملاحظات وشروط خاصة */}
           <div>
-            <label className="block text-slate-300 font-semibold mb-1">ملاحظات أو رقم الحساب البنكي / إنستاباي:</label>
-            <input
-              type="text"
-              value={ownerForm.notes}
+            <label className="block text-slate-700 font-bold mb-1 text-[11px]">ملاحظات وشروط خاصة بالتعاقد</label>
+            <textarea
+              rows={2}
+              value={ownerForm.notes || ''}
               onChange={(e) => setOwnerForm({ ...ownerForm, notes: e.target.value })}
-              placeholder="تفاصيل العقد أو الآيبان أو محفظة إنستاباي"
-              className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#c5a059]"
+              placeholder="شروط الصيانة، مواعيد السداد، تفاصيل الحساب البنكي..."
+              className="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 text-xs"
             />
           </div>
 
-          <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 text-white font-semibold cursor-pointer"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 rounded-xl bg-[#c5a059] hover:bg-[#d4af37] text-black font-bold cursor-pointer"
-            >
-              {editingOwner ? 'حفظ التعديلات' : 'إضافة المالك'}
-            </button>
-          </div>
         </form>
+
+        {/* Sticky Footer Actions */}
+        <footer className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs cursor-pointer transition-colors"
+          >
+            إلغاء
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => {
+              const form = document.getElementById('owner-edit-form') as HTMLFormElement | null;
+              if (form) form.requestSubmit();
+            }}
+            className="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+          >
+            <Save size={13} />
+            <span>{editingOwner ? 'حفظ تعديلات المالك' : 'تسجيل المالك'}</span>
+          </button>
+        </footer>
+
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined' && mounted) {
+    return createPortal(modalJSX, document.body);
+  }
+
+  return modalJSX;
 }

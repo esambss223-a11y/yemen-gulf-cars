@@ -7,19 +7,20 @@ import ts from 'typescript';
 
 const require = createRequire(import.meta.url);
 const root = fileURLToPath(new URL('../../', import.meta.url));
-export function loadUiModule(relative) {
+export function loadUiModule(relative, mocks = {}) {
   const file = path.resolve(root, relative);
   const source = readFileSync(file, 'utf8');
   const exports = {};
   const code = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(code, { exports, Date, Intl, console, require(name) {
+  vm.runInNewContext(code, { exports, Date, Intl, console, AbortController, require(name) {
+    if (name in mocks) return mocks[name];
     if (name.endsWith('.css')) return {};
     if (name === 'next/image') return { __esModule: true, default: ({ src, alt }) => require('react').createElement('img', { src, alt }) };
     if (name.startsWith('.') || name.startsWith('@/')) {
       const resolved = name.startsWith('@/') ? path.resolve(root, name.slice(2)) : path.resolve(path.dirname(file), name);
       const target = [resolved + '.tsx', resolved + '.ts', resolved].find(existsSync);
       if (!target) throw new Error('Unknown UI dependency: ' + name);
-      return loadUiModule(path.relative(root, target));
+      return loadUiModule(path.relative(root, target), mocks);
     }
     return require(name);
   } });

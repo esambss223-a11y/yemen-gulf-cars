@@ -55,12 +55,13 @@ export interface FleetContextType {
   addCar: (car: Omit<Car, 'id'>) => Promise<boolean>;
   updateCar: (id: string, car: Partial<Car>) => Promise<boolean>;
   deleteCar: (id: string) => Promise<boolean>;
+  saveCarOrder: (ids: string[]) => Promise<void>;
   setCarArchived: (id: string, archived: boolean) => Promise<boolean>;
   cancelCarBooking: (booking: Booking, reason: string) => Promise<void>;
 
   // الحجوزات والعقود
   bookings: Booking[];
-  addBooking: (booking: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>) => Promise<boolean>;
+  addBooking: (booking: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>, onCreated?: (booking: Booking) => void) => Promise<boolean>;
   updateBookingStatus: (
     id: string, 
     status: Booking['status'], 
@@ -104,7 +105,7 @@ export interface FleetContextType {
 
 const FleetContext = createContext<FleetContextType | undefined>(undefined);
 
-const PUBLIC_CAR_FIELDS = 'id, make, model, year, category, color, current_km, daily_price_egp, weekly_price_egp, monthly_price_egp, security_deposit_egp, status, images, cover_image, transmission, fuel_type, seats, features';
+const PUBLIC_CAR_FIELDS = 'id, make, model, year, category, color, current_km, daily_price_egp, weekly_price_egp, monthly_price_egp, security_deposit_egp, status, images, cover_image, transmission, fuel_type, seats, features, display_order';
 
 export function FleetProvider({ children }: { children: React.ReactNode }) {
   const [cloudSyncError, setCloudSyncError] = useState('');
@@ -233,6 +234,24 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
               whatsapp: c.whatsapp,
               nationalId: c.national_id,
               licenseNumber: c.license_number,
+              address: c.address || c.tenant_address,
+              workAddress: c.work_address,
+              governorate: c.governorate,
+              secondaryPhone: c.secondary_phone,
+              idIssuer: c.id_issuer,
+              licenseType: c.license_type,
+              licenseIssuer: c.license_issuer,
+              licenseIssuedAt: c.license_issued_at,
+              licenseExpiresAt: c.license_expires_at,
+              driverName: c.driver_name,
+              driverPhone: c.driver_phone,
+              driverAddress: c.driver_address,
+              driverNationalId: c.driver_national_id,
+              driverLicenseNumber: c.driver_license_number,
+              driverLicenseType: c.driver_license_type,
+              driverLicenseIssuer: c.driver_license_issuer,
+              driverLicenseIssuedAt: c.driver_license_issued_at,
+              driverLicenseExpiresAt: c.driver_license_expires_at,
               nationality: c.nationality || 'مصري',
               tier: c.tier || 'regular',
               riskStatus: c.risk_status || 'safe',
@@ -285,7 +304,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!carsErr && cloudCars) {
-          const mapped = cloudCars.map(fleetCars.mapCloudCar);
+          const orderResult = await supabase.from('cars').select('id,display_order').neq('status', 'archived');
+          const positions = new Map((orderResult.data || []).map(row => [row.id, row.display_order]));
+          const mapped = cloudCars.map(row => fleetCars.mapCloudCar({ ...row, display_order: positions.get(row.id) ?? row.display_order }));
           fleetCars.setCars(mapped);
         }
 
@@ -355,6 +376,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         updateCustomer: fleetCustomers.updateCustomer,
         deleteCustomer: fleetCustomers.deleteCustomer,
         cars: fleetCars.cars,
+        saveCarOrder: fleetCars.saveCarOrder,
         addCar: fleetCars.addCar,
         updateCar: fleetCars.updateCar,
         deleteCar: fleetCars.deleteCar,

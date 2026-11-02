@@ -2,6 +2,7 @@
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { loadUiModule } from './lib/load-ui-module.mjs';
 import { PGlite } from '../.private/maintenance-test-runtime/node_modules/@electric-sql/pglite/dist/index.js';
 
 const db = new PGlite();
@@ -67,5 +68,15 @@ try {
   await db.exec("UPDATE cars SET status='maintenance' WHERE id='c'");
   await apply('repair', await snap());
   assert.equal((await db.query("SELECT status FROM cars WHERE id='c'")).rows[0].status, 'maintenance'); check('repair preserves maintenance states');
+  const legacy = (await snap()).data;
+  const contractMigration = await readFile(new URL('../supabase/migrations/20261028_rental_contract.sql', import.meta.url), 'utf8');
+  await db.exec(contractMigration); await db.exec(contractMigration);
+  assert.equal((await db.query("SELECT contract_record FROM bookings WHERE id='b'")).rows[0].contract_record, null); check('contract migration is additive and idempotent');
+  const { normalizeContractBackup } = loadUiModule('lib/maintenance-contract-compat.ts');
+  await apply('restore', await snap(), normalizeContractBackup(legacy));
+  assert.deepEqual(await accounts(), preserved); check('old signed backup tables restore exactly after adding the nullable contract column');
+  await db.query("UPDATE bookings SET contract_record=$1 WHERE id='b'", [{ revision: 'test-revision', details: { tenantAddress: 'Fake address' }, attachments: [] }]);
+  const withContract = await snap(); await apply('restore', withContract, normalizeContractBackup(withContract.data));
+  assert.deepEqual((await snap()).data, withContract.data); check('new contract metadata survives maintenance backup/restore');
   console.log(`${checks} PostgreSQL transaction checks passed; no production connection was used.`);
 } finally { await db.close(); }

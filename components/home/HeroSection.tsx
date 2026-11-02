@@ -1,80 +1,100 @@
 "use client";
 
-import Image from "next/image";
+import { useRef, useState, useEffect } from "react";
+import { ArrowLeft, Pause, Play } from "lucide-react";
+import "./hero-section.css";
 
 export default function HeroSection() {
-  const scrollToFleet = () => {
-    const fleetSection = document.getElementById("featured-fleet");
-    if (fleetSection) {
-      fleetSection.scrollIntoView({ behavior: "smooth" });
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+
+  const openFleet = () => {
+    document.getElementById("featured-fleet")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const togglePlayback = () => {
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
     }
   };
 
+  useEffect(() => {
+    // Respect user's reduced-motion preference
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches && videoRef.current) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, []);
+
   return (
-    <section className="relative w-full h-[90vh] sm:h-[94vh] flex flex-col justify-between overflow-hidden bg-[#060b17]">
-      {/* 1. مشغل الفيديو السينمائي الجديد مع طبقة حماية تباين تضمن وضوح النصوص 100% */}
-      <div className="absolute inset-0 w-full h-full pointer-events-none">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          poster="/hero-poster.jpg"
-          className="w-full h-full object-cover object-center filter brightness-[0.85] contrast-[1.10]"
-        >
-          <source src="/hero-video.webm" type="video/webm" />
-          <source src="/hero-video.mp4" type="video/mp4" />
-        </video>
-
-        {/* تدرج سينمائي مخصص: يمنح الجزء العلوي تظليلاً ملكياً ناعماً ليبرز النص والشعار بوضوح تام، ويترك سيارات الأسطول بالأسفل مكشوفة */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#060b17]/90 via-[#060b17]/65 via-40% to-transparent pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#060b17] via-[#060b17]/80 to-transparent pointer-events-none" />
-      </div>
-
-      {/* 2. قلب الهيرو: فخامة سينمائية مينيمال مع الشعار الرسمي الأنيق */}
-      <div className="relative z-10 my-auto px-4 sm:px-6 max-w-4xl mx-auto w-full text-center flex flex-col items-center">
-        {/* الشعار الرسمي النقي مع ظل سينمائي ثلاثي الأبعاد */}
-        <div className="mb-4 sm:mb-5">
-          <Image
-            src="/logo2.png"
-            alt="شركة اليمن والخليج"
-            width={260}
-            height={110}
-            priority
-            className="h-14 sm:h-20 w-auto object-contain drop-shadow-[0_12px_30px_rgba(0,0,0,0.9)] filter brightness-105"
-          />
-        </div>
-
-        {/* سطر هوية مقتضب ورفيع */}
-        <p className="text-[#c5a059] text-xs sm:text-sm font-semibold tracking-[0.25em] uppercase mb-2 drop-shadow-md">
-          مصر • تأجير وتوريد النخبة
-        </p>
-
-        {/* العنوان الرئيسي: سطر واحد مقتضب جداً وهيبة حقيقية */}
-        <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white tracking-tight leading-[1.1] drop-shadow-[0_8px_30px_rgba(0,0,0,0.9)]">
-          أسطول يتحدث عنك.
+    <section className="public-hero" aria-label="شركة اليمن والخليج لتأجير السيارات">
+      {/* 1. Header Copy Block */}
+      <div className="public-hero-copy">
+        <h1 className="public-hero-headline">
+          <span className="public-hero-highlight">أسطولٌ</span> يتحدث عنك.
         </h1>
-
-        {/* سطر فرعي واحد فقط من 5 كلمات */}
-        <p className="text-slate-300 text-sm sm:text-lg font-normal mt-3 max-w-md drop-shadow-md">
-          أحدث سيارات الدفع الرباعي والفارهة بجاهزية فورية.
+        <p className="public-hero-description">
+          تأجير سيارات في القاهرة وحدائق أكتوبر، مع التسليم للمطار أو مقر إقامتك.
         </p>
-
-        {/* زر واحد فقط أنيق جداً ونحيف (Editorial pill) */}
-        <div className="mt-7 sm:mt-9">
-          <button
-            type="button"
-            onClick={scrollToFleet}
-            className="group inline-flex items-center gap-3 px-7 py-3 rounded-full text-xs sm:text-sm font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 hover:border-[#c5a059]/80 backdrop-blur-md transition-all duration-300 active:scale-95 cursor-pointer shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
-          >
-            <span>استعراض الأسطول المتاح</span>
-            <span className="w-6 h-6 rounded-full bg-[#c5a059] text-[#060b17] flex items-center justify-center font-black transition-transform duration-300 group-hover:translate-y-0.5">
-              ↓
-            </span>
-          </button>
-        </div>
+        <button 
+          type="button" 
+          className="public-hero-cta" 
+          onClick={openFleet}
+          title="انتقل إلى أسطول السيارات"
+        >
+          <span>اكتشف السيارات</span>
+          <ArrowLeft size={18} aria-hidden="true" className="public-hero-cta-icon" />
+        </button>
       </div>
+
+      {/* 2. Panoramic Fleet Showcase Video (1080p Crystal Clear) */}
+      <div className="public-hero-video-stage">
+        <video 
+          ref={videoRef}
+          id="hero-fleet-film"
+          autoPlay 
+          muted 
+          loop 
+          playsInline 
+          preload="metadata" 
+          poster="/hero-poster.webp"
+          aria-label="أسطول سيارات فاخرة أمام أهرامات القاهرة"
+        >
+          <source src="/hero-fleet-pyramids.mp4" type="video/mp4" />
+          <source src="/hero-fleet-pyramids.webm" type="video/webm" />
+        </video>
+        
+        {/* Delicate Top & Bottom Edge Blends */}
+        <div className="public-hero-shade-top" aria-hidden="true" />
+        <div className="public-hero-shade-bottom" aria-hidden="true" />
+
+        {/* Pause / Play Accessibility Button */}
+        <button 
+          type="button" 
+          className="public-hero-pause-btn" 
+          onClick={togglePlayback}
+          aria-label={isPlaying ? "إيقاف الحركة مؤقتًا" : "تشغيل الفيديو"}
+          title={isPlaying ? "إيقاف الحركة مؤقتًا" : "تشغيل الفيديو"}
+        >
+          {isPlaying ? (
+            <>
+              <Pause size={13} aria-hidden="true" />
+              <span>إيقاف الحركة مؤقتًا</span>
+            </>
+          ) : (
+            <>
+              <Play size={13} aria-hidden="true" />
+              <span>تشغيل الفيديو</span>
+            </>
+          )}
+        </button>
+      </div>
+
     </section>
   );
 }

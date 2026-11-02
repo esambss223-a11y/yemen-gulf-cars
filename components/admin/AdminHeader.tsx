@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { Search, Plus, Menu, Bell, X, Check, XCircle, CalendarClock, ClipboardList, ShieldCheck, LogOut } from 'lucide-react';
+import { Search, Plus, Menu, Bell, X, Check, XCircle, CalendarClock, ClipboardList, ShieldCheck, LogOut, ChevronDown, UserRound, Car, Cloud, CloudOff } from 'lucide-react';
 import { StaffUser } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
+import { type AdminTab, getAdminSectionTitle, getStaffRoleLabel } from './admin-navigation';
+
+type HeaderPanel = 'search' | 'notifications' | 'create' | 'account';
 
 type NotificationItem = {
   id: string;
@@ -16,6 +19,8 @@ type NotificationItem = {
 };
 
 interface AdminHeaderProps {
+  activeTab: AdminTab;
+  isNavigationOpen?: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   isCloudConnected: boolean;
@@ -29,6 +34,8 @@ interface AdminHeaderProps {
 }
 
 export default function AdminHeader({
+  activeTab,
+  isNavigationOpen = false,
   searchQuery,
   setSearchQuery,
   isCloudConnected,
@@ -41,9 +48,45 @@ export default function AdminHeader({
   onLogout,
 }: AdminHeaderProps) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [panel, setPanel] = useState<HeaderPanel | null>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const triggers = useRef<Partial<Record<HeaderPanel, HTMLButtonElement | null>>>({});
   const [notificationsError, setNotificationsError] = useState('');
   const [reviewingRequest, setReviewingRequest] = useState<string | null>(null);
+
+  const canBook = currentStaff.role === 'super_admin' || currentStaff.role === 'rental_agent';
+  const canAddCar = currentStaff.role === 'super_admin' || currentStaff.role === 'fleet_entry';
+  const togglePanel = (next: HeaderPanel) => setPanel((previous) => previous === next ? null : next);
+  const closePanel = () => {
+    setPanel(null);
+    if (panel) triggers.current[panel]?.focus();
+  };
+
+  useEffect(() => {
+    if (!panel) return;
+    const root = headerRef.current?.querySelector<HTMLElement>(`[data-header-panel="${panel}"]`);
+    root?.querySelector<HTMLElement>('[data-panel-content] :is(input, button, a[href])')?.focus();
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !root?.contains(event.target)) setPanel(null);
+    };
+    const onFocusIn = (event: FocusEvent) => {
+      if (event.target instanceof Node && !root?.contains(event.target)) setPanel(null);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setPanel(null);
+      triggers.current[panel]?.focus();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [panel]);
 
   useEffect(() => {
     let isMounted = true;
@@ -108,148 +151,85 @@ export default function AdminHeader({
   };
 
   return (
-    <header className="admin-header">
-      
-      {/* 1. الجانب الأيمن: شعار وهوية شركة اليمن والخليج في كبسولة كحلية فاخرة */}
-      <div className="flex items-center gap-3 shrink-0">
-        <button
-          onClick={onToggleMobileMenu}
-          className="admin-menu-toggle"
-          aria-label="فتح قائمة الأقسام" aria-controls="admin-navigation"
-          title="فتح القائمة"
-        >
-          <Menu className="w-5 h-5 text-slate-800" />
+    <header ref={headerRef} className="admin-header">
+      <div className="admin-header-heading">
+        <button type="button" onClick={() => { setPanel(null); onToggleMobileMenu?.(); }} className="admin-menu-toggle"
+          aria-label="فتح قائمة الأقسام" aria-controls="admin-navigation" aria-expanded={isNavigationOpen}>
+          <Menu size={20} aria-hidden="true" />
         </button>
-
-        <button onClick={onOpenProfile} className="admin-brand" title="حساب الموظف">
-          <Image src="/logo2.png" alt="شركة اليمن والخليج لتأجير السيارات" width={1945} height={808} priority />
-          <span>إدارة الأسطول والحجوزات</span>
-        </button>
+        <div className="admin-mobile-brand"><Image src="/logonew.png" alt="شركة اليمن والخليج لتأجير وتوريد السيارات" width={1254} height={1254} priority /></div>
+        <h1 className="admin-header-title">{getAdminSectionTitle(activeTab, currentStaff)}</h1>
       </div>
 
-      {/* 2. المنتصف: شريط البحث المستدير الأنيق المطابق للصورة */}
-      <div className="admin-header-search">
-        <div className="relative w-full">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ابحث عن سيارة، حجز، عميل، أو رقم مرجعي..."
-            className="w-full bg-slate-100/90 hover:bg-slate-100 focus:bg-white border border-slate-200/90 focus:border-[#c5a059] rounded-full pr-10 pl-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#c5a059]/20 transition-all font-arabic text-right shadow-inner"
-          />
-          <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className={`admin-header-search ${panel === 'search' ? 'is-open' : ''}`} data-header-panel="search">
+        <button ref={(node) => { triggers.current.search = node; }} type="button" className="admin-icon-button admin-search-toggle"
+          onClick={() => togglePanel('search')} aria-label={searchQuery ? `البحث: ${searchQuery}` : 'فتح البحث'} aria-controls="admin-global-search" aria-expanded={panel === 'search'}>
+          <Search size={20} aria-hidden="true" />{searchQuery && <span className="admin-search-dot" />}
+        </button>
+        <div className="admin-search-field" id="admin-global-search" data-panel-content>
+          <label htmlFor="admin-search-input" className="sr-only">البحث في بيانات القسم الحالي</label>
+          <Search size={18} aria-hidden="true" />
+          <input id="admin-search-input" type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="البحث في بيانات القسم..." autoComplete="off" />
+          <button type="button" onClick={closePanel} className="admin-search-close admin-icon-button" aria-label="إغلاق البحث"><X size={18} /></button>
         </div>
       </div>
 
-      {/* 3. الجانب الأيسر: زر الإشعارات والأزرار التشغيلية */}
       <div className="admin-header-actions">
-        
-        {/* شارة الاتصال السحابي */}
-        <div className={`admin-cloud-badge hidden lg:flex px-2.5 py-1.5 rounded-full text-[10px] font-bold items-center gap-1.5 border shadow-2xs ${
-          isCloudConnected 
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
-            : 'bg-cyan-50 border-cyan-200 text-cyan-700'
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? 'bg-emerald-500 animate-pulse' : 'bg-cyan-500'}`} />
-          <span>{isCloudConnected ? 'سحابي متصل ✓' : 'مزامنة محلية ☁️'}</span>
-        </div>
-
-        {/* زر الإشعارات */}
-        <div className="relative">
-          <button
-            onClick={() => setNotificationsOpen((open) => !open)}
-            aria-label="فتح التنبيهات"
-            aria-expanded={notificationsOpen}
-            className="admin-notification-toggle w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200/80 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors relative cursor-pointer"
-            title="الإشعارات والتنبيهات التشغيلية"
-          >
-            <Bell className="w-4 h-4" />
-            {notifications.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-white">
-                {notifications.length > 99 ? '99+' : notifications.length}
-              </span>
-            )}
+        {(canBook || canAddCar) && <div className="admin-header-create" data-header-panel="create">
+          <button ref={(node) => { triggers.current.create = node; }} type="button" className="admin-create-toggle"
+            onClick={() => togglePanel('create')} aria-expanded={panel === 'create'} aria-controls="admin-create-panel">
+            <Plus size={18} aria-hidden="true" /><span>جديد</span><ChevronDown size={14} aria-hidden="true" />
           </button>
+          {panel === 'create' && <div id="admin-create-panel" className="admin-header-popover admin-create-panel" data-panel-content aria-label="إجراءات جديدة">
+            {canBook && <button type="button" onClick={() => { closePanel(); onOpenAddBooking(); }}><ClipboardList size={18} aria-hidden="true" /><span>إنشاء عقد وحجز جديد<small>تسليم سيارة للعميل</small></span></button>}
+            {canAddCar && <button type="button" onClick={() => { closePanel(); onOpenAddCar(); }}><Car size={18} aria-hidden="true" /><span>إضافة سيارة<small>إضافة مركبة إلى الأسطول</small></span></button>}
+          </div>}
+        </div>}
 
-          {notificationsOpen && (
-            <div className="admin-notifications-panel absolute left-0 top-full mt-2 w-[min(24rem,calc(100vw-1.5rem))] bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden text-right">
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                <button onClick={() => setNotificationsOpen(false)} className="p-1 text-slate-400 hover:text-slate-700" aria-label="إغلاق التنبيهات">
-                  <X className="w-4 h-4" />
-                </button>
-                <div>
-                  <h3 className="text-sm font-black text-slate-800">التنبيهات</h3>
-                  <p className="text-[10px] text-slate-500">تتحدث تلقائيًا كل دقيقة</p>
+        <div className="admin-notifications-root" data-header-panel="notifications">
+          <button ref={(node) => { triggers.current.notifications = node; }} type="button" onClick={() => togglePanel('notifications')}
+            aria-label={`التنبيهات${notifications.length ? `، ${notifications.length} تنبيه` : ''}`} aria-controls="admin-notifications-panel" aria-expanded={panel === 'notifications'}
+            className="admin-icon-button admin-notification-toggle" title="الإشعارات والتنبيهات التشغيلية">
+            <Bell size={20} aria-hidden="true" />
+            {notifications.length > 0 && <span className="admin-notification-count" aria-hidden="true">{notifications.length > 99 ? '99+' : notifications.length}</span>}
+          </button>
+          {panel === 'notifications' && <div id="admin-notifications-panel" className="admin-header-popover admin-notifications-panel" data-panel-content role="region" aria-label="التنبيهات">
+            <div className="admin-popover-heading"><div><h2>التنبيهات</h2><p>تتحدث تلقائيًا كل دقيقة</p></div><button type="button" className="admin-icon-button" onClick={closePanel} aria-label="إغلاق التنبيهات"><X size={18} /></button></div>
+            {notificationsError && <p role="alert" className="admin-notification-error">{notificationsError}</p>}
+            <div className="admin-notifications-list">
+              {notifications.length === 0 ? <p className="admin-notification-empty">لا توجد تنبيهات حالية.</p> : notifications.map((item) => (
+                <div key={item.id} className="admin-notification-item">
+                  <button type="button" onClick={() => { closePanel(); onOpenTab(item.target); }} className="admin-notification-link">
+                    {notificationIcon(item.type)}<span><strong>{item.title}</strong><small>{item.detail}</small></span>
+                  </button>
+                  {item.type === 'permission' && item.requestId && currentStaff.role === 'super_admin' && <div className="admin-notification-review">
+                    <button type="button" disabled={reviewingRequest === item.requestId} onClick={() => void handlePermissionReview(item.requestId!, 'approved')}><Check size={16} /> موافقة</button>
+                    <button type="button" disabled={reviewingRequest === item.requestId} onClick={() => void handlePermissionReview(item.requestId!, 'rejected')}><XCircle size={16} /> رفض</button>
+                  </div>}
                 </div>
-              </div>
-
-              {notificationsError && <p role="alert" className="px-4 py-2 text-xs text-rose-700 bg-rose-50">{notificationsError}</p>}
-              <div className="admin-notifications-list max-h-[min(65vh,28rem)] overflow-y-auto divide-y divide-slate-100">
-                {notifications.length === 0 ? (
-                  <p className="p-6 text-center text-xs text-slate-500">لا توجد تنبيهات حالية.</p>
-                ) : notifications.map((item) => (
-                  <div key={item.id} className="p-3.5 hover:bg-slate-50">
-                    <button onClick={() => { onOpenTab(item.target); setNotificationsOpen(false); }} className="w-full text-right">
-                      <span className="flex items-center justify-end gap-2 text-xs font-black text-slate-800">
-                        {item.title}{notificationIcon(item.type)}
-                      </span>
-                      <span className="block mt-1 text-[11px] leading-relaxed text-slate-600">{item.detail}</span>
-                    </button>
-                    {item.type === 'permission' && item.requestId && currentStaff.role === 'super_admin' && (
-                      <div className="mt-2 flex justify-end gap-2">
-                        <button disabled={reviewingRequest === item.requestId} onClick={() => void handlePermissionReview(item.requestId!, 'approved')} className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold disabled:opacity-50 flex items-center gap-1">
-                          <Check className="w-3 h-3" /> موافقة
-                        </button>
-                        <button disabled={reviewingRequest === item.requestId} onClick={() => void handlePermissionReview(item.requestId!, 'rejected')} className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 text-[10px] font-bold disabled:opacity-50 flex items-center gap-1">
-                          <XCircle className="w-3 h-3" /> رفض
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
-          )}
+          </div>}
         </div>
 
-        {/* زر حجز جديد المباشر */}
-        {(currentStaff.role === 'super_admin' || currentStaff.role === 'rental_agent') && (
-          <button
-            onClick={onOpenAddBooking}
-            className="admin-primary-action px-3 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#c5a059] hover:from-[#e0bc43] hover:to-[#cca74a] text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-md shadow-[#c5a059]/20 transition-all cursor-pointer"
-            title="إنشاء عقد وحجز جديد"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span className="hidden sm:inline">حجز جديد</span>
+        <div className="admin-account-root" data-header-panel="account">
+          <button ref={(node) => { triggers.current.account = node; }} type="button" className="admin-account-toggle" onClick={() => togglePanel('account')}
+            aria-expanded={panel === 'account'} aria-controls="admin-account-panel" aria-label={`حساب ${currentStaff.name}`} title={`حساب ${currentStaff.name}`}>
+            <span className="admin-account-avatar" aria-hidden="true">{currentStaff.name.trim().charAt(0) || <UserRound size={18} />}</span>
+            <span className="admin-account-summary"><strong>{currentStaff.name}</strong><small>{getStaffRoleLabel(currentStaff)}</small></span>
+            <ChevronDown size={14} className="admin-account-chevron" aria-hidden="true" />
           </button>
-        )}
-
-        {/* زر إضافة سيارة للمدير */}
-        {currentStaff.role === 'super_admin' && (
-          <button
-            onClick={onOpenAddCar}
-            className="admin-add-car hidden xl:flex px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold items-center gap-1.5 transition-all cursor-pointer"
-            title="إضافة مركبة جديدة للأسطول"
-          >
-            <Plus className="w-4 h-4" />
-            <span>إضافة سيارة</span>
-          </button>
-        )}
-
-        {/* زر تسجيل الخروج الصريح */}
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            className="admin-logout-header px-2.5 sm:px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-            title="تسجيل الخروج من لوحة التحكم"
-          >
-            <LogOut className="w-4 h-4 text-rose-600" />
-            <span className="hidden sm:inline">خروج</span>
-          </button>
-        )}
-
+          {panel === 'account' && <div id="admin-account-panel" className="admin-header-popover admin-account-panel" data-panel-content aria-label="خيارات الحساب">
+            <div className="admin-account-identity"><strong>{currentStaff.name}</strong><small>{getStaffRoleLabel(currentStaff)}</small></div>
+            <div className={`admin-account-connection ${isCloudConnected ? 'is-connected' : ''}`}>
+              {isCloudConnected ? <Cloud size={17} /> : <CloudOff size={17} />}<span>{isCloudConnected ? 'متصل بقاعدة البيانات' : 'غير متصل بقاعدة البيانات'}</span>
+            </div>
+            <button type="button" onClick={() => { closePanel(); onOpenProfile?.(); }}><UserRound size={18} aria-hidden="true" />الملف الشخصي والإعدادات</button>
+            {onLogout && <button type="button" className="admin-account-logout" onClick={() => { closePanel(); onLogout(); }}><LogOut size={18} aria-hidden="true" />تسجيل الخروج</button>}
+          </div>}
+        </div>
       </div>
-
     </header>
   );
 }

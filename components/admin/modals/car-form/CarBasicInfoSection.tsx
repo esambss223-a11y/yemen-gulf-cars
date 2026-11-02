@@ -9,6 +9,7 @@ interface CarBasicInfoSectionProps {
   setCarForm: React.Dispatch<React.SetStateAction<CarFormState>>;
   onGenerateCode: () => void;
   onSelectCarPreset?: (specs: any, images: string[]) => void;
+  allowPriceSuggestions?: boolean;
 }
 
 const POPULAR_CAR_PRESETS = [
@@ -25,6 +26,7 @@ export default function CarBasicInfoSection({
   setCarForm,
   onGenerateCode,
   onSelectCarPreset,
+  allowPriceSuggestions = true,
 }: CarBasicInfoSectionProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -98,9 +100,9 @@ export default function CarBasicInfoSection({
           transmission: specs.transmission || prev.transmission,
           fuelType: specs.fuelType || prev.fuelType,
           seats: specs.seats || prev.seats,
-          dailyPriceEGP: prev.dailyPriceEGP === 5000 && specs.suggestedDailyEGP ? specs.suggestedDailyEGP : prev.dailyPriceEGP,
-          weeklyPriceEGP: prev.weeklyPriceEGP === 32000 && specs.suggestedWeeklyEGP ? specs.suggestedWeeklyEGP : prev.weeklyPriceEGP,
-          securityDepositEGP: prev.securityDepositEGP === 10000 && specs.suggestedDepositEGP ? specs.suggestedDepositEGP : prev.securityDepositEGP,
+          dailyPriceEGP: allowPriceSuggestions && prev.dailyPriceEGP === 5000 && specs.suggestedDailyEGP ? specs.suggestedDailyEGP : prev.dailyPriceEGP,
+          weeklyPriceEGP: allowPriceSuggestions && prev.weeklyPriceEGP === 32000 && specs.suggestedWeeklyEGP ? specs.suggestedWeeklyEGP : prev.weeklyPriceEGP,
+          securityDepositEGP: allowPriceSuggestions && prev.securityDepositEGP === 10000 && specs.suggestedDepositEGP ? specs.suggestedDepositEGP : prev.securityDepositEGP,
           features: specs.features && specs.features.length > 0 ? specs.features : prev.features,
           // إذا كانت الصور الحالية افتراضية فقط، نضع صور الكتالوج المسترجعة
           images:
@@ -126,6 +128,102 @@ export default function CarBasicInfoSection({
   return (
     <div className="p-3.5 bg-[#070d19] border border-slate-800/80 rounded-xl space-y-3 font-arabic">
       
+      <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5 pt-1">
+        <CarIcon className="w-3.5 h-3.5 text-[#c5a059]" /> بيانات المركبة وكود الأصل والعداد:
+      </span>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div>
+          <label className="block text-slate-400 text-[10px] mb-1">الماركة (Make):</label>
+          <input
+            type="text"
+            required
+            value={carForm.make}
+            onChange={(e) => setCarForm({ ...carForm, make: e.target.value })}
+            placeholder="Mercedes, BYD, Toyota"
+            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
+          />
+        </div>
+
+        <div>
+          <label className="block text-slate-400 text-[10px] mb-1">الموديل (Model):</label>
+          <input
+            type="text"
+            required
+            value={carForm.model}
+            onChange={(e) => setCarForm({ ...carForm, model: e.target.value })}
+            placeholder="S-Class, Song Plus, Patrol"
+            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
+          />
+        </div>
+
+        <div>
+          <label className="block text-slate-400 text-[10px] mb-1">سنة الصنع (Year):</label>
+          <input
+            type="number"
+            min="1990"
+            max="2030"
+            value={carForm.year}
+            onChange={(e) => setCarForm({ ...carForm, year: parseInt(e.target.value) || 2024 })}
+            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-[#c5a059]"
+          />
+        </div>
+
+        <div>
+          <label className="block text-slate-400 text-[10px] mb-1">رقم اللوحة المرورية:</label>
+          <input
+            type="text"
+            required
+            value={carForm.plateNumber}
+            onChange={(e) => setCarForm({ ...carForm, plateNumber: e.target.value })}
+            placeholder="مثال: أ ب ج 1234"
+            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
+          />
+        </div>
+      </div>
+
+      <p className="car-title-preview">الاسم الذي سيظهر للعميل: <strong>{[carForm.make, carForm.model].filter(Boolean).join(' ') || 'أدخل الماركة والموديل'}</strong></p>
+      <details className="car-editor-extra"><summary>اللون والعداد وفئة السيارة</summary>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div>
+          <label className="block text-slate-400 text-[10px] mb-1">اللون الخارجي:</label>
+          <input
+            type="text"
+            value={carForm.color}
+            onChange={(e) => setCarForm({ ...carForm, color: e.target.value })}
+            placeholder="أسود ملكي، أبيض لؤلؤي"
+            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
+          />
+        </div>
+
+        <div>
+          <label className="block text-slate-400 text-[10px] mb-1">العداد الحالي (KM):</label>
+          <input
+            type="number"
+            min="0"
+            value={carForm.currentKm}
+            onChange={(e) => setCarForm({ ...carForm, currentKm: parseInt(e.target.value) || 0 })}
+            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-[#c5a059]"
+          />
+        </div>
+
+        <div>
+          <label className="block text-slate-400 text-[10px] mb-1">فئة السيارة (Category):</label>
+          <select
+            value={carForm.category}
+            onChange={(e) => setCarForm({ ...carForm, category: e.target.value as any })}
+            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
+          >
+            <option value="vip">VIP فاخرة جداً</option>
+            <option value="suv">SUV دفع رباعي عائلية</option>
+            <option value="luxury_sedan">سيدان فارهة</option>
+            <option value="economy">اقتصادية ممتازة</option>
+          </select>
+        </div>
+
+      </div>
+      </details>
+      <details className="car-editor-extra"><summary>بحث وتعبئة تلقائية — اختياري</summary>
       {/* 1. شريط البحث السريع عن الموديل وجلب المعلومات والصور المقترحة */}
       <div className="p-3 rounded-xl bg-[#0b1324] border border-[#c5a059]/30 space-y-2 relative" ref={dropdownRef}>
         <div className="flex items-center justify-between">
@@ -204,10 +302,8 @@ export default function CarBasicInfoSection({
         )}
       </div>
 
-      <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5 pt-1">
-        <CarIcon className="w-3.5 h-3.5 text-[#c5a059]" /> بيانات المركبة وكود الأصل والعداد:
-      </span>
-
+      </details>
+      <details className="car-editor-extra"><summary>كود السيارة وبيانات دخول الأسطول</summary>
       {/* كود العربية وتاريخ الدخول وعداد الاستلام من المالك */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pb-2.5 border-b border-slate-800/80">
         <div>
@@ -254,94 +350,7 @@ export default function CarBasicInfoSection({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div>
-          <label className="block text-slate-400 text-[10px] mb-1">الماركة (Make):</label>
-          <input
-            type="text"
-            required
-            value={carForm.make}
-            onChange={(e) => setCarForm({ ...carForm, make: e.target.value })}
-            placeholder="Mercedes, BYD, Toyota"
-            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-slate-400 text-[10px] mb-1">الموديل (Model):</label>
-          <input
-            type="text"
-            required
-            value={carForm.model}
-            onChange={(e) => setCarForm({ ...carForm, model: e.target.value })}
-            placeholder="S-Class, Song Plus, Patrol"
-            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-slate-400 text-[10px] mb-1">سنة الصنع (Year):</label>
-          <input
-            type="number"
-            min="1990"
-            max="2030"
-            value={carForm.year}
-            onChange={(e) => setCarForm({ ...carForm, year: parseInt(e.target.value) || 2024 })}
-            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-[#c5a059]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-slate-400 text-[10px] mb-1">رقم اللوحة المرورية:</label>
-          <input
-            type="text"
-            required
-            value={carForm.plateNumber}
-            onChange={(e) => setCarForm({ ...carForm, plateNumber: e.target.value })}
-            placeholder="مثال: أ ب ج 1234"
-            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div>
-          <label className="block text-slate-400 text-[10px] mb-1">اللون الخارجي:</label>
-          <input
-            type="text"
-            value={carForm.color}
-            onChange={(e) => setCarForm({ ...carForm, color: e.target.value })}
-            placeholder="أسود ملكي، أبيض لؤلؤي"
-            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-slate-400 text-[10px] mb-1">العداد الحالي (KM):</label>
-          <input
-            type="number"
-            min="0"
-            value={carForm.currentKm}
-            onChange={(e) => setCarForm({ ...carForm, currentKm: parseInt(e.target.value) || 0 })}
-            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-[#c5a059]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-slate-400 text-[10px] mb-1">فئة السيارة (Category):</label>
-          <select
-            value={carForm.category}
-            onChange={(e) => setCarForm({ ...carForm, category: e.target.value as any })}
-            className="w-full bg-[#0b1322] border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059]"
-          >
-            <option value="vip">VIP فاخرة جداً</option>
-            <option value="suv">SUV دفع رباعي عائلية</option>
-            <option value="luxury_sedan">سيدان فارهة</option>
-            <option value="economy">اقتصادية ممتازة</option>
-          </select>
-        </div>
-
-      </div>
+      </details>
 
     </div>
   );

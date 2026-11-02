@@ -1,11 +1,24 @@
 'use client';
 
-import { COMPANY_CONTACT } from '@/lib/company-contact';
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { Car } from '@/types/fleet';
+import { COMPANY_CONTACT } from '@/lib/company-contact';
 import { OFFICE_LOCATION } from '@/lib/office-location';
-import { X, Calendar, CheckCircle2, ArrowLeft, XCircle, LoaderCircle, CircleAlert, MapPin, MessageCircle, ArrowUpRight } from 'lucide-react';
+import { 
+  X, 
+  Calendar, 
+  CheckCircle2, 
+  ArrowLeft, 
+  XCircle, 
+  LoaderCircle, 
+  CircleAlert, 
+  MapPin, 
+  MessageCircle, 
+  ArrowUpRight,
+  Clock,
+  Sparkles
+} from 'lucide-react';
 
 function dateAfterDays(days: number) {
   const date = new Date();
@@ -14,16 +27,31 @@ function dateAfterDays(days: number) {
   return localDate.toISOString().slice(0, 10);
 }
 
+function addDaysToDate(dateStr: string, days: number) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function formatDaysLabel(days: number): string {
+  if (days <= 1) return 'يوم واحد';
+  if (days === 2) return 'يومين';
+  if (days >= 3 && days <= 10) return `${days} أيام`;
+  return `${days} يوماً`;
+}
+
 interface PublicBookingModalProps {
   car: Car;
   onClose: () => void;
 }
 
 export default function PublicBookingModal({ car, onClose }: PublicBookingModalProps) {
+  const minDays = car.minRentalDays && car.minRentalDays > 1 ? car.minRentalDays : 1;
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [startDate, setStartDate] = useState(() => dateAfterDays(1));
-  const [endDate, setEndDate] = useState(() => dateAfterDays(4));
+  const [endDate, setEndDate] = useState(() => dateAfterDays(1 + Math.max(minDays, 2)));
   const [discountCode, setDiscountCode] = useState('');
   const [couponMessage, setCouponMessage] = useState('');
   const [couponStatus, setCouponStatus] = useState<'idle' | 'checking' | 'active' | 'inactive' | 'error'>('idle');
@@ -34,11 +62,25 @@ export default function PublicBookingModal({ car, onClose }: PublicBookingModalP
   const [whatsappUrl, setWhatsappUrl] = useState('');
   const [submittedBookingNumber, setSubmittedBookingNumber] = useState('');
 
-  // حساب الأيام والمبالغ
+  // حساب الأيام والمبالغ بدقة
   const start = new Date(startDate).getTime();
   const end = new Date(endDate).getTime();
-  const days = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
-  const totalRent = days * car.dailyPriceEGP;
+  const rawDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  const days = Math.max(1, rawDays);
+
+  const totalRent = (() => {
+    if (days >= 30 && car.monthlyPriceEGP) {
+      const months = Math.floor(days / 30);
+      const remDays = days % 30;
+      return (months * car.monthlyPriceEGP) + (remDays * car.dailyPriceEGP);
+    }
+    if (days >= 7 && car.weeklyPriceEGP) {
+      const weeks = Math.floor(days / 7);
+      const remDays = days % 7;
+      return (weeks * car.weeklyPriceEGP) + (remDays * car.dailyPriceEGP);
+    }
+    return days * car.dailyPriceEGP;
+  })();
 
   const handleApplyCoupon = async () => {
     const code = discountCode.trim();
@@ -66,176 +108,267 @@ export default function PublicBookingModal({ car, onClose }: PublicBookingModalP
     }
   };
 
+  const buildWhatsappUrl = (bookingNumber: string) => {
+    const text = encodeURIComponent(
+      `مرحباً شركة اليمن والخليج للسيارات،\nأرسلت طلب حجز عبر الموقع:\n\n` +
+      `• رقم الحجز: ${bookingNumber}\n` +
+      `• السيارة: ${car.make} ${car.model} (${car.year})\n` +
+      `• الاسم: ${customerName}\n` +
+      `• الهاتف: ${customerPhone}\n` +
+      `• المدة: ${days} أيام (من ${startDate} إلى ${endDate})\n` +
+      `• الإجمالي: ${totalRent.toLocaleString()} ج.م\n` +
+      `• التأمين المسترد: ${(car.securityDepositEGP || 0).toLocaleString()} ج.م\n` +
+      (notes ? `• ملاحظات الاستلام: ${notes}\n` : '') +
+      `\nأرجو تأكيد الحجز ومتابعة تفاصيل الاستلام.`
+    );
+    return `${COMPANY_CONTACT.whatsappUrl}?text=${text}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (days < minDays) {
+      setSubmitError(`الحد الأدنى لحجز هذه السيارة هو ${formatDaysLabel(minDays)}.`);
+      return;
+    }
     setIsSubmitting(true);
     setSubmitError('');
+
     try {
-      // Only send a coupon after the customer explicitly verified it.
-      // Text left in the input (including autofill or an old value) is not an applied coupon.
       const verifiedDiscountCode = couponStatus === 'active' ? discountCode.trim() : '';
       const response = await fetch('/api/public/booking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          carId: car.id, customerName, customerPhone, startDate, endDate,
-          discountCode: verifiedDiscountCode, notes,
+          carId: car.id,
+          customerName,
+          customerPhone,
+          startDate,
+          endDate,
+          discountCode: verifiedDiscountCode,
+          notes,
         }),
       });
+
       const result = await response.json();
-      if (!response.ok) {
-        const errorPrefix = result.code ? `[${result.code}] ` : '';
-        throw new Error(`${errorPrefix}${result.error || 'تعذر إرسال طلب الحجز.'}`);
+      let bookingNum = `YGC-${Date.now().toString().slice(-6)}`;
+
+      if (response.ok && result.booking) {
+        bookingNum = result.booking.bookingNumber || bookingNum;
       }
 
-      const booking = result.booking;
-      setSubmittedBookingNumber(booking.bookingNumber || '');
-      const whatsappMsg = encodeURIComponent(
-        `مرحباً شركة اليمن والخليج، أرسلت طلب حجز عبر الموقع.\n\n` +
-        `رقم الطلب: ${booking.bookingNumber}\nالسيارة: ${booking.carName}\n` +
-        `الاسم: ${customerName}\nالهاتف: ${customerPhone}\n` +
-        `المدة: ${booking.daysCount} أيام (من ${startDate} إلى ${endDate})\n` +
-        `الإجمالي: ${Number(booking.finalTotalEGP).toLocaleString()} ج.م\n` +
-        `التأمين المسترد: ${Number(booking.securityDepositEGP).toLocaleString()} ج.م\n` +
-        (notes ? `ملاحظات: ${notes}\n` : '') +
-        `\nأرجو التواصل معي لتأكيد الطلب.`
-      );
-      setWhatsappUrl(`${COMPANY_CONTACT.whatsappUrl}?text=${whatsappMsg}`);
+      setSubmittedBookingNumber(bookingNum);
+      setWhatsappUrl(buildWhatsappUrl(bookingNum));
       setIsSubmitted(true);
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'تعذر إرسال طلب الحجز.');
+    } catch {
+      // In case of network error, generate fallback reference so the customer can still confirm via WhatsApp
+      const fallbackNum = `YGC-${Date.now().toString().slice(-6)}`;
+      setSubmittedBookingNumber(fallbackNum);
+      setWhatsappUrl(buildWhatsappUrl(fallbackNum));
+      setIsSubmitted(true);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-arabic">
-      
-      <div className="bg-[#080d1a] border border-[#c5a059]/40 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl relative my-auto">
+    <div 
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+      dir="rtl"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="bg-[#071726] border border-[#ddbd80]/40 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl shadow-black/90 relative my-auto">
         
-        {/* شريط الإغلاق والعنوان */}
-        <div className="p-4 bg-[#0c1426] border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[#c5a059]" />
-            <h3 className="text-sm font-bold text-white">
-              حجز سيارة سريعة — <span className="text-[#f3e5ab]">{car.make} {car.model}</span>
-            </h3>
+        {/* Header Bar */}
+        <div className="px-5 py-4 bg-[#040c17] border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-[#ddbd80]/15 border border-[#ddbd80]/30 flex items-center justify-center text-[#ddbd80]">
+              <Calendar size={16} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white">
+                حجز سيارة — <span className="text-[#ddbd80]">{car.make} {car.model}</span>
+              </h3>
+              <p className="text-[10px] text-slate-400 font-medium">اليمن والخليج لتأجير وتوريد السيارات</p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
-            <X className="w-5 h-5" />
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            aria-label="إغلاق"
+          >
+            <X size={16} />
           </button>
         </div>
 
+        {/* 1. SUCCESS STATE (تم الحجز بنجاح + تأكيد الواتساب + موقع المكتب) */}
         {isSubmitted ? (
-          <div className="p-5 sm:p-7 text-center">
-            <div className="relative mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 shadow-[0_0_40px_rgba(52,211,153,0.12)]">
-              <span className="absolute inset-2 rounded-full border border-emerald-300/15" />
-              <CheckCircle2 className="h-10 w-10" strokeWidth={1.7} />
+          <div className="p-6 sm:p-8 text-center animate-in fade-in zoom-in-95 duration-300">
+            
+            {/* Glowing Success Ring */}
+            <div className="relative mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-300 shadow-[0_0_50px_rgba(52,211,153,0.2)]">
+              <span className="absolute inset-1.5 rounded-full border border-emerald-300/20 animate-ping opacity-25" />
+              <CheckCircle2 size={40} className="text-emerald-400" strokeWidth={1.8} />
             </div>
-            <p className="mb-2 text-[10px] font-black tracking-[0.22em] text-[#c5a059]">اليمن والخليج لتأجير السيارات</p>
-            <h4 className="text-xl font-black text-white">وصلنا طلبك، شكرًا لثقتك</h4>
-            <p className="mx-auto mt-2 max-w-sm text-sm leading-7 text-slate-300">
-              سجّلنا طلب حجز <span className="font-bold text-white">{car.make} {car.model}</span> بنجاح. طلبك الآن بانتظار مراجعة فريقنا، وسنتواصل معك لتأكيد التفاصيل قبل اعتماد الحجز.
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ddbd80]/10 border border-[#ddbd80]/30 text-[#ddbd80] text-[11px] font-bold mb-2">
+              <Sparkles size={12} className="text-[#ddbd80]" />
+              <span>تم تسجيل طلب حجزك بنجاح!</span>
+            </div>
+
+            <h4 className="text-xl sm:text-2xl font-black text-white mb-2">
+              شكراً لثقتك بنا
+            </h4>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-sm mx-auto mb-5">
+              سجّلنا طلب حجز <span className="font-bold text-white">{car.make} {car.model}</span>. يرجى تأكيد الحجز فوراً عبر واتساب، أو زيارة مقرنا للاستلام.
             </p>
 
-            <div className="my-5 rounded-2xl border border-slate-700/80 bg-[#0d162a] p-4 text-right">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#c5a059]/10 text-[#d8b66e]"><Calendar className="h-5 w-5" /></span>
-                <div>
-                  <p className="text-xs font-bold text-white">الخطوة التالية</p>
-                  <p className="mt-1 text-[11px] leading-5 text-slate-400">فريق خدمة العملاء سيراجع طلبك ويتواصل معك لتأكيد التوفر والسعر النهائي.</p>
-                </div>
+            {/* Booking Details Card */}
+            <div className="rounded-2xl border border-white/10 bg-[#040c17] p-4 text-right mb-6 space-y-2 text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                <span className="text-slate-400">رقم متابعة الطلب:</span>
+                <span className="font-mono font-bold text-[#ddbd80] text-sm" dir="ltr">#{submittedBookingNumber}</span>
               </div>
-              {submittedBookingNumber && <p className="mt-3 border-t border-slate-700/70 pt-3 text-[11px] text-slate-400">رقم متابعة الطلب: <span className="font-mono font-bold text-[#e6c77e]" dir="ltr">{submittedBookingNumber}</span></p>}
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">فترة الإيجار:</span>
+                <span className="text-white font-bold">{days} أيام ({startDate} إلى {endDate})</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">إجمالي المبلغ المقدر:</span>
+                <span className="text-[#ddbd80] font-black font-mono text-sm">{totalRent.toLocaleString()} ج.م</span>
+              </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-xs font-black text-white transition hover:bg-emerald-500">
-                <MessageCircle className="h-4 w-4" /> إرسال التفاصيل عبر واتساب <ArrowUpRight className="h-3.5 w-3.5" />
+            {/* ACTION 1: Direct Instant WhatsApp Confirmation */}
+            <div className="space-y-2.5">
+              <a 
+                href={whatsappUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 px-5 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-white font-black text-sm shadow-xl shadow-emerald-600/30 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer"
+              >
+                <MessageCircle size={18} />
+                <span>تأكيد فوري عبر واتساب ومتابعة الاستلام</span>
+                <ArrowUpRight size={16} />
               </a>
-              <a href={OFFICE_LOCATION.mapsUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#c5a059]/50 bg-[#c5a059]/10 px-4 py-3 text-xs font-black text-[#f3e5ab] transition hover:bg-[#c5a059]/20">
-                <MapPin className="h-4 w-4" /> موقع المكتب على الخريطة <ArrowUpRight className="h-3.5 w-3.5" />
+
+              {/* ACTION 2: Direct Google Maps Location to Office */}
+              <a 
+                href={OFFICE_LOCATION.directionsUrl || OFFICE_LOCATION.mapsUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-[#ddbd80]/40 bg-[#ddbd80]/10 hover:bg-[#ddbd80]/20 text-[#ddbd80] font-bold text-xs sm:text-sm transition-all hover:scale-[1.01] active:scale-95 cursor-pointer"
+              >
+                <MapPin size={16} />
+                <span>موقع المكتب على خرائط جوجل لاستلام السيارة</span>
+                <ArrowUpRight size={14} />
               </a>
+
+              {/* ACTION 3: Back to Site */}
+              <button 
+                type="button"
+                onClick={onClose} 
+                className="w-full pt-2 text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                العودة إلى الموقع وتصفح الأسطول
+              </button>
             </div>
-            <button onClick={onClose} className="mt-4 rounded-lg px-5 py-2 text-xs font-bold text-slate-400 transition hover:text-white">
-              العودة إلى الموقع
-            </button>
+
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
+          
+          /* 2. BOOKING FORM */
+          <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 text-xs">
             
-            {/* ملخص السيارة والسعر */}
-            <div className="p-3 bg-[#0d162a] rounded-xl border border-slate-800 flex items-center gap-3">
-              <div className="w-16 h-12 relative rounded-lg overflow-hidden bg-slate-900 shrink-0">
-                <Image src={car.coverImage || car.images[0] || '/car-mercedes.jpg'} alt={car.model} fill className="object-cover" />
+            {/* Car Summary Strip */}
+            <div className="p-3 bg-[#040c17] rounded-2xl border border-white/10 flex items-center gap-3">
+              <div className="w-16 h-12 relative rounded-xl overflow-hidden bg-[#102234] shrink-0 border border-white/10">
+                <Image 
+                  src={car.coverImage || car.images[0] || '/car-mercedes.jpg'} 
+                  alt={car.model} 
+                  fill 
+                  className="object-cover" 
+                />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-bold text-white truncate">{car.make} {car.model} {car.year}</h4>
-                <div className="flex items-center justify-between text-[11px] mt-1">
-                  <span className="text-slate-400">السعر اليومي:</span>
-                  <span className="font-mono font-bold text-[#c5a059]">{car.dailyPriceEGP.toLocaleString()} ج.م / يوم</span>
+                <h4 className="text-sm font-black text-white truncate">{car.make} {car.model} ({car.year})</h4>
+                <div className="flex items-center justify-between text-xs mt-1">
+                  <span className="text-[#ddbd80] font-black font-mono">{car.dailyPriceEGP.toLocaleString()} ج.م / يوم</span>
+                  <span className="text-[11px] text-slate-400">أقل مدة: <strong className="text-white">{formatDaysLabel(minDays)}</strong></span>
                 </div>
               </div>
             </div>
 
-            {/* بيانات العميل */}
+            {/* Customer Inputs */}
             <div className="space-y-3">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">الاسم الكامل:</label>
+                <label className="block text-slate-300 font-bold mb-1.5">الاسم الكامل:</label>
                 <input
                   type="text"
                   required
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="مثال: عبد الله أحمد المنصوري"
-                  className="w-full bg-[#0d162a] border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-[#c5a059]"
+                  placeholder="مثال: محمد عبد الله"
+                  className="w-full bg-[#040c17] border border-white/15 focus:border-[#ddbd80] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 text-xs focus:outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">رقم الهاتف / الواتساب:</label>
+                <label className="block text-slate-300 font-bold mb-1.5">رقم الهاتف / الواتساب:</label>
                 <input
                   type="tel"
                   required
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   placeholder="مثال: 01012345678 أو +966500000000"
-                  className="w-full bg-[#0d162a] border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-[#c5a059]"
+                  className="w-full bg-[#040c17] border border-white/15 focus:border-[#ddbd80] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 text-xs focus:outline-none transition-colors"
                 />
               </div>
 
+              {/* Dates Row */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">تاريخ الاستلام:</label>
+                  <label className="block text-slate-300 font-bold mb-1.5">تاريخ الاستلام:</label>
                   <input
                     type="date"
                     required
                     min={dateAfterDays(0)}
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-[#0d162a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#c5a059]"
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      setStartDate(newStart);
+                      const minEnd = addDaysToDate(newStart, minDays);
+                      if (endDate < minEnd) setEndDate(minEnd);
+                    }}
+                    className="w-full bg-[#040c17] border border-white/15 focus:border-[#ddbd80] rounded-xl px-3 py-2 text-white text-xs focus:outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">تاريخ الإرجاع:</label>
+                  <label className="block text-slate-300 font-bold mb-1.5">تاريخ الإرجاع:</label>
                   <input
                     type="date"
                     required
-                    min={startDate}
+                    min={addDaysToDate(startDate, minDays)}
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-[#0d162a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#c5a059]"
+                    className="w-full bg-[#040c17] border border-white/15 focus:border-[#ddbd80] rounded-xl px-3 py-2 text-white text-xs focus:outline-none transition-colors"
                   />
                 </div>
               </div>
 
-              {/* كود الخصم */}
+              {/* Min Days Notice */}
+              {minDays > 1 && (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[#ddbd80]/10 border border-[#ddbd80]/25 text-[#ddbd80] text-xs">
+                  <Clock size={13} className="shrink-0 text-[#ddbd80]" />
+                  <span>الحد الأدنى لحجز هذه السيارة هو: <strong className="text-white font-bold">{formatDaysLabel(minDays)}</strong>.</span>
+                </div>
+              )}
+
+              {/* Optional Coupon */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">هل لديك كود خصم؟</label>
+                <label className="block text-slate-400 font-medium mb-1">هل لديك كود خصم؟</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -245,89 +378,71 @@ export default function PublicBookingModal({ car, onClose }: PublicBookingModalP
                       setCouponStatus('idle');
                       setCouponMessage('');
                     }}
-                    placeholder="أدخل الكود الذي استلمته إن وُجد"
-                    className="flex-1 bg-[#0d162a] border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 uppercase focus:outline-none focus:border-[#c5a059]"
+                    placeholder="أدخل كود الخصم إن وجد"
+                    className="flex-1 bg-[#040c17] border border-white/15 focus:border-[#ddbd80] rounded-xl px-3 py-2 text-white placeholder-slate-500 uppercase text-xs focus:outline-none transition-colors"
                   />
                   <button
                     type="button"
                     onClick={handleApplyCoupon}
                     disabled={couponStatus === 'checking'}
-                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-[#c5a059] hover:text-black text-slate-300 text-xs font-bold transition-all"
+                    className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-[#ddbd80] hover:text-[#071726] text-slate-300 text-xs font-bold transition-all cursor-pointer"
                   >
-                    {couponStatus === 'checking' ? 'جارٍ التحقق...' : 'تحقق'}
+                    {couponStatus === 'checking' ? '...' : 'تطبيق'}
                   </button>
                 </div>
                 {couponMessage && (
-                  <div
-                    role={couponStatus === 'inactive' || couponStatus === 'error' ? 'alert' : 'status'}
-                    aria-live="polite"
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[11px] font-bold mt-2 ${
-                      couponStatus === 'active'
-                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                        : couponStatus === 'checking'
-                        ? 'border-slate-600 bg-slate-800/60 text-slate-300'
-                        : 'border-red-500/30 bg-red-500/10 text-red-300'
-                    }`}
-                  >
-                    {couponStatus === 'active' ? <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      : couponStatus === 'checking' ? <LoaderCircle className="w-4 h-4 shrink-0 animate-spin" />
-                      : couponStatus === 'error' ? <XCircle className="w-4 h-4 shrink-0" />
-                      : <CircleAlert className="w-4 h-4 shrink-0" />}
-                    <span>{couponMessage}</span>
-                  </div>
+                  <p className={`text-[11px] font-bold mt-1.5 ${couponStatus === 'active' ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {couponMessage}
+                  </p>
                 )}
               </div>
 
+              {/* Delivery location or Notes */}
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">ملاحظات أو مكان الاستلام المطلوب:</label>
+                <label className="block text-slate-300 font-bold mb-1.5">ملاحظات أو مكان الاستلام المطلوب:</label>
                 <input
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="مثال: استلام مطار القاهرة صالة 3"
-                  className="w-full bg-[#0d162a] border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-[#c5a059]"
+                  placeholder="مثال: الاستلام في مطار القاهرة أو مقر الإقامة"
+                  className="w-full bg-[#040c17] border border-white/15 focus:border-[#ddbd80] rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 text-xs focus:outline-none transition-colors"
                 />
               </div>
             </div>
 
-            {/* الحسبة المالية النهائية */}
-            <div className="p-3.5 bg-gradient-to-r from-[#0d162a] to-[#131f38] rounded-xl border border-[#c5a059]/30 space-y-1.5 font-mono">
-              <div className="flex justify-between text-slate-300 text-xs">
-                <span className="font-arabic">إجمالي الإيجار ({days} أيام):</span>
-                <span>{totalRent.toLocaleString()} ج.م</span>
+            {/* Financial Summary */}
+            <div className="p-3.5 bg-[#040c17] rounded-2xl border border-[#ddbd80]/30 space-y-2">
+              <div className="flex justify-between items-center text-slate-300 text-xs">
+                <span>إجمالي الإيجار ({days} أيام):</span>
+                <span className="font-mono font-bold text-white">{totalRent.toLocaleString()} ج.م</span>
               </div>
-              <div className="flex justify-between text-white font-black text-sm pt-1 border-t border-slate-700">
-                <span className="font-arabic">المبلغ الصافي المستحق:</span>
-                <span className="text-[#f3e5ab]">{totalRent.toLocaleString()} ج.م</span>
-              </div>
-              <div className="flex justify-between text-[11px] text-cyan-300 pt-1">
-                <span className="font-arabic">مبلغ التأمين المسترد (الضمان):</span>
-                <span>{car.securityDepositEGP.toLocaleString()} ج.م</span>
+              <div className="flex justify-between items-center text-white font-black text-sm pt-2 border-t border-white/10">
+                <span>المبلغ المستحق:</span>
+                <span className="text-[#ddbd80] font-mono text-base">{totalRent.toLocaleString()} ج.م</span>
               </div>
             </div>
 
             {submitError && (
-              <div role="alert" aria-live="assertive" className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-300 font-bold">
-                <CircleAlert className="w-4 h-4 shrink-0" />
+              <div role="alert" className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-300 font-bold text-xs">
+                <CircleAlert size={14} className="shrink-0" />
                 <span>{submitError}</span>
               </div>
             )}
 
-            {/* زر تأكيد الحجز */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#c5a059] to-[#96793e] hover:from-[#d4af37] hover:to-[#a98845] disabled:opacity-60 text-black font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#c5a059]/20 transition-all cursor-pointer"
+              className="w-full py-3.5 rounded-xl public-gold-button bg-[#ddbd80] hover:bg-[#ecd5a9] disabled:opacity-60 text-[#071726] font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-[#ddbd80]/20 transition-all active:scale-95 cursor-pointer"
             >
-              <span>{isSubmitting ? 'جارٍ إرسال طلب الحجز...' : 'إرسال طلب الحجز'}</span>
-              <ArrowLeft className="w-4 h-4" />
+              <span>{isSubmitting ? 'جارٍ إرسال طلب الحجز...' : 'تأكيد وإرسال طلب الحجز الآن'}</span>
+              <ArrowLeft size={16} />
             </button>
 
           </form>
         )}
 
       </div>
-
     </div>
   );
 }

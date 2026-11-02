@@ -1,0 +1,37 @@
+/* The same light editor theme applies to inline pages and dialogs. */
+.car-editor-steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; padding: 12px 18px; border-bottom: 1px solid var(--fleet-line); background: #fff; flex-shrink: 0; }
+.car-editor-steps button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px; border-radius: 10px; font-size: 13px; color: #1e293b; background: #ffffff; border: 1px solid #e2e8f0; }
+.car-editor-steps button span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #f1f5f9; color: #334155; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.car-editor-steps button[aria-current=step] { color: #ffffff !important; background: #0f172a !important; font-weight: 750; border-color: #0f172a !important; }
+.car-editor-steps button[aria-current=step] span { background: #d4af37 !important; color: #0f172a !important; font-weight: 800; }
+.car-editor-steps button:disabled { opacity: .7; cursor: default; }
+.car-editor-step { display: grid; min-width: 0; gap: 18px; border: 0; padding: 0; margin: 0; }
+.car-editor-step[hidden] { display: none; }
+.car-editor-extra { border: 1px solid var(--fleet-line); border-radius: 12px; background: #fff; padding: 12px; }
+.car-editor-extra > summary { min-height: 44px; padding: 10px; font-size: 14px; color: var(--fleet-ink); font-weight: 700; cursor: pointer; }
+.car-editor-error { color: #9b4e40; background: #fff1ed; border: 1px solid #eac5ba; padding: 12px; border-radius: 10px; font-size: 13px; line-height: 1.8; }
+.car-title-preview { padding: 12px; border: 1px solid var(--fleet-line); border-radius: 10px; font-size: 12px; line-height: 1.9; background: var(--fleet-field); color: var(--fleet-muted); }
+.car-title-preview strong { display: block; font-size: 17px; color: var(--fleet-ink); }
+.admin-ui .fleet-car-form .fleet-car-editor-form label { font-size: 12px; line-height: 1.8; }
+@media (max-width: 540px) { .car-editor-steps { padding: 8px; gap: 5px; } .car-editor-steps button { flex-direction: column; gap: 4px; font-size: 11px; } }
+.admin-ui .fleet-car-form { color: var(--fleet-ink); color-scheme: light; }
+.admin-ui .fleet-car-form .fleet-car-editor-panel { background: var(--fleet-surface); border-color: var(--fleet-line); }
+.admin-ui .fleet-car-form .fleet-car-editor-header { background: var(--fleet-surface); border-color: var(--fleet-line); }
+.admin-ui .fleet-car-form .fleet-car-editor-header h3 { color: var(--fleet-ink); font-size: 20px; line-height: 1.8; }
+.admin-ui .fleet-car-form .fleet-car-editor-header p { color: var(--fleet-muted); font-size: 12px; line-height: 1.9; }
+.admin-ui .fleet-car-form .fleet-car-editor-header > button { min-width: 46px; min-height: 46px; background: var(--fleet-field); color: var(--fleet-muted); border: 1px solid var(--fleet-line); }
+.admin-ui .fleet-car-form .fleet-car-editor-form { background: var(--fleet-paper); }
+.admin-ui .fleet-car-form .fleet-car-editor-form :is(input:not([type=file]),select,textarea) { background: var(--fleet-field); color: var(--fleet-ink); border: 1px solid #cdd8e1; color-scheme: light; min-width: 0; min-height: 48px; font-size: 16px; border-radius: 10px; }
+.admin-ui .fleet-car-form .fleet-car-editor-form input[type=checkbox] { min-height: auto; accent-color: var(--fleet-ink); }
+.admin-ui .fleet-car-form .fleet-car-editor-form label:not([class*="cursor-pointer"]) { color: #40586b; font-size: 12px; line-height: 1.8; }
+.admin-ui .fleet-car-form .fleet-car-editor-form :is(button,input,select,textarea):focus-visible { outline: 3px solid var(--fleet-gold); outline-offset: 3px; }
+.admin-ui .fleet-car-form .fleet-car-editor-footer { background: var(--fleet-surface); border-color: var(--fleet-line); }
+.admin-ui .fleet-car-form button.fleet-car-submit { background: var(--fleet-ink); color: white; box-shadow: none; min-height: 46px; }
+.admin-ui .fleet-car-form button.fleet-car-cancel { background: var(--fleet-field); color: #40586b; border: 1px solid var(--fleet-line); min-height: 46px; }
+.fleet-car-image-preview { isolation: isolate; aspect-ratio: 16 / 9; }
+.fleet-car-image-shade { background: linear-gradient(to top, rgba(0,0,0,0.5), transparent 60%); }
+.admin-ui .fleet-car-form .fleet-car-editor-form .fleet-car-upload-message { display: flex; gap: 8px; align-items: start; padding: 12px; border-radius: 10px; font-size: 12px; line-height: 1.9; }
+.admin-ui .fleet-car-form .fleet-car-editor-form .fleet-car-upload-message.is-success { color: var(--fleet-success); background: #eaf5ef; }
+.admin-ui .fleet-car-form .fleet-car-editor-form .fleet-car-upload-message.is-error { color: var(--fleet-danger); background: #fbece7; }
+.fleet-car-upload-message svg { flex-shrink: 0; margin-top: 3px; }
+@media (max-width: 540px) { .admin-ui .fleet-car-form .fleet-car-editor-header h3 { font-size: 17px; } }

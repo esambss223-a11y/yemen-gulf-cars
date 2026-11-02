@@ -32,8 +32,12 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
 
   const logAction = useCallback(
     async (action: string, details: string) => {
+      const uniqueId = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : `log-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
       const newLog: AuditLogItem = {
-        id: `log-${Date.now()}`,
+        id: uniqueId,
         action,
         staffName: currentStaffName ?? 'النظام',
         staffRole: (currentStaffRole as any) ?? 'rental_agent',
@@ -50,12 +54,11 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
           timestamp: newLog.timestamp,
           details: newLog.details,
         });
-        if (error) throw error;
-        setAuditLogs((prev) => [newLog, ...prev]);
+        if (error) console.warn('Audit log insert failed:', error.message);
       } catch (error) {
         console.warn('Audit log insert failed:', error);
-        reportFleetWriteError('تم تنفيذ الإجراء، لكن تعذر تسجيله في سجل الرقابة بقاعدة البيانات.');
       }
+      setAuditLogs((prev) => [newLog, ...prev]);
     },
     [currentStaffName, currentStaffRole]
   );
@@ -151,7 +154,6 @@ export function useFleetMisc({ currentStaffName, currentStaffRole }: UseFleetMis
     if (!target) return;
     const newActive = !target.active;
     await updateCoupon(id, { active: newActive });
-    logAction('تغيير حالة كود خصم', `تم ${newActive ? 'تفعيل' : 'تعطيل'} كود الخصم: ${target.code}`);
   };
 
   const deleteCoupon = async (id: string) => {

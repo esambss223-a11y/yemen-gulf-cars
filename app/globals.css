@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+@keyframes heroContentReveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-content-reveal {
+  animation: heroContentReveal 900ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-content-reveal { animation: none; }
+}
+
 :root {
   /* لوحة ألوان الهوية البصرية */
   --primary-navy: #0b1325;
@@ -20,7 +33,6 @@
 /* التمرير الانسيابي الفاخر مع snap لطيف لا يتعارض مع القراءة */
 html {
   scroll-behavior: smooth;
-  scroll-snap-type: y proximity;
   font-family: var(--font-cairo), 'Cairo', system-ui, -apple-system, sans-serif;
   overflow-x: hidden !important;
   max-width: 100vw;
@@ -76,8 +88,6 @@ body {
 }
 
 .snap-section {
-  scroll-snap-align: start;
-  scroll-snap-stop: normal;
   scroll-margin-top: 5rem;
 }
 
@@ -205,5 +215,7 @@ body {
 .animate-spotlight-glow {
   animation: spotlightGlow 6s ease-in-out infinite;
 }
+
+
 
 

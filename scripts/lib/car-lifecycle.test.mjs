@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { loadUiModule } from './load-ui-module.mjs';
 const require = createRequire(import.meta.url);
 function load(path, mocks = {}) {
   const source = readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
@@ -17,6 +18,12 @@ function load(path, mocks = {}) {
     if (name === 'next/image') return { __esModule: true, default: ({ src, alt }) => React.createElement('img', { src, alt }) };
     if (name === '@/lib/car-lifecycle') return load('lib/car-lifecycle.ts');
     if (name === '@/lib/car-record') return load('lib/car-record.ts');
+    if (name === '@/lib/car-pricing') return load('lib/car-pricing.ts');
+    if (name === '@/lib/fleet-booking-summary') return loadUiModule('lib/fleet-booking-summary.ts');
+    if (name === '@/lib/car-display-order') return loadUiModule('lib/car-display-order.ts');
+    if (name === './CarDisplayOrder') return loadUiModule('components/admin/tabs/CarDisplayOrder.tsx');
+    if (name === './FleetCarRow') return loadUiModule('components/admin/tabs/FleetCarRow.tsx');
+    if (name === './FleetCarCompactRow') return loadUiModule('components/admin/tabs/FleetCarCompactRow.tsx');
     if (name === './CarRemovalPanel') return load('components/admin/tabs/CarRemovalPanel.tsx');
     return require(name);
   } });

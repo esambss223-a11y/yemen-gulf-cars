@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Booking, BookingReviewInput, ReturnInspectionPayload, Customer, Invoice, Car } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
 import { reportFleetWriteError } from './fleetStorage';
@@ -30,6 +30,8 @@ export function useFleetBookings({
   currentStaffName,
 }: UseFleetBookingsProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const pendingOfficeBooking = useRef<{ fingerprint: string; booking: Booking } | null>(null);
+  const bookingWriteBusy = useRef(false);
 
   const mapCloudBooking = useCallback((b: Record<string, any>): Booking => ({
     id: String(b.id),
@@ -57,24 +59,33 @@ export function useFleetBookings({
     staffId: b.staff_id || 'online',
     staffName: b.staff_name || 'النظام',
     notes: b.notes,
+    contractRecord: b.contract_record || undefined,
     createdAt: b.created_at || new Date().toLocaleString('ar-EG'),
   }), []);
 
-  const addBooking = async (bookingData: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>): Promise<boolean> => {
+  const addBooking = async (bookingData: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>, onCreated?: (booking: Booking) => void): Promise<boolean> => {
+    if (bookingWriteBusy.current) return false;
+    bookingWriteBusy.current = true;
+    try { return await persistBooking(bookingData, onCreated); }
+    finally { bookingWriteBusy.current = false; }
+  };
+  const persistBooking = async (bookingData: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt'>, onCreated?: (booking: Booking) => void): Promise<boolean> => {
     if (cars.find((car) => car.id === bookingData.carId)?.status === 'archived') {
       reportFleetWriteError('السيارة مؤرشفة ولا يمكن إنشاء حجز عليها.');
       return false;
     }
     const seq = bookings.length + 1;
     const bookingNumber = `BK-${new Date().getFullYear()}-${String(seq).padStart(3, '0')}`;
-    const newBooking: Booking = {
+    const fingerprint = JSON.stringify({ ...bookingData, customer: { ...bookingData.customer, id: '' }, contractRecord: bookingData.contractRecord?.details });
+    const newBooking: Booking = pendingOfficeBooking.current?.fingerprint === fingerprint ? pendingOfficeBooking.current.booking : {
       ...bookingData,
       id: `bk-${Date.now()}`,
       bookingNumber,
       createdAt: new Date().toLocaleString('ar-EG'),
     };
+    if (bookingData.contractRecord) pendingOfficeBooking.current = { fingerprint, booking: newBooking };
     try {
-      const { error } = await supabase.from('bookings').insert({
+      const row = {
         id: newBooking.id,
         booking_number: newBooking.bookingNumber,
         car_id: newBooking.carId,
@@ -98,11 +109,21 @@ export function useFleetBookings({
         staff_id: newBooking.staffId,
         staff_name: newBooking.staffName,
         notes: newBooking.notes,
-      });
-      if (error) throw error;
+      };
+      if (bookingData.contractRecord) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('انتهت جلسة الدخول. سجّل الدخول مجددًا.');
+        const response = await fetch('/api/admin/contracts/create', { method: 'POST', headers: { Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' }, body: JSON.stringify({ booking: row, details: bookingData.contractRecord.details }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'تعذر حفظ العقد.');
+        newBooking.contractRecord = result.record;
+      } else {
+        const { error } = await supabase.from('bookings').insert(row);
+        if (error) throw error;
+      }
     } catch (error) {
       console.warn('Cloud booking insert failed:', error);
-      reportFleetWriteError('تعذر حفظ الحجز في قاعدة البيانات؛ لم يُسجل الحجز.');
+      reportFleetWriteError(error instanceof Error ? error.message : 'تعذر حفظ الحجز والعقد. أعد المحاولة.');
       return false;
     }
 
@@ -167,6 +188,8 @@ export function useFleetBookings({
       'إنشاء حجز وفاتورة جديدة',
       `تم حجز ${newBooking.carName} للعميل ${newBooking.customer.fullName} بقيمة ${newBooking.finalTotalEGP.toLocaleString()} ج.م`
     );
+    pendingOfficeBooking.current = null;
+    onCreated?.(newBooking);
     return true;
   };
 

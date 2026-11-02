@@ -14,6 +14,7 @@ function load(relative, overrides = {}) {
     require(name) {
       if (name in overrides) return overrides[name];
       if (name === '@/types/maintenance') return load('types/maintenance.ts');
+      if (name === '@/lib/maintenance-contract-compat') return load('lib/maintenance-contract-compat.ts');
       if (name.startsWith('node:')) return nativeRequire(name);
       throw new Error(`Unexpected dependency ${name}`);
     } });

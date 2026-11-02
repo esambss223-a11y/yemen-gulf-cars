@@ -7,6 +7,7 @@ import {
   Trash2, 
   Link as LinkIcon, 
   CheckCircle2, 
+  AlertCircle,
   ChevronRight, 
   ChevronLeft, 
   Camera, 
@@ -23,6 +24,7 @@ interface CarImagesSectionProps {
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   isUploading: boolean;
   uploadMessage: string | null;
+  uploadError?: boolean;
   suggestedImages?: string[];
 }
 
@@ -33,6 +35,7 @@ export default function CarImagesSection({
   onFileUpload,
   isUploading,
   uploadMessage,
+  uploadError = false,
   suggestedImages = [],
 }: CarImagesSectionProps) {
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -110,23 +113,23 @@ export default function CarImagesSection({
   const imagesCount = carForm.images?.length || 0;
 
   return (
-    <div className="p-4 bg-[#070d19] border border-slate-800 rounded-2xl space-y-3.5 font-arabic">
+    <div className="p-4 sm:p-5 bg-white border border-slate-200 rounded-2xl space-y-4 font-arabic shadow-2xs">
       
       {/* رأس قسم الصور */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-[#c5a059]">
-            <Layers className="w-4 h-4" />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3.5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-amber-400 shadow-xs">
+            <Layers className="w-5 h-5 text-amber-400 stroke-[2.2]" />
           </div>
           <div>
-            <h5 className="text-xs font-bold text-white flex items-center gap-1.5">
-              معرض وصور السيارة
-              <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
+            <h5 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span>معرض وصور السيارة</span>
+              <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-0.5 rounded-full">
                 {imagesCount} {imagesCount === 1 ? 'صورة' : 'صور'}
               </span>
             </h5>
-            <p className="text-[10px] text-slate-400">
-              اضغط على أي صورة لاختيارها كـ <strong>&quot;غلاف رئيسي&quot;</strong> يظهر في واجهة المعرض
+            <p className="text-xs text-slate-500 mt-0.5">
+              اضغط على أي صورة لاختيارها كـ <strong className="text-slate-800 font-bold">&quot;غلاف رئيسي معتمد&quot;</strong> يظهر في واجهة المعرض للزوار.
             </p>
           </div>
         </div>
@@ -136,18 +139,19 @@ export default function CarImagesSection({
           <button
             type="button"
             onClick={() => setShowUrlInput(!showUrlInput)}
-            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium flex items-center gap-1.5 cursor-pointer transition-colors border border-slate-700"
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors border border-slate-300 shadow-2xs active:scale-95"
           >
-            <LinkIcon className="w-3 h-3 text-slate-400" />
+            <LinkIcon className="w-3.5 h-3.5 text-slate-500" />
             <span>رابط مباشر</span>
           </button>
 
-          <label className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#c5a059] hover:from-[#e0bc45] hover:to-[#d4af37] text-slate-950 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs">
-            <Upload className="w-3.5 h-3.5" />
+          <label className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shadow-xs active:scale-95 border border-slate-900">
+            <Upload className="w-4 h-4 text-amber-400 stroke-[2.5]" />
             <span>{isUploading ? 'جاري الرفع...' : 'رفع من جهازك'}</span>
             <input 
               type="file" 
-              accept="image/*" 
+              accept="image/jpeg,image/png,image/webp"
+              multiple
               disabled={isUploading}
               onChange={onFileUpload} 
               className="hidden" 
@@ -158,16 +162,16 @@ export default function CarImagesSection({
 
       {/* شريط صور الكتالوج الرسمية المقترحة للموديل */}
       {suggestedImages && suggestedImages.length > 0 && (
-        <div className="p-3 bg-[#0b1426] border border-[#c5a059]/30 rounded-xl space-y-2">
+        <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
-              <Camera className="w-3.5 h-3.5 text-[#c5a059]" />
+            <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+              <Camera className="w-4 h-4 text-amber-600" />
               صور الكتالوج المقترحة لهذا الموديل:
             </span>
             <button
               type="button"
               onClick={handleAddAllSuggested}
-              className="text-[10px] text-amber-300 hover:text-white underline cursor-pointer"
+              className="text-xs font-bold text-amber-700 hover:text-amber-900 underline cursor-pointer"
             >
               + إضافة جميع الصور المقترحة ({suggestedImages.length})
             </button>
@@ -180,23 +184,23 @@ export default function CarImagesSection({
                 <div
                   key={sIdx}
                   className={`relative w-28 h-18 rounded-lg overflow-hidden shrink-0 border transition-all group ${
-                    alreadyAdded ? 'border-emerald-500/60 opacity-80' : 'border-slate-700 hover:border-[#c5a059]'
+                    alreadyAdded ? 'border-emerald-500 ring-2 ring-emerald-500/30 opacity-80' : 'border-slate-300 hover:border-slate-800'
                   }`}
                 >
                   <Image src={sImg} alt={`صورة مقترحة ${sIdx + 1}`} fill className="object-cover" sizes="120px" />
                   
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     {alreadyAdded ? (
-                      <span className="text-[9px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
-                        <Check className="w-2.5 h-2.5" /> مضافة
+                      <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                        <Check className="w-3 h-3 stroke-[3]" /> مضافة
                       </span>
                     ) : (
                       <button
                         type="button"
                         onClick={() => handleAddSuggestedImage(sImg)}
-                        className="text-[9px] bg-gradient-to-r from-[#d4af37] to-[#c5a059] text-black px-2 py-1 rounded-md font-black flex items-center gap-1 shadow-md cursor-pointer hover:scale-105 transition-transform"
+                        className="text-[10px] bg-amber-400 hover:bg-amber-300 text-slate-950 px-2.5 py-1 rounded-md font-extrabold flex items-center gap-1 shadow-md cursor-pointer transition-transform"
                       >
-                        <Plus className="w-3 h-3 stroke-[3]" /> إضافة
+                        <Plus className="w-3.5 h-3.5 stroke-[3]" /> إضافة
                       </button>
                     )}
                   </div>
@@ -209,50 +213,50 @@ export default function CarImagesSection({
 
       {/* حقل إدخال الرابط إن تم فتحه */}
       {showUrlInput && (
-        <div className="p-2.5 bg-[#0b1322] border border-slate-700/80 rounded-xl flex items-center gap-2 animate-fadeIn">
+        <div className="p-3 bg-slate-50 border border-slate-300 rounded-xl flex items-center gap-2 animate-fadeIn">
           <input
             type="url"
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             placeholder="الصق رابط الصورة المباشر هنا (https://...)"
-            className="flex-1 bg-[#060b14] border border-slate-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#c5a059] font-mono dir-ltr"
+            className="flex-1 bg-white border border-slate-300 rounded-lg px-3.5 py-2 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 font-mono dir-ltr"
           />
           <button
             type="button"
             onClick={handleAddUrl}
-            className="px-3.5 py-1.5 bg-[#c5a059] hover:bg-[#d4af37] text-black font-bold text-xs rounded-lg cursor-pointer transition-all"
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg cursor-pointer transition-all shadow-xs"
           >
-            إضافة
+            إضافة الصورة
           </button>
         </div>
       )}
 
       {/* إشعار حالة الرفع */}
       {uploadMessage && (
-        <div className="p-2 bg-slate-900 border border-emerald-500/40 text-emerald-300 text-xs rounded-xl flex items-center gap-2 animate-fadeIn">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+        <div className={'fleet-car-upload-message ' + (uploadError ? 'is-error' : 'is-success')} role={uploadError ? 'alert' : 'status'}>
+          {uploadError ? <AlertCircle size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
           <span>{uploadMessage}</span>
         </div>
       )}
 
-      {/* شبكة الصور المنظمة العالمية */}
+      {/* شبكة الصور */}
       {imagesCount > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5 pt-1">
           {carForm.images.map((imgUrl: string, idx: number) => {
             const isCover = idx === 0;
 
             return (
               <div 
                 key={idx} 
-                className={`relative rounded-xl overflow-hidden border transition-all group flex flex-col justify-between ${
+                className={`relative rounded-xl overflow-hidden border transition-all group flex flex-col justify-between bg-white ${
                   isCover
-                    ? 'border-2 border-[#c5a059] shadow-md shadow-[#c5a059]/15 bg-[#0b1322]'
-                    : 'border-slate-800 bg-[#0b1322] hover:border-slate-600'
+                    ? 'border-2 border-amber-500 ring-2 ring-amber-500/20 shadow-md'
+                    : 'border-slate-200 hover:border-slate-400 shadow-2xs'
                 }`}
               >
                 {/* الحاوية البصرية للصورة */}
                 <div 
-                  className="relative aspect-video w-full overflow-hidden bg-slate-950 cursor-pointer"
+                  className="fleet-car-image-preview relative aspect-video w-full overflow-hidden bg-slate-950 cursor-pointer"
                   onClick={() => !isCover && handleSetAsCover(idx)}
                   title={isCover ? 'هذه هي الصورة الرئيسية المعتمدة للغلاف' : 'اضغط لتعيينها كصورة رئيسية للغلاف'}
                 >
@@ -261,75 +265,76 @@ export default function CarImagesSection({
                     alt={`صورة ${idx + 1}`}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    sizes="200px"
+                    sizes="220px"
                   />
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                  <div className="fleet-car-image-shade absolute inset-0 pointer-events-none" />
 
-                  {/* شارة الغلاف في الزاوية */}
+                  {/* شارة الغلاف في الزاوية العلوية */}
                   {isCover ? (
                     <div className="absolute top-2 right-2 z-10">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#c5a059] text-black shadow-md flex items-center gap-1">
-                        <Check className="w-3 h-3 stroke-[3]" /> الغلاف الرئيسي
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-400 text-slate-950 shadow-md flex items-center gap-1 border border-amber-500">
+                        <Check className="w-3 h-3 stroke-[3]" /> الغلاف المعتمد
                       </span>
                     </div>
                   ) : (
-                    <div className="absolute top-2 right-2 z-10 opacity-70 group-hover:opacity-100 transition-opacity">
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-black/70 text-slate-300 border border-slate-700">
+                    <div className="absolute top-2 right-2 z-10 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-900/85 text-white border border-white/20 backdrop-blur-xs">
                         #{idx + 1}
                       </span>
                     </div>
                   )}
 
-                  {/* زر الحذف السريع */}
+                  {/* زر الحذف السريع - أبيض ناصع عالي التباين */}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onRemoveImage(idx);
                     }}
-                    className="absolute top-2 left-2 w-6 h-6 rounded-md bg-black/70 hover:bg-rose-600 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer z-10"
-                    title="حذف الصورة"
+                    className="absolute top-2 left-2 w-7 h-7 rounded-lg bg-slate-900/85 hover:bg-rose-600 text-white flex items-center justify-center transition-all cursor-pointer z-10 border border-white/20 shadow-sm"
+                    title="حذف هذه الصورة"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-3.5 h-3.5 text-white stroke-[2.2]" />
                   </button>
                 </div>
 
                 {/* الشريط السفلي للتحكم */}
-                <div className="p-2 border-t border-slate-800 flex items-center justify-between gap-1 text-[11px] bg-[#080d19]">
+                <div className="p-2 border-t border-slate-100 flex items-center justify-between gap-1.5 text-xs bg-slate-50">
                   {isCover ? (
-                    <span className="text-[10px] font-bold text-[#c5a059] flex items-center gap-1">
-                      ● معتمدة في الواجهة
+                    <span className="text-[11px] font-bold text-amber-700 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      معتمدة في الواجهة
                     </span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => handleSetAsCover(idx)}
-                      className="flex-1 py-1 px-2 rounded-lg bg-slate-800 hover:bg-[#c5a059] text-slate-300 hover:text-black font-semibold text-[10px] transition-all text-center cursor-pointer"
+                      className="flex-1 py-1.5 px-2 rounded-lg bg-white hover:bg-slate-900 text-slate-800 hover:text-white font-bold text-[11px] border border-slate-300 hover:border-slate-900 transition-all text-center cursor-pointer shadow-2xs"
                     >
                       تعيين كغلاف
                     </button>
                   )}
 
-                  {/* أزرار الترتيب */}
-                  <div className="flex items-center gap-0.5">
+                  {/* أزرار الترتيب (واضحة، بيضاء، بأيقونات كحلية عالية التباين) */}
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
                       disabled={idx === 0}
                       onClick={() => handleMoveImage(idx, idx - 1)}
-                      className="p-1 rounded-md bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
-                      title="تقديم"
+                      className="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center shadow-2xs transition-colors cursor-pointer"
+                      title="تقديم للأمام"
                     >
-                      <ChevronRight className="w-3 h-3" />
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-800 stroke-[2.2]" />
                     </button>
                     <button
                       type="button"
                       disabled={idx === carForm.images.length - 1}
                       onClick={() => handleMoveImage(idx, idx + 1)}
-                      className="p-1 rounded-md bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
-                      title="تأخير"
+                      className="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center shadow-2xs transition-colors cursor-pointer"
+                      title="تأخير للخلف"
                     >
-                      <ChevronLeft className="w-3 h-3" />
+                      <ChevronLeft className="w-3.5 h-3.5 text-slate-800 stroke-[2.2]" />
                     </button>
                   </div>
                 </div>
@@ -337,18 +342,38 @@ export default function CarImagesSection({
               </div>
             );
           })}
+
+          {/* كرت الرفع المباشر داخل شبكة الصور */}
+          <label className="border-2 border-dashed border-slate-300 hover:border-slate-800 bg-slate-50 hover:bg-slate-100/90 rounded-xl flex flex-col items-center justify-center p-3.5 text-center cursor-pointer transition-all group min-h-[130px] aspect-video">
+            <div className="w-9 h-9 rounded-xl bg-white group-hover:bg-slate-900 text-slate-800 group-hover:text-amber-400 border border-slate-300 flex items-center justify-center mb-1.5 transition-all shadow-2xs">
+              <Plus className="w-4 h-4 stroke-[3]" />
+            </div>
+            <span className="text-xs font-bold text-slate-800 group-hover:text-slate-950 transition-colors">
+              {isUploading ? 'جاري الرفع...' : 'رفع صورة من جهازك'}
+            </span>
+            <span className="text-[10px] text-slate-500 mt-0.5">JPG, PNG, WEBP</span>
+            <input 
+              type="file" 
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              disabled={isUploading}
+              onChange={onFileUpload} 
+              className="hidden" 
+            />
+          </label>
         </div>
       ) : (
         /* منطقة الرفع الجذابة إذا لم تكن هناك صور */
-        <label className="p-8 border-2 border-dashed border-slate-800 hover:border-[#c5a059]/50 rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer bg-[#050912] transition-colors group">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 group-hover:bg-[#c5a059]/10 text-slate-400 group-hover:text-[#c5a059] flex items-center justify-center mb-2.5 transition-colors">
+        <label className="p-8 border-2 border-dashed border-slate-300 hover:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer bg-slate-50 hover:bg-slate-100/80 transition-colors group">
+          <div className="w-12 h-12 rounded-2xl bg-white group-hover:bg-slate-900 text-slate-700 group-hover:text-amber-400 border border-slate-300 flex items-center justify-center mb-2.5 transition-colors shadow-xs">
             <Camera className="w-6 h-6" />
           </div>
-          <p className="text-xs font-bold text-slate-200">اضغط لاختيار صور من جهازك أو اسحبها هنا</p>
-          <span className="text-[10px] text-slate-500 mt-1">يدعم ملفات JPG, PNG, WEBP بدقة عالية</span>
+          <p className="text-xs font-bold text-slate-800">اضغط لاختيار صور من جهازك أو اسحبها هنا</p>
+          <span className="text-[11px] text-slate-500 mt-1">يدعم ملفات JPG, PNG, WEBP بدقة عالية (يمكنك اختيار عدة صور)</span>
           <input 
             type="file" 
-            accept="image/*" 
+            accept="image/jpeg,image/png,image/webp"
+            multiple
             disabled={isUploading}
             onChange={onFileUpload} 
             className="hidden" 

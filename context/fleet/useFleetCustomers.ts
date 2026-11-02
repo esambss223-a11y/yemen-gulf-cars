@@ -5,6 +5,13 @@ import { Customer } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
 import { reportFleetWriteError } from './fleetStorage';
 
+function customerWriteMessage(error: unknown, fallback: string) {
+  const failure = error as { code?: string; message?: string } | null;
+  if (['PGRST204', '42703'].includes(failure?.code || '') && /source|identity_verified/.test(failure?.message || '')) return 'قاعدة البيانات تحتاج تحديث حقول العملاء. شغّل ملف 20261031_repair_car_customer_fields.sql في Supabase ثم أعد الحفظ؛ بيانات النموذج لم تُحذف.';
+  if (failure?.code === '23505') return 'يوجد عميل بنفس البيانات المسجلة؛ ابحث برقم الهوية أو الهاتف وعدّل ملفه الحالي.';
+  return fallback;
+}
+
 interface UseFleetCustomersProps {
   logAction: (action: string, details: string) => void;
 }
@@ -34,6 +41,10 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
         whatsapp: newCustomer.whatsapp,
         national_id: newCustomer.nationalId,
         license_number: newCustomer.licenseNumber,
+        address: newCustomer.address,
+        work_address: newCustomer.workAddress,
+        governorate: newCustomer.governorate,
+        secondary_phone: newCustomer.secondaryPhone,
         nationality: newCustomer.nationality,
         tier: newCustomer.tier,
         risk_status: newCustomer.riskStatus,
@@ -50,7 +61,7 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
       if (error) throw error;
     } catch (error) {
       console.warn('Cloud customer insert failed:', error);
-      reportFleetWriteError('تعذرت إضافة العميل إلى قاعدة البيانات؛ لم يُحفظ.');
+      reportFleetWriteError(customerWriteMessage(error, 'تعذرت إضافة العميل إلى قاعدة البيانات؛ لم يُحفظ.'));
       return null;
     }
 
@@ -67,6 +78,10 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
       if (partial.whatsapp !== undefined) payload.whatsapp = partial.whatsapp;
       if (partial.nationalId !== undefined) payload.national_id = partial.nationalId;
       if (partial.licenseNumber !== undefined) payload.license_number = partial.licenseNumber;
+      if (partial.address !== undefined) payload.address = partial.address;
+      if (partial.workAddress !== undefined) payload.work_address = partial.workAddress;
+      if (partial.governorate !== undefined) payload.governorate = partial.governorate;
+      if (partial.secondaryPhone !== undefined) payload.secondary_phone = partial.secondaryPhone;
       if (partial.identityVerified !== undefined) payload.identity_verified = partial.identityVerified;
       if (partial.source !== undefined) payload.source = partial.source;
       if (partial.tier !== undefined) payload.tier = partial.tier;
@@ -87,7 +102,7 @@ export function useFleetCustomers({ logAction }: UseFleetCustomersProps) {
       if (!data?.length) throw new Error('CUSTOMER_NOT_FOUND');
     } catch (error) {
       console.warn('Cloud customer update failed:', error);
-      reportFleetWriteError('تعذر حفظ تعديل العميل في قاعدة البيانات؛ لم يُعتمد التغيير.');
+      reportFleetWriteError(customerWriteMessage(error, 'تعذر حفظ تعديل العميل في قاعدة البيانات؛ لم يُعتمد التغيير.'));
       return false;
     }
 

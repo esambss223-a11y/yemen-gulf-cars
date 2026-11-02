@@ -1,10 +1,19 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
+import { validateCarOffers } from '@/lib/car-offers';
+import { validateRentalPriceTiers } from '@/lib/car-pricing';
+import { mapCloudCarRow } from '@/lib/car-mapping';
 import { Car } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
 import { reportFleetWriteError } from './fleetStorage';
 import { carLifecycleRequest } from '@/lib/car-lifecycle-client';
+
+function carWriteMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'code' in error && ['PGRST204', '42703', '23514'].includes(String(error.code)) && 'message' in error && String(error.message).includes('rental_price_tiers')) return 'لتفعيل أسعار المدد الخاصة، شغّل ملف 20261031_repair_car_customer_fields.sql في Supabase ثم أعد المحاولة. لم تُحفظ التغييرات.';
+  return fallback;
+}
 
 interface UseFleetCarsProps {
   logAction: (action: string, details: string) => void;
@@ -13,44 +22,7 @@ interface UseFleetCarsProps {
 export function useFleetCars({ logAction }: UseFleetCarsProps) {
   const [cars, setCars] = useState<Car[]>([]);
 
-  const mapCloudCar = useCallback((c: Record<string, any>): Car => ({
-    id: String(c.id),
-    carCode: c.car_code,
-    make: String(c.make),
-    model: String(c.model),
-    year: Number(c.year),
-    category: c.category || 'vip',
-    plateNumber: String(c.plate_number || ''),
-    vin: c.vin,
-    color: c.color || 'أسود ملكي',
-    currentKm: Number(c.current_km || 0),
-    initialHandoverKm: c.initial_handover_km !== undefined ? Number(c.initial_handover_km) : 0,
-    fleetEntryDate: c.fleet_entry_date,
-    contractStartDate: c.contract_start_date,
-    contractEndDate: c.contract_end_date,
-    licenseExpiryDate: c.license_expiry_date,
-    licenseRenewalDate: c.license_renewal_date,
-    nextServiceKm: c.next_service_km !== undefined ? Number(c.next_service_km) : 10000,
-    nextServiceDate: c.next_service_date,
-    serviceResponsibleParty: c.service_responsible_party || 'company',
-    dailyPriceEGP: Number(c.daily_price_egp),
-    weeklyPriceEGP: c.weekly_price_egp ? Number(c.weekly_price_egp) : undefined,
-    monthlyPriceEGP: c.monthly_price_egp ? Number(c.monthly_price_egp) : undefined,
-    securityDepositEGP: Number(c.security_deposit_egp || 10000),
-    status: c.status || 'available',
-    images: Array.isArray(c.images) ? c.images : ['/car-mercedes.jpg'],
-    coverImage: c.cover_image || '/car-mercedes.jpg',
-    transmission: c.transmission || 'automatic',
-    fuelType: c.fuel_type || 'petrol',
-    seats: Number(c.seats || 5),
-    ownership: c.ownership || 'company',
-    ownerId: c.owner_id || (c.ownership === 'company' ? 'owner-1' : undefined),
-    ownerName: c.owner_name || (c.ownership === 'company' ? 'شركة يمن الخليج (أسطول الشركة)' : undefined),
-    ownerCompensationType: c.owner_compensation_type,
-    ownerAgreedRateEGP: c.owner_agreed_rate_egp ? Number(c.owner_agreed_rate_egp) : undefined,
-    features: Array.isArray(c.features) ? c.features : [],
-    insuranceExpiryDate: c.insurance_expiry_date,
-  }), []);
+  const mapCloudCar = mapCloudCarRow;
 
   const addCar = async (newCarData: Omit<Car, 'id'>): Promise<boolean> => {
     const newCar: Car = {
@@ -58,7 +30,19 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       id: `car-${Date.now()}`,
     };
     try {
+      validateCarOffers(newCar);
+      const tiers = validateRentalPriceTiers(newCar.rentalPriceTiers ?? []);
+      const featuresToSave = [...(newCar.features || [])].filter((f) => typeof f === 'string' && !f.startsWith('__discount_price:') && !f.startsWith('__min_rental_days:'));
+      if (newCar.originalDailyPriceEGP && newCar.originalDailyPriceEGP > newCar.dailyPriceEGP) {
+        featuresToSave.push(`__discount_price:${newCar.originalDailyPriceEGP}`);
+      }
+      const minDays = Number(newCar.minRentalDays) || 1;
+      if (minDays > 1) {
+        featuresToSave.push(`__min_rental_days:${minDays}`);
+      }
+
       const { error } = await supabase.from('cars').insert({
+        ...(tiers.length ? { rental_price_tiers: tiers } : {}),
         id: newCar.id,
         car_code: newCar.carCode || null,
         make: newCar.make,
@@ -75,12 +59,13 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
         contract_end_date: newCar.contractEndDate || null,
         license_expiry_date: newCar.licenseExpiryDate || null,
         license_renewal_date: newCar.licenseRenewalDate || null,
+        insurance_expiry_date: newCar.insuranceExpiryDate || null,
         next_service_km: newCar.nextServiceKm ? Number(newCar.nextServiceKm) : null,
         next_service_date: newCar.nextServiceDate || null,
         service_responsible_party: newCar.serviceResponsibleParty || 'company',
         daily_price_egp: Number(newCar.dailyPriceEGP),
-        weekly_price_egp: newCar.weeklyPriceEGP ? Number(newCar.weeklyPriceEGP) : null,
-        monthly_price_egp: newCar.monthlyPriceEGP ? Number(newCar.monthlyPriceEGP) : null,
+        weekly_price_egp: newCar.weeklyPriceEGP != null ? Number(newCar.weeklyPriceEGP) : null,
+        monthly_price_egp: newCar.monthlyPriceEGP != null ? Number(newCar.monthlyPriceEGP) : null,
         security_deposit_egp: Number(newCar.securityDepositEGP || 0),
         status: newCar.status || 'available',
         images: newCar.images || ['/car-mercedes.jpg'],
@@ -93,12 +78,12 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
         owner_name: newCar.ownerName || (newCar.ownership === 'company' ? 'شركة يمن الخليج (أسطول الشركة)' : null),
         owner_compensation_type: newCar.ownerCompensationType || null,
         owner_agreed_rate_egp: newCar.ownerAgreedRateEGP ? Number(newCar.ownerAgreedRateEGP) : null,
-        features: newCar.features || [],
+        features: featuresToSave,
       });
       if (error) throw error;
     } catch (e) {
       console.warn('Cloud car insert failed:', e);
-      reportFleetWriteError('تعذرت إضافة السيارة إلى قاعدة البيانات؛ لم تُحفظ. تحقق من الاتصال والصلاحيات ثم أعد المحاولة.');
+      reportFleetWriteError(carWriteMessage(e, 'تعذرت إضافة السيارة إلى قاعدة البيانات؛ لم تُحفظ. تحقق من الاتصال والصلاحيات ثم أعد المحاولة.'));
       return false;
     }
 
@@ -112,8 +97,15 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       reportFleetWriteError('استخدم إجراء الأرشفة أو الإعادة من الأرشيف؛ تغيير حالة التشغيل لا يلغي الحجوزات.');
       return false;
     }
+    let savedCar: Car;
     try {
+      const current = cars.find(car => car.id === id);
+      if (current) validateCarOffers({ ...current, ...partial });
       const payload: Record<string, unknown> = {};
+      if (partial.rentalPriceTiers !== undefined) {
+        const tiers = validateRentalPriceTiers(partial.rentalPriceTiers);
+        if (tiers.length || cars.find(car => car.id === id)?.rentalPriceTiers?.length) payload.rental_price_tiers = tiers;
+      }
       if (partial.carCode !== undefined) payload.car_code = partial.carCode;
       if (partial.make !== undefined) payload.make = partial.make;
       if (partial.model !== undefined) payload.model = partial.model;
@@ -143,7 +135,24 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       if (partial.transmission !== undefined) payload.transmission = partial.transmission;
       if (partial.fuelType !== undefined) payload.fuel_type = partial.fuelType;
       if (partial.seats !== undefined) payload.seats = partial.seats;
-      if (partial.features !== undefined) payload.features = partial.features;
+
+      if (partial.features !== undefined || partial.originalDailyPriceEGP !== undefined || partial.minRentalDays !== undefined) {
+        const currentCar = cars.find((c) => c.id === id);
+        const baseFeatures = partial.features !== undefined ? partial.features : (currentCar?.features || []);
+        const cleanFeatures = baseFeatures.filter((f: string) => typeof f === 'string' && !f.startsWith('__discount_price:') && !f.startsWith('__min_rental_days:'));
+        const origPrice = partial.originalDailyPriceEGP !== undefined ? partial.originalDailyPriceEGP : currentCar?.originalDailyPriceEGP;
+        const dailyPrice = partial.dailyPriceEGP !== undefined ? partial.dailyPriceEGP : (currentCar?.dailyPriceEGP || 0);
+        const minDays = partial.minRentalDays !== undefined ? Number(partial.minRentalDays) : (currentCar?.minRentalDays || 1);
+
+        if (origPrice && origPrice > dailyPrice) {
+          cleanFeatures.push(`__discount_price:${origPrice}`);
+        }
+        if (minDays > 1) {
+          cleanFeatures.push(`__min_rental_days:${minDays}`);
+        }
+        payload.features = cleanFeatures;
+      }
+
       if (partial.ownership !== undefined) payload.ownership = partial.ownership;
       if (partial.ownerId !== undefined) payload.owner_id = partial.ownerId && partial.ownerId.trim() !== '' ? partial.ownerId : null;
       if (partial.ownerName !== undefined) payload.owner_name = partial.ownerName;
@@ -151,16 +160,17 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
       if (partial.ownerAgreedRateEGP !== undefined) payload.owner_agreed_rate_egp = partial.ownerAgreedRateEGP;
 
       if (!Object.keys(payload).length) return true;
-      const { data, error } = await supabase.from('cars').update(payload).eq('id', id).select('id');
+      const { data, error } = await supabase.from('cars').update(payload).eq('id', id).select('*').maybeSingle();
       if (error) throw error;
-      if (!data?.length) throw new Error('CAR_NOT_FOUND');
+      if (!data) throw new Error('CAR_NOT_FOUND');
+      savedCar = mapCloudCar(data);
     } catch (error) {
       console.warn('Cloud car update failed:', error);
-      reportFleetWriteError('تعذر حفظ تعديل السيارة في قاعدة البيانات؛ لم يُعتمد التغيير.');
+      reportFleetWriteError(carWriteMessage(error, 'تعذر حفظ تعديل السيارة في قاعدة البيانات؛ لم يُعتمد التغيير.'));
       return false;
     }
 
-    setCars((prev) => prev.map((c) => (c.id === id ? { ...c, ...partial } : c)));
+    setCars((prev) => prev.map((c) => (c.id === id ? savedCar : c)));
     logAction('تعديل سيارة', `تم تحديث بيانات السيارة ID: ${id}`);
     return true;
   };
@@ -184,6 +194,17 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
     return true;
   };
 
+  const saveCarOrder = async (ids: string[]) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('انتهت جلسة الدخول. سجل الدخول مجددًا.');
+    const response = await fetch('/api/admin/cars/order', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ ids }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'تعذر حفظ ترتيب العرض.');
+    const positions = new Map(ids.map((id,index) => [id,index]));
+    setCars(previous => previous.map(car => positions.has(car.id) ? { ...car, displayOrder: positions.get(car.id) } : car));
+    logAction('ترتيب عرض السيارات', 'تم حفظ ترتيب السيارات في موقع الزوار');
+  };
+
   return {
     cars,
     setCars,
@@ -192,5 +213,6 @@ export function useFleetCars({ logAction }: UseFleetCarsProps) {
     updateCar,
     deleteCar,
     setCarArchived,
+    saveCarOrder,
   };
 }

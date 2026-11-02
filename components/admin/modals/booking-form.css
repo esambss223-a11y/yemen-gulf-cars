@@ -21,7 +21,7 @@
 .fleet-dialog-eyebrow { color: #89724b; font-size: 11px; font-weight: 750; }
 .fleet-dialog-header h2 { color: var(--fleet-ink); font-size: 24px; font-weight: 850; line-height: 1.6; outline: none; }
 .fleet-dialog-header p { color: var(--fleet-muted); font-size: 12px; line-height: 1.8; }
-.fleet-dialog-logo { width: 126px; height: 58px; object-fit: contain; padding: 8px; border-radius: 11px; background: var(--fleet-ink); }
+.fleet-dialog-logo { width: 50px; height: 50px; object-fit: contain; }
 .admin-ui .fleet-dialog .fleet-dialog-close { width: 46px; min-height: 46px; flex-shrink: 0; border: 1px solid var(--fleet-line); background: var(--fleet-field); border-radius: 11px; display: grid; place-items: center; color: var(--fleet-muted); }
 .fleet-booking-form { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .fleet-booking-scroll { min-height: 0; min-width: 0; margin: 0; border: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 24px; }
@@ -33,6 +33,22 @@
 .fleet-booking-section-heading h3 { color: var(--fleet-ink); font-size: 16px; line-height: 1.6; font-weight: 800; }
 .fleet-booking-section-heading p { color: var(--fleet-muted); font-size: 12px; line-height: 1.9; margin-top: 3px; }
 .fleet-booking-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.fleet-booking-section-fields { display:grid; gap:16px; min-width:0; }
+.fleet-booking-step { border:0; padding:0; margin:0; min-width:0; display:grid; gap:16px; }
+.fleet-booking-step[hidden] { display:none !important; }
+.fleet-booking-steps { display:flex; gap:8px; padding:12px 24px; flex-shrink:0; border-bottom:1px solid var(--fleet-line); background:var(--fleet-surface); }
+.fleet-booking-steps button { display:flex; align-items:center; justify-content:center; gap:8px; flex:1; min-width:0; min-height:46px; padding:7px; border:1px solid var(--fleet-line); border-radius:10px; color:var(--fleet-muted); font-size:12px; font-weight:750; }
+.fleet-booking-steps button span { display:grid; place-items:center; width:24px; height:24px; border-radius:50%; background:var(--fleet-field); flex-shrink:0; }
+.fleet-booking-steps button[aria-current=step] { color:var(--fleet-ink); border-color:var(--fleet-gold); background:#faf4e9; }
+.fleet-booking-steps button:disabled { opacity:.65; }
+.fleet-booking-review { display:grid; gap:12px; margin:0; }
+.fleet-booking-review > div { display:grid; grid-template-columns:85px minmax(0,1fr); gap:10px; }
+.fleet-booking-review dt { color:var(--fleet-muted); font-size:12px; }
+.fleet-booking-review dd { margin:0; font-size:14px; font-weight:700; overflow-wrap:anywhere; }
+.fleet-booking-review-note { font-size:12px; line-height:1.9; padding:12px; border-radius:10px; background:#faf4e9; margin-top:16px; }
+.fleet-booking-optional > summary { min-height:48px; padding:12px; cursor:pointer; border:1px solid var(--fleet-line); border-radius:10px; font-weight:750; font-size:13px; background:var(--fleet-surface); }
+.fleet-booking-optional[open] > summary { margin-bottom:12px; }
+@media(max-width:540px) { .fleet-booking-steps { padding:10px 12px; gap:6px; } .fleet-booking-steps button { flex-direction:column; gap:4px; font-size:11px; } }
 .fleet-booking-field { display: block; min-width: 0; }
 .fleet-booking-field > span { display: block; font-size: 12px; line-height: 1.8; color: #40586b; font-weight: 750; margin-bottom: 7px; }
 .fleet-booking-field.is-wide { grid-column: 1 / -1; }
@@ -62,6 +78,8 @@
 .admin-ui .fleet-dialog input[type=checkbox] { width: 19px; height: 19px; min-height: 19px; flex-shrink: 0; accent-color: var(--fleet-ink); }
 .admin-ui .fleet-dialog .fleet-booking-button { min-height: 46px; display: inline-flex; justify-content: center; align-items: center; gap: 7px; padding: 10px 14px; border-radius: 10px; border: 1px solid #cdd8e1; background: var(--fleet-field); color: #344b5e; font-family: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
 .admin-ui .fleet-dialog .fleet-booking-button.is-primary { background: var(--fleet-ink); border-color: var(--fleet-ink); color: white; }
+.admin-ui .fleet-dialog .fleet-booking-button.is-whatsapp { background: #128c7e; border-color: #075e54; color: white; text-decoration: none; }
+.admin-ui .fleet-dialog .fleet-booking-button.is-whatsapp:hover { background: #075e54; }
 .fleet-dialog button:disabled { opacity: .5; cursor: not-allowed; }
 .fleet-booking-promo-entry { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 9px; }
 .fleet-booking-coupons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
@@ -121,3 +139,47 @@
 @media (max-width: 360px) {
   .fleet-booking-dates { grid-template-columns: minmax(0,1fr); }
 }
+
+
+/* Smart Duration Selector & Fast Office Controls */
+.fleet-booking-duration-card { margin-bottom: 18px; padding: 16px; background: #fbfcfd; border: 1px solid var(--fleet-line); border-radius: 14px; }
+.fleet-booking-duration-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.fleet-booking-duration-header strong { font-size: 14px; color: var(--fleet-ink); }
+.fleet-booking-stepper { display: inline-flex; align-items: center; background: white; border: 1px solid #cdd8e1; border-radius: 10px; padding: 2px; }
+.fleet-stepper-btn { width: 36px; height: 36px; border: none; background: #f0f4f7; color: var(--fleet-ink); font-size: 18px; font-weight: 800; border-radius: 8px; cursor: pointer; display: grid; place-items: center; transition: background 150ms; }
+.fleet-stepper-btn:hover:not(:disabled) { background: #e2eaf0; }
+.fleet-stepper-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.fleet-stepper-val { display: flex; align-items: center; gap: 4px; padding: 0 10px; }
+.fleet-stepper-val input { width: 50px !important; min-height: 36px !important; padding: 2px 4px !important; text-align: center; border: none !important; font-weight: 800 !important; font-size: 16px !important; background: transparent !important; }
+.fleet-stepper-val span { font-size: 12px; font-weight: 750; color: var(--fleet-muted); }
+.fleet-booking-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.fleet-preset-chip { padding: 6px 11px; border-radius: 8px; border: 1px solid #d4dfe7; background: white; color: #435b6e; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 160ms; }
+.fleet-preset-chip:hover { background: #f0f4f8; border-color: #b5c7d5; }
+.fleet-preset-chip.is-active { background: var(--fleet-ink); color: #ead4a7; border-color: var(--fleet-ink); box-shadow: 0 2px 5px rgba(20, 38, 56, 0.15); }
+.fleet-duration-summary-pill { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #faf4e9; border: 1px solid #eadbc2; border-radius: 10px; font-size: 12px; color: #7b5d2e; flex-wrap: wrap; }
+.fleet-duration-summary-pill strong { color: #142638; font-weight: 800; direction: ltr; display: inline-block; }
+.fleet-duration-summary-pill small { color: #927546; font-weight: 700; margin-inline-start: auto; }
+.fleet-step-switch-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #f0f5f9; border: 1px solid #d0dce5; border-radius: 9px; font-size: 12px; font-weight: 750; color: #2b455b; cursor: pointer; margin-bottom: 14px; transition: all 150ms; }
+.fleet-step-switch-btn:hover { background: #e2ecf3; color: #142638; }
+.fleet-fuel-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.fleet-fuel-pill { padding: 6px 12px; font-size: 12px; font-weight: 750; border-radius: 8px; border: 1px solid #d4dfe7; background: white; color: #435b6e; cursor: pointer; }
+.fleet-fuel-pill.is-active { background: #bc9553; border-color: #9f7b3b; color: white; }
+.fleet-booking-summary .is-handover-total { border-top: 2px dashed rgba(255, 255, 255, 0.3); margin-top: 14px; padding-top: 14px; }
+.fleet-booking-summary .is-handover-total dt { color: #ead4a7; font-weight: 800; }
+.fleet-booking-summary .is-handover-total dd { color: #f7e6c4; font-size: 24px; font-weight: 900; }
+
+/* Input Masking, Name Validation & Fast Skip */
+.fleet-phone-field { display: flex; align-items: stretch; gap: 6px; }
+.fleet-country-badge { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 48px; padding: 0 11px; background: #eef3f7; border: 1px solid #cdd8e1; border-radius: 10px; font-size: 13px; font-weight: 800; color: #1e3347; direction: ltr; }
+.fleet-field-helper { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; line-height: 1.6; margin-top: 5px; font-weight: 600; }
+.fleet-field-helper.is-warning { color: #b45309; }
+.fleet-field-helper.is-success { color: #15803d; }
+.fleet-field-helper.is-info { color: #64748b; }
+.fleet-fast-skip-card { margin-top: 20px; padding: 14px 16px; background: #fbf7ef; border: 1px dashed #d8be8a; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.fleet-fast-skip-card p { font-size: 12px; color: #785a2b; margin: 0; line-height: 1.8; }
+.fleet-fast-skip-card strong { color: #142638; display: block; font-size: 13px; }
+.fleet-fast-skip-btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; background: #142638; color: #f5eedf; border: 1px solid #142638; border-radius: 9px; font-size: 12px; font-weight: 800; cursor: pointer; transition: all 160ms; }
+.fleet-fast-skip-btn:hover { background: #223f5c; color: white; transform: translateY(-1px); }
+
+.fleet-country-select { flex-shrink: 0; width: auto !important; min-width: 120px !important; min-height: 48px !important; padding: 6px 10px !important; font-size: 13px !important; font-weight: 750 !important; background: #eef3f7 !important; border: 1px solid #cdd8e1 !important; border-radius: 10px !important; color: #1e3347 !important; cursor: pointer; }
+.fleet-step-badge-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #142638; color: white; font-size: 11px; font-weight: 800; margin-inline-end: 6px; }

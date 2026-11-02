@@ -4,7 +4,7 @@
  */
 
 // 1. أدوار وصلاحيات الموظفين
-export type UserRole = 'super_admin' | 'rental_agent' | 'accountant';
+export type UserRole = 'super_admin' | 'rental_agent' | 'accountant' | 'fleet_entry';
 
 export interface StaffUser {
   id: string;
@@ -40,6 +40,7 @@ export interface VehicleOwner {
 }
 
 export interface Car {
+  displayOrder?: number;
   id: string;
   carCode?: string;           // كود العربية التسلسلي (مثلا: YG-001)
   make: string;               // الماركة مثلا: Mercedes-Benz
@@ -60,9 +61,12 @@ export interface Car {
   nextServiceDate?: string;   // موعد الصيانة الدورية القادمة بالتاريخ (يدوي)
   serviceResponsibleParty?: 'company' | 'owner'; // المسؤول عن تكاليف الصيانة
   dailyPriceEGP: number;      // سعر اليوم بالجنيه المصري
+  originalDailyPriceEGP?: number; // السعر الأصلي قبل الخصم بالجنيه المصري
+  rentalPriceTiers?: { days: number; totalEGP: number; originalTotalEGP?: number }[];
   weeklyPriceEGP?: number;    // سعر الأسبوع بالجنيه المصري
   monthlyPriceEGP?: number;   // سعر الشهر بالجنيه المصري
   securityDepositEGP: number; // مبلغ التأمين المسترد بالجنيه المصري
+  minRentalDays?: number;     // أقل مدة تأجير بالأيام (مثلاً: 2 أو 3 أيام)
   status: CarStatus;          // حالة السيارة الحالية
   images: string[];           // مصفوفة روابط الصور المتعددة
   coverImage: string;         // الصورة الرئيسية
@@ -91,6 +95,10 @@ export interface Customer {
   whatsapp?: string;
   nationalId: string;       // الرقم القومي أو جواز السفر
   licenseNumber: string;    // رقم رخصة القيادة
+  address?: string;         // عنوان السكن / المنزل
+  workAddress?: string;     // عنوان العمل
+  governorate?: string;     // المحافظة
+  secondaryPhone?: string;  // هاتف إضافي / طوارئ
   source?: CustomerSource;  // مصدر التسجيل: الموقع أو المكتب
   nationality?: string;     // الجنسية: مصري، سعودي، كويتي، إماراتي، إلخ
   tier?: CustomerTier;      // تصنيف العميل: VIP ذهبي / فضي / عادي / قائمة سوداء
@@ -104,6 +112,20 @@ export interface Customer {
   totalRentalsCount?: number; // إجمالي عدد الحجوزات المكتملة
   totalSpentEGP?: number;   // إجمالي المبالغ المدفوعة بالجنيه
   notes?: string;           // ملاحظات سلوك العميل وتفضيلاته
+  idIssuer?: string;        // جهة إصدار الهوية
+  licenseType?: string;     // نوع رخصة القيادة (خاصة، مهنية، دولية)
+  licenseIssuer?: string;   // جهة إصدار رخصة القيادة
+  licenseIssuedAt?: string; // تاريخ إصدار رخصة القيادة
+  licenseExpiresAt?: string;// تاريخ انتهاء رخصة القيادة
+  driverName?: string;      // اسم السائق الإضافي
+  driverPhone?: string;     // هاتف السائق الإضافي
+  driverNationalId?: string;// هوية السائق الإضافي
+  driverLicenseNumber?: string; // رخصة السائق الإضافي
+  driverAddress?: string;   // عنوان السائق
+  driverLicenseType?: string;   // نوع رخصة السائق
+  driverLicenseIssuer?: string; // جهة إصدار رخصة السائق
+  driverLicenseIssuedAt?: string; // تاريخ إصدار رخصة السائق
+  driverLicenseExpiresAt?: string;// تاريخ انتهاء رخصة السائق
   idPhotoUrl?: string;      // صورة البطاقة / الجواز إن وجدت
   licensePhotoUrl?: string; // صورة الرخصة إن وجدت
   identityVerified?: boolean;
@@ -128,6 +150,7 @@ export interface BookingReviewInput {
 }
 
 export interface Booking {
+  contractRecord?: import('@/lib/rental-contract').ContractRecord;
   id: string;                 // رقم الحجز التعريفي
   bookingNumber: string;       // رقم تسلسلي للعقد مثلا: BK-2026-001
   carId: string;

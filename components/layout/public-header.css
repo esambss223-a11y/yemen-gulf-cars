@@ -1,0 +1,479 @@
+/* =========================================================================
+   PUBLIC HEADER — PRESTIGE AUTOMOTIVE EDITORIAL ARCHITECTURE
+   Overhanging Crest Emblem, Pure Floating Editorial Navigation,
+   Rich Saturated Gold Booking Button (#d0b483), Zero Generic AI Patterns.
+   ========================================================================= */
+
+.public-site-header {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  color: #fff;
+  transition: 
+    background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    backdrop-filter 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    -webkit-backdrop-filter 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.4s ease,
+    box-shadow 0.4s ease;
+  user-select: none;
+}
+
+/* 1. Seamless Frameless Glass above the Hero */
+.public-site-header.is-over-hero {
+  background: linear-gradient(180deg, rgba(7, 18, 30, 0.78) 0%, rgba(7, 18, 30, 0.25) 70%, transparent 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 2. Deep Royal Navy Solid Glass when Scrolled */
+.public-site-header.is-solid,
+.public-site-header.is-menu-open {
+  background: rgba(9, 21, 34, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(208, 180, 131, 0.3);
+  box-shadow: 0 14px 35px -8px rgba(4, 10, 18, 0.6);
+}
+
+/* 3. Header Inner Container */
+.public-header-inner {
+  width: min(1280px, 100% - 64px);
+  height: 82px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  position: relative;
+  transition: height 0.3s ease;
+}
+
+.public-site-header.is-solid .public-header-inner {
+  height: 72px;
+}
+
+/* 4. Brand Section & Overhanging Crest Emblem (اللوجو البارز المتدلي) */
+.public-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: right;
+  cursor: pointer;
+  min-width: 0;
+  text-decoration: none;
+  position: relative;
+}
+
+/* The Crest Container that projects beyond the bottom of the header */
+.public-header-crest {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  margin-top: 18px; /* Breaks and hangs outside the header baseline */
+  flex-shrink: 0;
+  filter: 
+    drop-shadow(0 10px 22px rgba(0, 0, 0, 0.7))
+    drop-shadow(0 2px 8px rgba(208, 180, 131, 0.3));
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.3s ease, height 0.3s ease, margin-top 0.3s ease;
+}
+
+.public-header-brand:hover .public-header-crest {
+  transform: translateY(-2px) scale(1.05);
+}
+
+.public-site-header.is-solid .public-header-crest {
+  width: 66px;
+  height: 66px;
+  margin-top: 12px;
+}
+
+.public-header-crest-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.public-brand-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.public-brand-name strong {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.public-brand-name small {
+  font-size: 10px;
+  font-weight: 800;
+  color: #DDBD80;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 5. Pure Editorial Navigation Links (بدون كبسولات ولا علامات مصطنعة) */
+.public-header-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  background: transparent;
+  padding: 0;
+  border: 0;
+}
+
+.public-nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 0;
+  background: none;
+  border: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.22s ease;
+}
+
+.public-nav-link:hover {
+  color: #DDBD80;
+}
+
+.public-nav-link.is-active {
+  color: #DDBD80;
+  font-weight: 800;
+}
+
+/* Clean Golden Underline Indicator */
+.public-nav-indicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: #d0b483;
+  border-radius: 9999px;
+  transform: scaleX(0);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 8px rgba(208, 180, 131, 0.6);
+}
+
+.public-nav-link:hover .public-nav-indicator,
+.public-nav-link.is-active .public-nav-indicator {
+  transform: scaleX(1);
+}
+
+/* 6. Action Area & Rich Luxury Booking Button (زر الحجز الذهبي المشبع) */
+.public-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.public-header-book {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 22px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: linear-gradient(135deg, #ddc18f 0%, #d0b483 50%, #be9752 100%);
+  color: #07121e !important;
+  font-size: 12.5px;
+  font-weight: 900;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: 
+    0 4px 18px rgba(208, 180, 131, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+  letter-spacing: -0.01em;
+}
+
+.public-header-book:hover {
+  background: linear-gradient(135deg, #e8d0a5 0%, #dbbf8e 50%, #caa45d 100%);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 26px rgba(208, 180, 131, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.public-header-book:active {
+  transform: translateY(0);
+}
+
+.public-header-book-arrow {
+  transition: transform 0.2s ease;
+  color: #07121e;
+}
+
+.public-header-book:hover .public-header-book-arrow {
+  transform: translate(-2px, -2px);
+}
+
+/* 7. Mobile Menu Button */
+.public-header-menu-button {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.public-header-menu-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(208, 180, 131, 0.4);
+}
+
+/* 8. Mobile Navigation Drawer (Luxury Glass Card) */
+.public-mobile-navigation {
+  display: none;
+}
+
+@media (max-width: 1040px) {
+  .public-header-inner {
+    width: min(100% - 36px, 1280px);
+  }
+
+  .public-header-links {
+    display: none;
+  }
+
+  .public-header-menu-button {
+    display: flex;
+  }
+
+  .public-header-crest {
+    width: 62px;
+    height: 62px;
+    margin-top: 10px;
+  }
+
+  .public-site-header.is-solid .public-header-crest {
+    width: 56px;
+    height: 56px;
+    margin-top: 8px;
+  }
+
+  .public-mobile-navigation {
+    display: block;
+    background: rgba(9, 21, 34, 0.98);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border-top: 1px solid rgba(208, 180, 131, 0.3);
+    padding: 22px max(20px, calc((100vw - 1280px) / 2)) 30px;
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.7);
+    max-height: calc(100dvh - 82px);
+    overflow-y: auto;
+    animation: fadeInDown 0.25s ease-out;
+  }
+
+  .public-mobile-navigation-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .public-mobile-badge {
+    color: #DDBD80;
+    background: rgba(208, 180, 131, 0.15);
+    border: 1px solid rgba(208, 180, 131, 0.35);
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .public-mobile-navigation nav {
+    margin: 14px 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .public-mobile-navigation nav button {
+    width: 100%;
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    border-radius: 14px;
+    background: transparent;
+    border: 0;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .public-mobile-navigation nav button:hover,
+  .public-mobile-navigation nav button.is-active {
+    background: rgba(208, 180, 131, 0.12);
+    color: #DDBD80;
+  }
+
+  .public-mobile-index {
+    font-size: 11px;
+    font-weight: 700;
+    color: #DDBD80;
+    font-family: monospace;
+    margin-left: 14px;
+  }
+
+  .public-mobile-label {
+    flex: 1;
+    text-align: right;
+  }
+
+  .public-mobile-arrow {
+    color: rgba(255, 255, 255, 0.35);
+    transition: transform 0.2s ease;
+  }
+
+  .public-mobile-navigation nav button:hover .public-mobile-arrow {
+    transform: translateX(-4px);
+    color: #DDBD80;
+  }
+
+  /* Quick action buttons in mobile drawer */
+  .public-mobile-quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .public-mobile-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 14px;
+    border-radius: 14px;
+    font-size: 12.5px;
+    font-weight: 800;
+    text-decoration: none;
+    transition: transform 0.2s ease;
+  }
+
+  .public-mobile-action-btn.is-whatsapp {
+    background: #059669;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+  }
+
+  .public-mobile-action-btn.is-phone {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+  }
+
+  .public-mobile-navigation-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .public-mobile-navigation-bottom a {
+    color: #DDBD80;
+    font-weight: 800;
+    text-decoration: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .public-header-inner {
+    width: calc(100% - 24px);
+    height: 72px;
+    gap: 10px;
+  }
+
+  .public-site-header.is-solid .public-header-inner {
+    height: 66px;
+  }
+
+  .public-header-crest {
+    width: 52px;
+    height: 52px;
+    margin-top: 8px;
+  }
+
+  .public-site-header.is-solid .public-header-crest {
+    width: 48px;
+    height: 48px;
+    margin-top: 6px;
+  }
+
+  .public-brand-name strong {
+    font-size: 13.5px;
+  }
+
+  .public-brand-name small {
+    font-size: 8.5px;
+  }
+
+  .public-header-book {
+    min-height: 40px;
+    padding: 0 15px;
+    font-size: 11.5px;
+    gap: 6px;
+  }
+
+  .public-header-menu-button {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 380px) {
+  .public-brand-name small {
+    display: none;
+  }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-site-header,
+  .public-header-book,
+  .public-nav-link,
+  .public-nav-indicator,
+  .public-header-crest {
+    transition: none !important;
+  }
+}

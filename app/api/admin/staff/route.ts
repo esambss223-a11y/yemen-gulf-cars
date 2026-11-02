@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authorizeStaffRequest } from '@/lib/server/staff-auth';
 
 const STAFF_FIELDS = 'id, name, username, role, phone, active, created_at';
-const VALID_ROLES = new Set(['super_admin', 'rental_agent', 'accountant']);
+const VALID_ROLES = new Set(['super_admin', 'rental_agent', 'accountant', 'fleet_entry']);
 
 function describeAuthCreateError(error: { code?: string; status?: number; message?: string }) {
   const code = error.code || 'AUTH_CREATE_FAILED';

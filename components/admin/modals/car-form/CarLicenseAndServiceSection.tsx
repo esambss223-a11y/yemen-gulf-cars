@@ -19,8 +19,8 @@ export default function CarLicenseAndServiceSection({
         <Shield className="w-3.5 h-3.5 text-amber-400" /> التراخيص، مدة التعاقد، والصيانة الدورية:
       </span>
 
-      {/* سطر 1: رخصة السيارة وموعد التجديد */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      {/* سطر 1: رخصة السيارة، موعد التجديد، والتأمين */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <div className="bg-[#0b1322] p-2.5 rounded-lg border border-slate-800">
           <label className="block text-slate-300 text-[10px] font-semibold mb-1">تاريخ انتهاء رخصة السيارة:</label>
           <input
@@ -32,11 +32,21 @@ export default function CarLicenseAndServiceSection({
         </div>
 
         <div className="bg-[#0b1322] p-2.5 rounded-lg border border-slate-800">
-          <label className="block text-slate-300 text-[10px] font-semibold mb-1">موعد تجديد الرخصة وفحص المرور:</label>
+          <label className="block text-slate-300 text-[10px] font-semibold mb-1">موعد فحص المرور والتجديد:</label>
           <input
             type="date"
             value={carForm.licenseRenewalDate || ''}
             onChange={(e) => setCarForm({ ...carForm, licenseRenewalDate: e.target.value })}
+            className="w-full bg-[#070d19] border border-slate-700 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:outline-none focus:border-[#c5a059]"
+          />
+        </div>
+
+        <div className="bg-[#0b1322] p-2.5 rounded-lg border border-slate-800">
+          <label className="block text-slate-300 text-[10px] font-semibold mb-1">تاريخ انتهاء وثيقة التأمين:</label>
+          <input
+            type="date"
+            value={carForm.insuranceExpiryDate || ''}
+            onChange={(e) => setCarForm({ ...carForm, insuranceExpiryDate: e.target.value })}
             className="w-full bg-[#070d19] border border-slate-700 rounded-lg px-2.5 py-1 text-white text-xs font-mono focus:outline-none focus:border-[#c5a059]"
           />
         </div>

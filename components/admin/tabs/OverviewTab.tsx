@@ -12,10 +12,14 @@ import {
   CheckCircle2, 
   BarChart2,
   ShieldCheck,
-  Eye
+  Eye,
+  Activity,
+  ArrowUpRight
 } from 'lucide-react';
 import { Booking, Car, StaffUser, VisitorStats } from '@/types/fleet';
 import { AdminTab } from '@/components/admin/AdminSidebar';
+import FleetAlertsBanner from './FleetAlertsBanner';
+import OverviewAnalytics from './OverviewAnalytics';
 
 interface OverviewTabProps {
   totalCars: number;
@@ -104,87 +108,175 @@ export default function OverviewTab({
   }, []);
 
   return (
-    <div className="admin-overview space-y-6 font-arabic text-slate-800">
+    <div className="admin-section admin-overview space-y-6 font-arabic text-slate-800 animate-fadeIn">
 
       {/* ========================================================
           1. الترويسة الذكية الهادئة: ترحيب أنيق + مؤشرات النشاط اللحظي
           ======================================================== */}
-      <div className="admin-overview-heading">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
         
         {/* الترحيب بالموظف والتاريخ */}
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200/60 px-2.5 py-0.5 rounded-full font-bold">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs text-amber-800 bg-amber-50 border border-amber-200/60 px-2.5 py-0.5 rounded-full font-bold">
               {currentStaff.name}
             </span>
             <span className="text-xs text-slate-400">•</span>
             <span className="text-xs font-mono text-slate-500">{formattedTodayDate}</span>
           </div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-            لوحة العمليات
-          </h2>
+          <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+            مركز العمليات والتشغيل اليومي
+          </h1>
         </div>
 
         {/* كبسولة نشاط المنصة وزوار الموقع (هادئة ومدمجة بدون وميض) */}
-        <div className="admin-visitors text-xs">
-          
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200/60 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-slate-500">زوار آخر 5 دقائق:</span>
-            <strong className="font-mono font-bold text-slate-900">{visitorStats?.available ? visitorStats.liveNow.toLocaleString() : '—'}</strong>
+            <strong className="font-mono font-bold text-slate-900">
+              {visitorStats?.available ? visitorStats.liveNow.toLocaleString() : '—'}
+            </strong>
           </div>
 
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200/60 shadow-2xs">
-            <Calendar className="w-3.5 h-3.5 text-blue-600" />
-            <span className="text-slate-500">زوار اليوم:</span>
-            <strong className="font-mono font-bold text-slate-900">{visitorStats?.available ? visitorStats.today.toLocaleString() : '—'}</strong>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <Calendar className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-slate-500">اليوم:</span>
+            <strong className="font-mono font-bold text-slate-900">
+              {visitorStats?.available ? visitorStats.today.toLocaleString() : '—'}
+            </strong>
           </div>
 
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200/60 shadow-2xs">
-            <Users className="w-3.5 h-3.5 text-amber-600" />
-            <span className="text-slate-500">إجمالي الزوار:</span>
-            <strong className="font-mono font-bold text-slate-900">{visitorStats?.available ? visitorStats.total.toLocaleString() : '—'}</strong>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <Users className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-slate-500">الإجمالي:</span>
+            <strong className="font-mono font-bold text-slate-900">
+              {visitorStats?.available ? visitorStats.total.toLocaleString() : '—'}
+            </strong>
           </div>
-
         </div>
 
       </div>
 
-      <section className="admin-metric-grid" aria-label="مؤشرات التشغيل">
-        <div className="admin-fleet-feature">
-          <div className="admin-fleet-copy">
-            <span className="admin-eyebrow"><CarIcon size={16} /> أسطولك اليوم</span>
-            <div className="admin-fleet-number">{availableCars}<span>سيارة متاحة بالمعرض</span></div>
-            <span className="admin-utilization">{fleetUtilizationRate}% نسبة تشغيل الأسطول</span>
+      {/* ========================================================
+          2. شبكة المؤشرات الرئيسية (Executive Metric Grid)
+          ======================================================== */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4" aria-label="مؤشرات التشغيل">
+        
+        {/* بطاقة الأسطول والتشغيل */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <CarIcon className="w-4 h-4 text-slate-600" />
+                <span>أسطول اليوم</span>
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                {fleetUtilizationRate}% نسبة التشغيل
+              </span>
+            </div>
+
+            <div className="my-2">
+              <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono tracking-tight">
+                {availableCars}
+              </div>
+              <span className="text-xs text-slate-500 mt-0.5 block">سيارة متاحة للتأجير الفوري بالمعرض</span>
+            </div>
+
+            {/* شريط نسبة التشغيل */}
+            <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
+              <div 
+                className="bg-slate-900 h-1.5 rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, Math.max(5, fleetUtilizationRate))}%` }}
+              />
+            </div>
           </div>
-          <div className="admin-fleet-photo">
-            <Image src="/admin-fleet-suv.png" alt="" fill sizes="(max-width: 640px) 52vw, 400px" className="object-contain" />
-          </div>
-          <div className="admin-fleet-breakdown">
-            <span><i className="admin-status-dot" />متاحة <strong>{availableCars}</strong></span>
-            <span>مؤجرة <strong>{rentedCars}</strong></span>
-            <span>إجمالي الأسطول <strong>{totalCars}</strong></span>
+
+          <div className="flex items-center justify-between pt-3 mt-4 border-t border-slate-100 text-xs text-slate-600">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>متاحة: <strong className="text-slate-900 font-mono">{availableCars}</strong></span>
+            </div>
+            <div>مؤجرة: <strong className="text-slate-900 font-mono">{rentedCars}</strong></div>
+            <div>إجمالي: <strong className="text-slate-900 font-mono">{totalCars}</strong></div>
           </div>
         </div>
-        <div className="admin-revenue-feature">
-          <span className="admin-eyebrow"><Wallet size={17} /> إجمالي الإيرادات التعاقدية</span>
-          <div className="admin-revenue-number">{currentStaff.role === 'rental_agent' ? '••••••' : (totalRevenueEGP / 1000).toFixed(0)}
-            {currentStaff.role !== 'rental_agent' && <small>ألف ج.م</small>}
+
+        {/* بطاقة الإيرادات التعاقدية */}
+        <div className="bg-slate-900 text-white rounded-2xl border border-slate-800 p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <Wallet className="w-4 h-4 text-amber-400" />
+                <span>إجمالي الإيرادات التعاقدية</span>
+              </span>
+              <span className="text-[10px] font-mono text-amber-300 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-md">
+                ج.م
+              </span>
+            </div>
+
+            <div className="my-2">
+              <div className="text-3xl sm:text-4xl font-black text-white font-mono tracking-tight">
+                {currentStaff.role === 'rental_agent' ? '••••••' : (totalRevenueEGP / 1000).toFixed(0)}
+                {currentStaff.role !== 'rental_agent' && (
+                  <span className="text-xs font-normal text-slate-400 mr-2">ألف ج.م</span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">إجمالي المبالغ التعاقدية المسجلة بالمنظومة</p>
+            </div>
           </div>
-          <p>الإيراد المسجل في النظام · الجنيه المصري</p>
-          <div className="admin-revenue-details">
-            <div><Calendar size={19} /><span><strong>{activeBookings.length}</strong>عقد جاري</span></div>
-            <div><Users size={19} /><span><strong>{customersCount}</strong>عميل مسجل</span></div>
-            <button onClick={() => setActiveTab('bookings')}>عرض العقود <ChevronLeft size={16} /></button>
+
+          <div className="relative z-10 flex items-center justify-between pt-3 mt-4 border-t border-slate-800 text-xs">
+            <div className="flex items-center gap-3 text-slate-300">
+              <span>عقود جارية: <strong className="text-white font-mono">{activeBookings.length}</strong></span>
+              <span>عملاء: <strong className="text-white font-mono">{customersCount}</strong></span>
+            </div>
+            <button 
+              onClick={() => setActiveTab('bookings')}
+              className="text-amber-400 hover:text-amber-300 font-semibold inline-flex items-center gap-0.5 text-xs transition-colors"
+            >
+              <span>العقود</span>
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
-        <div className="admin-deposits-feature">
-          <span className="admin-eyebrow"><ShieldCheck size={18} /> كفالات التأمين المحجوزة</span>
-          <strong>{(totalHeldDepositsEGP / 1000).toFixed(0)}<small> ألف ج.م</small></strong>
-          <span>تسترد عند فحص الإرجاع</span>
-          <span className="admin-deposits-badge"><ShieldCheck size={14} /> مؤمنة بالكامل</span>
+
+        {/* بطاقة كفالات التأمين المحجوزة */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>كفالات التأمين المحجوزة</span>
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span>مؤمنة بالكامل</span>
+              </span>
+            </div>
+
+            <div className="my-2">
+              <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono tracking-tight">
+                {(totalHeldDepositsEGP / 1000).toFixed(0)}
+                <span className="text-xs font-normal text-slate-500 mr-2">ألف ج.م</span>
+              </div>
+              <span className="text-xs text-slate-500 mt-0.5 block">ودائع أمانات محتجزة تسترد عند الفحص والإرجاع</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-3 mt-4 border-t border-slate-100 text-xs text-slate-500">
+            <span>تصفية فورية عند استلام المركبة</span>
+            <span className="font-mono text-[11px] text-slate-400">حسابات بنكية / كاش</span>
+          </div>
         </div>
+
       </section>
+
+      {/* تنبيهات جاهزية الأسطول والصيانة */}
+      <FleetAlertsBanner cars={cars} setActiveTab={setActiveTab} />
+
+      {/* الرسوم البيانية التفاعلية وتحليل الإيرادات */}
+      <OverviewAnalytics cars={cars} bookings={bookings} currentStaff={currentStaff} />
 
       {/* ========================================================
           3. مركز التشغيل الرئيسي المنظم (2-Column Operating Center)
@@ -194,16 +286,16 @@ export default function OverviewTab({
         {/* الجانب الرئيسي (8 أعمدة): جدول تشغيلي ذكي ونظيف */}
         <div className="lg:col-span-8 space-y-4">
           
-          <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
+          <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
             
             {/* أزرار التبديل الذكية بين السيارات المؤجرة بالشارع وأحدث الحجوزات */}
             <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setActiveView('active_fleet')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeView === 'active_fleet'
-                      ? 'bg-[#081225] text-amber-400 shadow-xs'
+                      ? 'bg-slate-900 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
@@ -211,9 +303,9 @@ export default function OverviewTab({
                 </button>
                 <button
                   onClick={() => setActiveView('recent_bookings')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeView === 'recent_bookings'
-                      ? 'bg-[#081225] text-amber-400 shadow-xs'
+                      ? 'bg-slate-900 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
@@ -223,7 +315,7 @@ export default function OverviewTab({
 
               <button 
                 onClick={() => setActiveTab('bookings')}
-                className="text-xs text-slate-500 hover:text-slate-800 font-bold flex items-center gap-1 cursor-pointer"
+                className="text-xs text-slate-600 hover:text-slate-900 font-bold flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <span>سجل العقود الكامل</span>
                 <ChevronLeft className="w-3.5 h-3.5" />
@@ -274,10 +366,10 @@ export default function OverviewTab({
 
                           <button
                             onClick={() => onReturnCar(bk)}
-                            className="px-3 py-1.5 rounded-xl bg-[#081225] hover:bg-[#0c1a35] text-amber-400 hover:text-amber-300 font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                            className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
                             title="استلام السيارة وإنهاء العقد وإدخال العداد النهائي"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                             <span>استلام وفحص</span>
                           </button>
                         </div>
@@ -309,7 +401,7 @@ export default function OverviewTab({
                         onClick={() => onOpenContract ? onOpenContract(bk) : null}
                         className="hover:bg-slate-50/80 transition-colors cursor-pointer"
                       >
-                        <td className="py-3 pr-5 font-mono font-bold text-amber-700">#{bk.bookingNumber}</td>
+                        <td className="py-3 pr-5 font-mono font-bold text-amber-800">#{bk.bookingNumber}</td>
                         <td className="py-3 font-bold text-slate-900">{bk.customer.fullName}</td>
                         <td className="py-3 text-slate-700">{bk.carName}</td>
                         <td className="py-3 font-mono text-[11px] text-slate-500">
@@ -342,15 +434,15 @@ export default function OverviewTab({
         {/* الجانب الأيسر (4 أعمدة): ملخص اليوم الفاخر + الأكثر طلباً */}
         <div className="lg:col-span-4 space-y-4">
           
-          {/* بطاقة ملخص اليوم الفاخرة (Dark Navy Luxury Card) */}
-          <div className="bg-[#081225] text-white rounded-2xl p-5 shadow-sm border border-slate-800 flex flex-col justify-between">
+          {/* بطاقة ملخص اليوم الفاخرة (Slate 900 Executive Card) */}
+          <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-sm border border-slate-800 flex flex-col justify-between">
             
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h4 className="text-sm font-bold flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-amber-400" />
+                <BarChart2 className="w-4 h-4 text-emerald-400" />
                 <span>ملخص اليوم التشغيلي</span>
               </h4>
-              <span className="text-[10px] font-mono bg-white/10 text-amber-300 px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-mono bg-white/10 text-emerald-300 px-2 py-0.5 rounded-md">
                 مباشر
               </span>
             </div>
@@ -358,7 +450,7 @@ export default function OverviewTab({
             <div className="space-y-3 my-4 text-xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-slate-300">
-                  <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
                   <span>حجوزات تبدأ اليوم</span>
                 </div>
                 <span className="font-mono font-bold text-white text-sm">{todaySummary.newBookings}</span>
@@ -366,7 +458,7 @@ export default function OverviewTab({
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-slate-300">
-                  <CarIcon className="w-3.5 h-3.5 text-blue-400" />
+                  <CarIcon className="w-3.5 h-3.5 text-slate-400" />
                   <span>السيارات المؤجرة</span>
                 </div>
                 <span className="font-mono font-bold text-white text-sm">{todaySummary.rentedCars}</span>
@@ -377,7 +469,9 @@ export default function OverviewTab({
                   <Eye className="w-3.5 h-3.5 text-emerald-400" />
                   <span>زوار الموقع اليوم</span>
                 </div>
-                <span className="font-mono font-bold text-white text-sm">{visitorStats?.available ? visitorStats.today : '—'}</span>
+                <span className="font-mono font-bold text-white text-sm">
+                  {visitorStats?.available ? visitorStats.today : '—'}
+                </span>
               </div>
 
               <div className="flex items-center justify-between pt-2.5 border-t border-white/10">
@@ -396,7 +490,7 @@ export default function OverviewTab({
             {/* زر إضافة حجز جديد المباشر */}
             <button
               onClick={onOpenAddBooking}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>إضافة حجز جديد</span>
@@ -405,12 +499,12 @@ export default function OverviewTab({
           </div>
 
           {/* السيارات الأكثر طلباً (Top Cars) */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
               <h4 className="text-xs font-bold text-slate-800">السيارات الأكثر طلباً</h4>
               <button 
                 onClick={() => setActiveTab('cars')}
-                className="text-[11px] text-amber-700 font-bold hover:underline"
+                className="text-[11px] text-slate-500 hover:text-slate-900 font-bold hover:underline transition-colors"
               >
                 الأحدث
               </button>

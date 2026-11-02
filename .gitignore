@@ -47,3 +47,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Temporary scratch files and experiment outputs
+/.tmp/
+/output/
+*.bak
+*-bak.*
+*.tmp
+*.zip
+
+# Raw design experiments, mockups and drafts (not for GitHub)
+/public/design cars/
+/public/preview-fonts/
+/public/*-preview.html
+/public/visitor-vision.*
+/public/logonew-original-bak.png
+__pycache__/
+*.pyc
+

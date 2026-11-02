@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS public.cars (
   owner_compensation_type TEXT DEFAULT 'fixed_monthly',
   owner_agreed_rate_egp NUMERIC DEFAULT 0,
   features JSONB DEFAULT '["مكيف فائق", "مقاعد جلد فاخرة"]'::jsonb,
+  display_order INTEGER,
   insurance_expiry_date TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -189,7 +190,7 @@ CREATE TABLE IF NOT EXISTS public.staff (
 CREATE TABLE IF NOT EXISTS public.permission_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   staff_id UUID NOT NULL REFERENCES public.staff(id) ON DELETE CASCADE,
-  requested_role TEXT NOT NULL CHECK (requested_role IN ('super_admin', 'rental_agent', 'accountant')),
+  requested_role TEXT NOT NULL CHECK (requested_role IN ('super_admin', 'rental_agent', 'accountant', 'fleet_entry')),
   reason TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   reviewed_by UUID REFERENCES public.staff(id) ON DELETE SET NULL,
@@ -310,7 +311,7 @@ CREATE POLICY "Staff read own profile" ON public.staff
 REVOKE SELECT (plate_number, ownership) ON TABLE public.cars FROM PUBLIC, anon;
 GRANT SELECT (id, make, model, year, category, color, current_km,
   daily_price_egp, weekly_price_egp, monthly_price_egp, security_deposit_egp,
-  status, images, cover_image, transmission, fuel_type, seats, features)
+  status, images, cover_image, transmission, fuel_type, seats, features, display_order)
   ON TABLE public.cars TO anon;
 GRANT INSERT (page_path, device_type, session_id) ON TABLE public.site_visits TO anon;
 
@@ -318,14 +319,14 @@ CREATE POLICY "Public read available cars" ON public.cars
   FOR SELECT TO anon USING (status = 'available');
 CREATE POLICY "Staff read cars" ON public.cars
   FOR SELECT TO authenticated
-  USING (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
-CREATE POLICY "Managers create cars" ON public.cars
+  USING (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant', 'fleet_entry']));
+CREATE POLICY "Fleet entry and managers create cars" ON public.cars
   FOR INSERT TO authenticated
-  WITH CHECK (public.has_staff_role(ARRAY['super_admin']));
-CREATE POLICY "Managers update cars" ON public.cars
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'fleet_entry']));
+CREATE POLICY "Fleet entry and managers update cars" ON public.cars
   FOR UPDATE TO authenticated
-  USING (public.has_staff_role(ARRAY['super_admin']))
-  WITH CHECK (public.has_staff_role(ARRAY['super_admin']));
+  USING (public.has_staff_role(ARRAY['super_admin', 'fleet_entry']))
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'fleet_entry']));
 CREATE POLICY "Managers delete cars" ON public.cars
   FOR DELETE TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
 
@@ -353,9 +354,9 @@ CREATE POLICY "Staff update customers" ON public.customers
   WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent']));
 CREATE POLICY "Managers delete customers" ON public.customers
   FOR DELETE TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
-CREATE POLICY "Accountants and managers read owners" ON public.owners
+CREATE POLICY "Managers read owners" ON public.owners
   FOR SELECT TO authenticated
-  USING (public.has_staff_role(ARRAY['super_admin', 'accountant']));
+  USING (public.has_staff_role(ARRAY['super_admin']));
 CREATE POLICY "Managers create owners" ON public.owners
   FOR INSERT TO authenticated WITH CHECK (public.has_staff_role(ARRAY['super_admin']));
 CREATE POLICY "Managers update owners" ON public.owners
@@ -396,7 +397,7 @@ CREATE POLICY "Managers read audit logs" ON public.audit_logs
   FOR SELECT TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
 CREATE POLICY "Staff append audit logs" ON public.audit_logs
   FOR INSERT TO authenticated
-  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant', 'fleet_entry']));
 
 CREATE POLICY "Managers read site visits" ON public.site_visits
   FOR SELECT TO authenticated USING (public.has_staff_role(ARRAY['super_admin']));
@@ -404,7 +405,7 @@ CREATE POLICY "Public append site visits" ON public.site_visits
   FOR INSERT TO anon WITH CHECK (length(session_id) BETWEEN 8 AND 128);
 CREATE POLICY "Staff append site visits" ON public.site_visits
   FOR INSERT TO authenticated
-  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant']));
+  WITH CHECK (public.has_staff_role(ARRAY['super_admin', 'rental_agent', 'accountant', 'fleet_entry']));
 
 -- ========================================================
 -- بيانات أولية افتراضية للمشروع (Seed Data)
@@ -594,5 +595,25 @@ REVOKE ALL ON FUNCTION public.review_permission_request(UUID, TEXT, UUID)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.review_permission_request(UUID, TEXT, UUID)
   TO service_role;
+
+-- حفظ ترتيب ظهور أسطول السيارات في موقع الزوار
+CREATE OR REPLACE FUNCTION public.fleet_save_car_order(p_ids text[])
+RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
+DECLARE current_ids text[];
+BEGIN
+  PERFORM pg_advisory_xact_lock(731031);
+  PERFORM id FROM public.cars ORDER BY id FOR UPDATE;
+  SELECT coalesce(array_agg(id ORDER BY id), '{}'::text[]) INTO current_ids FROM public.cars WHERE status <> 'archived';
+  IF p_ids IS NULL OR cardinality(p_ids) > 2000 OR
+    cardinality(p_ids) <> (SELECT count(DISTINCT x) FROM unnest(p_ids) x) OR
+    current_ids IS DISTINCT FROM (SELECT coalesce(array_agg(x ORDER BY x), '{}'::text[]) FROM unnest(p_ids) x)
+  THEN RAISE EXCEPTION 'FLEET_CHANGED'; END IF;
+  UPDATE public.cars c SET display_order = (o.position - 1)::integer
+    FROM unnest(p_ids) WITH ORDINALITY AS o(id, position) WHERE c.id = o.id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.fleet_save_car_order(text[]) FROM public, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fleet_save_car_order(text[]) TO service_role;
 
 COMMIT;

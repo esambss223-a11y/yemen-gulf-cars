@@ -1,27 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { 
-  Tag, 
-  Plus, 
-  Sparkles, 
-  Copy, 
-  Check, 
-  Calendar, 
-  CheckCircle2, 
-  XCircle, 
-  Percent, 
-  DollarSign, 
-  Edit3, 
-  Trash2, 
-  Power, 
-  Search, 
-  Clock, 
-  Users, 
-  TrendingUp, 
-  AlertTriangle,
-  X
-} from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Tag, Plus, Copy, Check, Pencil, Trash2, Search, X, LayoutGrid, List } from 'lucide-react';
 import { PromoCoupon, StaffUser } from '@/types/fleet';
 
 interface CouponsTabProps {
@@ -35,7 +16,6 @@ interface CouponsTabProps {
 
 export default function CouponsTab({
   coupons,
-  currentStaff,
   onAddCoupon,
   onUpdateCoupon,
   onToggleActive,
@@ -43,28 +23,29 @@ export default function CouponsTab({
 }: CouponsTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  // حالة النافذة المنبثقة (إنشاء أو تعديل)
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<PromoCoupon | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // حقول النموذج
+  // Form Fields
   const [formCode, setFormCode] = useState('');
   const [formDiscountType, setFormDiscountType] = useState<'percentage' | 'fixed_egp'>('percentage');
-  const [formDiscountValue, setFormDiscountValue] = useState<number>(10);
+  const [formDiscountValue, setFormDiscountValue] = useState<number>(15);
   const [formExpiresAt, setFormExpiresAt] = useState<string>('2026-12-31');
   const [formMaxUsage, setFormMaxUsage] = useState<number>(100);
 
-  // إحصائيات سريعة
-  const totalCount = coupons.length;
-  const activeCount = coupons.filter(c => c.active).length;
-  const totalRedeemed = coupons.reduce((sum, c) => sum + (c.usedCount || 0), 0);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  // تصفية الأكواد
+  // Filtered List
   const filteredCoupons = useMemo(() => {
-    return coupons.filter(c => {
+    return coupons.filter((c) => {
       const matchStatus = 
         statusFilter === 'all' ? true :
         statusFilter === 'active' ? c.active : !c.active;
@@ -78,37 +59,27 @@ export default function CouponsTab({
     });
   }, [coupons, statusFilter, searchTerm]);
 
-  // نسخ الكود للحافظة
+  // Copy with feedback
   const handleCopy = (code: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(code);
       setCopiedCode(code);
-      setTimeout(() => setCopiedCode(null), 2000);
+      setTimeout(() => setCopiedCode(null), 1800);
     }
   };
 
-  // توليد رمز عشوائي فخم
-  const generateRandomCode = () => {
-    const prefixes = ['GULF', 'VIP', 'YEMEN', 'LUX', 'ROYAL', 'CAR'];
-    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const num = Math.floor(Math.random() * 899) + 100;
-    setFormCode(`${prefix}${num}`);
-  };
-
-  // فتح نافذة إنشاء كود جديد
   const handleOpenCreate = () => {
     setEditingCoupon(null);
-    setFormCode('');
+    setFormCode('GULF' + Math.floor(Math.random() * 899 + 100));
     setFormDiscountType('percentage');
     setFormDiscountValue(15);
-    const date3Months = new Date();
-    date3Months.setMonth(date3Months.getMonth() + 3);
-    setFormExpiresAt(date3Months.toISOString().split('T')[0]);
+    const d = new Date();
+    d.setMonth(d.getMonth() + 3);
+    setFormExpiresAt(d.toISOString().split('T')[0]);
     setFormMaxUsage(100);
     setIsModalOpen(true);
   };
 
-  // فتح نافذة تعديل كود موجود
   const handleOpenEdit = (c: PromoCoupon) => {
     setEditingCoupon(c);
     setFormCode(c.code);
@@ -119,18 +90,11 @@ export default function CouponsTab({
     setIsModalOpen(true);
   };
 
-  // حفظ الكود
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = formCode.trim().toUpperCase();
-    if (!cleanCode) {
-      alert('يرجى إدخال رمز كود الخصم');
-      return;
-    }
-    if (formDiscountValue <= 0) {
-      alert('قيمة الخصم يجب أن تكون أكبر من صفر');
-      return;
-    }
+    if (!cleanCode) return alert('يرجى إدخال رمز الكود');
+    if (formDiscountValue <= 0) return alert('قيمة الخصم يجب أن تكون أكبر من صفر');
 
     setIsSubmitting(true);
     try {
@@ -154,393 +118,383 @@ export default function CouponsTab({
       }
       setIsModalOpen(false);
     } catch (err: any) {
-      alert(err.message || 'حدث خطأ أثناء حفظ كود الخصم');
+      alert(err.message || 'حدث خطأ أثناء حفظ الكود');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // تأكيد الحذف
   const handleDelete = async (id: string, code: string) => {
-    if (confirm(`هل أنت متأكد من رغبتك في حذف كود الخصم "${code}" نهائياً؟`)) {
+    if (confirm(`حذف كود الخصم "${code}" نهائياً؟`)) {
       try {
         await onDeleteCoupon(id);
       } catch (err: any) {
-        alert(err.message || 'تعذر حذف كود الخصم');
+        alert(err.message || 'تعذر الحذف');
       }
     }
   };
 
-  const handleToggleActive = async (id: string) => {
-    try {
-      await onToggleActive(id);
-    } catch (err: any) {
-      alert(err.message || 'تعذر تغيير حالة كود الخصم');
-    }
-  };
+  // Modal Dialog
+  const modalJSX = isModalOpen ? (
+    <div 
+      className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-arabic text-xs"
+      dir="rtl"
+      onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}
+    >
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+          <span className="font-bold text-sm">
+            {editingCoupon ? `تعديل الكود: ${editingCoupon.code}` : 'إضافة كود خصم جديد'}
+          </span>
+          <button 
+            type="button" 
+            onClick={() => setIsModalOpen(false)}
+            className="text-slate-400 hover:text-white"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-3">
+          <div>
+            <label className="block text-slate-700 font-bold mb-1 text-[11px]">رمز الكود *</label>
+            <input
+              type="text"
+              required
+              value={formCode}
+              onChange={(e) => setFormCode(e.target.value.toUpperCase())}
+              placeholder="GULF20"
+              className="w-full h-8 px-2.5 rounded-lg border border-slate-200 font-mono font-bold tracking-wider uppercase text-slate-900 focus:outline-none focus:border-slate-900"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1 text-[11px]">نوع الخصم</label>
+              <select
+                value={formDiscountType}
+                onChange={(e) => setFormDiscountType(e.target.value as any)}
+                className="w-full h-8 px-2 rounded-lg border border-slate-200 font-bold text-slate-800 focus:outline-none focus:border-slate-900"
+              >
+                <option value="percentage">نسبة مئوية (%)</option>
+                <option value="fixed_egp">مبلغ ثابت (ج.م)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1 text-[11px]">
+                {formDiscountType === 'percentage' ? 'النسبة (%) *' : 'المبلغ (ج.م) *'}
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={formDiscountType === 'percentage' ? 100 : 100000}
+                required
+                value={formDiscountValue}
+                onChange={(e) => setFormDiscountValue(Number(e.target.value))}
+                className="w-full h-8 px-2.5 rounded-lg border border-slate-200 font-mono font-bold text-slate-900 focus:outline-none focus:border-slate-900"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1 text-[11px]">تاريخ الانتهاء *</label>
+              <input
+                type="date"
+                required
+                value={formExpiresAt}
+                onChange={(e) => setFormExpiresAt(e.target.value)}
+                className="w-full h-8 px-2 rounded-lg border border-slate-200 font-mono text-slate-900 focus:outline-none focus:border-slate-900"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1 text-[11px]">أقصى استخدام *</label>
+              <input
+                type="number"
+                min={1}
+                max={10000}
+                required
+                value={formMaxUsage}
+                onChange={(e) => setFormMaxUsage(Number(e.target.value))}
+                className="w-full h-8 px-2.5 rounded-lg border border-slate-200 font-mono font-bold text-slate-900 focus:outline-none focus:border-slate-900"
+              />
+            </div>
+          </div>
+
+          <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold"
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold"
+            >
+              {isSubmitting ? 'جارٍ الحفظ...' : 'حفظ'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  ) : null;
 
   return (
-    <div className="admin-section admin-section-coupons space-y-4 animate-fadeIn font-arabic">
-      
-      {/* 1. الترويسة الرئيسية + الإحصائيات الفورية */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-          <div>
-            <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
-              <Tag className="w-5 h-5 text-amber-500" /> إدارة العروض وأكواد الخصم الترويجية (Promo Codes)
-            </h4>
-            <p className="text-xs text-slate-500 mt-0.5">
-              توليد أكواد الخصم لعملائك المميزين، التحكم بصلاحيتها، تفعيلها أو تعطيلها بنقرة واحدة
-            </p>
+    <div className="admin-section space-y-3 font-arabic text-slate-800 animate-fadeIn">
+      {mounted && typeof document !== 'undefined' && modalJSX && createPortal(modalJSX, document.body)}
+
+      {/* 1. Integrated Single-Line Header Bar */}
+      <div className="bg-white border border-slate-200 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
+        
+        {/* Right: Section Name & Status Filter Pills */}
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-slate-900 text-sm whitespace-nowrap pl-2 border-l border-slate-200">
+            أكواد الخصم
+          </span>
+
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`px-2.5 py-1 rounded-md transition-all ${
+                statusFilter === 'all' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              الكل ({coupons.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('active')}
+              className={`px-2.5 py-1 rounded-md transition-all ${
+                statusFilter === 'active' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              النشطة ({coupons.filter(c => c.active).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('inactive')}
+              className={`px-2.5 py-1 rounded-md transition-all ${
+                statusFilter === 'inactive' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              المعطلة ({coupons.filter(c => !c.active).length})
+            </button>
+          </div>
+        </div>
+
+        {/* Left: Search, Layout Toggle & Create Button */}
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="بحث بالكود أو القيمة..."
+              className="w-40 sm:w-52 h-8 pr-7 pl-6 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-900 focus:bg-white"
+            />
+            {searchTerm && (
+              <button 
+                type="button" 
+                onClick={() => setSearchTerm('')} 
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md ${viewMode === 'grid' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500'}`}
+              title="بطاقات"
+            >
+              <LayoutGrid size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-md ${viewMode === 'table' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500'}`}
+              title="جدول"
+            >
+              <List size={14} />
+            </button>
           </div>
 
           <button
+            type="button"
             onClick={handleOpenCreate}
-            className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs inline-flex items-center gap-1.5 shadow-2xs"
           >
-            <Plus className="w-4 h-4" /> إنشاء وتوليد كود خصم جديد
+            <Plus size={14} />
+            <span>كود جديد</span>
           </button>
         </div>
 
-        {/* الكروت الإحصائية الثلاثية */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between">
-            <div>
-              <span className="text-xs text-slate-500 block">إجمالي الأكواد المسجلة</span>
-              <strong className="text-xl font-black text-slate-900 font-mono mt-0.5 block">{totalCount} أكواد</strong>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
-              <Tag className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80 flex items-center justify-between">
-            <div>
-              <span className="text-xs text-emerald-800 block font-bold">الأكواد النشطة والجاهزة</span>
-              <strong className="text-xl font-black text-emerald-900 font-mono mt-0.5 block">{activeCount} كود نشط</strong>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="p-3.5 bg-blue-50/70 rounded-xl border border-blue-200/80 flex items-center justify-between">
-            <div>
-              <span className="text-xs text-blue-800 block font-bold">مرات الاستخدام الفعلية</span>
-              <strong className="text-xl font-black text-blue-900 font-mono mt-0.5 block">{totalRedeemed} مرة</strong>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* 2. شريط البحث والتصفية */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ابحث برمز الكود أو قيمة الخصم..."
-            className="w-full pl-4 pr-10 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-xs bg-slate-50/60 font-arabic"
-          />
+      {/* 2. Coupons Content (Data-First) */}
+      {filteredCoupons.length === 0 ? (
+        <div className="p-8 text-center bg-white border border-slate-200 rounded-xl text-slate-500 text-xs">
+          لا توجد أكواد مطابقة للبحث
+        </div>
+      ) : viewMode === 'grid' ? (
+        
+        /* Clean Cards Grid */
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5">
+          {filteredCoupons.map((cp) => {
+            const isExpired = Boolean(cp.expiresAt && new Date(cp.expiresAt).getTime() < new Date().getTime());
+            const percentUsed = Math.min(100, Math.round(((cp.usedCount || 0) / (cp.maxUsage || 100)) * 100));
+
+            return (
+              <div 
+                key={cp.id}
+                className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-between hover:border-slate-300 transition-colors"
+              >
+                <div className="space-y-2.5">
+                  {/* Code & Toggle */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900 text-white tracking-wider">
+                        {cp.code}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(cp.code)}
+                        className="p-1 text-slate-400 hover:text-slate-700 rounded"
+                        title="نسخ"
+                      >
+                        {copiedCode === cp.code ? <Check size={12} className="text-slate-900" /> : <Copy size={12} />}
+                      </button>
+                    </div>
+
+                    {/* Instant Switch */}
+                    <button
+                      type="button"
+                      onClick={() => void onToggleActive(cp.id)}
+                      className={`relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ${
+                        cp.active && !isExpired ? 'bg-slate-900' : 'bg-slate-200'
+                      }`}
+                      title={cp.active ? 'نشط' : 'معطل'}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs transition duration-200 ${
+                          cp.active && !isExpired ? '-translate-x-3' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Value & Expiry */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-lg p-2 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">الخصم</span>
+                      <strong className="text-slate-900 font-mono text-sm">
+                        {cp.discountType === 'percentage' ? `${cp.discountValue}%` : `${cp.discountValue.toLocaleString('ar-EG')} ج.م`}
+                      </strong>
+                    </div>
+                    <div className="text-left font-mono text-[11px] text-slate-500">
+                      <span className="text-[10px] text-slate-400 block font-sans">الصلاحية</span>
+                      <span className={isExpired ? 'text-slate-900 font-bold' : ''}>
+                        {cp.expiresAt || 'دائم'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Usage Meter */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                      <span>استخدم: {cp.usedCount || 0} / {cp.maxUsage}</span>
+                      <span>{percentUsed}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                      <div className="bg-slate-900 h-full rounded-full" style={{ width: `${percentUsed}%` }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">
+                    {isExpired ? 'منتهي' : cp.active ? 'نشط' : 'معطل'}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(cp)}
+                      className="p-1 text-slate-500 hover:text-slate-900 rounded"
+                      title="تعديل"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(cp.id, cp.code)}
+                      className="p-1 text-slate-400 hover:text-slate-700 rounded"
+                      title="حذف"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
-            }`}
-          >
-            الكل ({totalCount})
-          </button>
-          <button
-            onClick={() => setStatusFilter('active')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'active' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800'
-            }`}
-          >
-            النشطة فقط ({activeCount})
-          </button>
-          <button
-            onClick={() => setStatusFilter('inactive')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'inactive' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-800'
-            }`}
-          >
-            المعطلة ({totalCount - activeCount})
-          </button>
-        </div>
-      </div>
+      ) : (
 
-      {/* 3. جدول الأكواد الاحترافي */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
-        <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-right text-xs">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold">
-                <th className="py-3.5 pr-4">رمز الكود (Promo Code)</th>
-                <th className="py-3.5">نوع وقيمة الخصم</th>
-                <th className="py-3.5">تاريخ الانتهاء</th>
-                <th className="py-3.5">معدل الاستخدام</th>
-                <th className="py-3.5">الحالة والصلاحية</th>
-                <th className="py-3.5 pl-4 text-center">التحكم والإجراءات</th>
+        /* Clean Compact Table */
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden text-xs">
+          <table className="w-full text-right">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
+              <tr>
+                <th className="py-2.5 px-3">الكود</th>
+                <th className="py-2.5 px-3">الخصم</th>
+                <th className="py-2.5 px-3">الاستخدام</th>
+                <th className="py-2.5 px-3">الانتهاء</th>
+                <th className="py-2.5 px-3 text-center">الحالة</th>
+                <th className="py-2.5 px-3 text-left">إجراءات</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredCoupons.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
-                    لا توجد أكواد خصم تطابق بحثك حالياً
+            <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+              {filteredCoupons.map((cp) => (
+                <tr key={cp.id} className="hover:bg-slate-50/60">
+                  <td className="py-2 px-3 font-bold text-slate-900">{cp.code}</td>
+                  <td className="py-2 px-3 text-slate-900">
+                    {cp.discountType === 'percentage' ? `${cp.discountValue}%` : `${cp.discountValue} ج.م`}
+                  </td>
+                  <td className="py-2 px-3 text-slate-600">{cp.usedCount || 0} / {cp.maxUsage}</td>
+                  <td className="py-2 px-3 text-slate-600">{cp.expiresAt || '—'}</td>
+                  <td className="py-2 px-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => void onToggleActive(cp.id)}
+                      className={`relative inline-flex h-3.5 w-6 cursor-pointer rounded-full border border-transparent transition-colors ${
+                        cp.active ? 'bg-slate-900' : 'bg-slate-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white transition ${cp.active ? '-translate-x-2.5' : 'translate-x-0'}`} />
+                    </button>
+                  </td>
+                  <td className="py-2 px-3 text-left">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => handleOpenEdit(cp)} className="p-1 text-slate-500 hover:text-slate-900"><Pencil size={12} /></button>
+                      <button onClick={() => handleDelete(cp.id, cp.code)} className="p-1 text-slate-400 hover:text-slate-700"><Trash2 size={12} /></button>
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                filteredCoupons.map((cp) => {
-                  const isExpired = new Date(cp.expiresAt).getTime() < new Date().getTime();
-                  const percentUsed = Math.min(100, Math.round(((cp.usedCount || 0) / (cp.maxUsage || 100)) * 100));
-
-                  return (
-                    <tr key={cp.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* رمز الكود + زر النسخ */}
-                      <td className="py-3.5 pr-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-black px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200/90 tracking-wider">
-                            {cp.code}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(cp.code)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                            title="نسخ الكود لمشاركته مع العميل"
-                          >
-                            {copiedCode === cp.code ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* نوع وقيمة الخصم */}
-                      <td className="py-3.5">
-                        {cp.discountType === 'percentage' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-900 border border-purple-200 font-mono">
-                            <Percent className="w-3 h-3 text-purple-600" /> خصم {cp.discountValue}% من الإجمالي
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-900 border border-blue-200 font-mono">
-                            <DollarSign className="w-3 h-3 text-blue-600" /> خصم ثابت {cp.discountValue.toLocaleString()} ج.م
-                          </span>
-                        )}
-                      </td>
-
-                      {/* تاريخ الانتهاء */}
-                      <td className="py-3.5">
-                        <div className="font-mono text-xs font-medium text-slate-800 flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{cp.expiresAt || 'مفتوح'}</span>
-                        </div>
-                        {isExpired && (
-                          <span className="text-[10px] text-rose-600 font-bold block mt-0.5">منتهي الصلاحية</span>
-                        )}
-                      </td>
-
-                      {/* معدل الاستخدام */}
-                      <td className="py-3.5">
-                        <div className="w-32">
-                          <div className="flex justify-between text-[10px] font-mono mb-1 text-slate-600 font-bold">
-                            <span>{cp.usedCount || 0} استخدام</span>
-                            <span className="text-slate-400">الحد: {cp.maxUsage}</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                            <div 
-                              className={`h-full rounded-full ${percentUsed >= 100 ? 'bg-rose-500' : 'bg-amber-500'}`}
-                              style={{ width: `${percentUsed}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* الحالة ومفتاح التفعيل المباشر */}
-                      <td className="py-3.5">
-                        <button
-                          type="button"
-                          onClick={() => void handleToggleActive(cp.id)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-all ${
-                            cp.active && !isExpired
-                              ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200 border border-emerald-300'
-                              : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                          }`}
-                          title="اضغط للتفعيل أو الإيقاف الفوري"
-                        >
-                          <span className={`w-2 h-2 rounded-full ${cp.active && !isExpired ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                          <span>{cp.active && !isExpired ? 'مفعل وجاهز' : 'معطل مؤقتاً'}</span>
-                        </button>
-                      </td>
-
-                      {/* الإجراءات: تعديل وحذف */}
-                      <td className="py-3.5 pl-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(cp)}
-                            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-amber-700 transition-colors cursor-pointer border border-slate-200"
-                            title="تعديل قيمة أو تاريخ الكود"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(cp.id, cp.code)}
-                            className="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer border border-rose-200"
-                            title="حذف كود الخصم نهائياً"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+              ))}
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* 4. نافذة منبثقة: توليد / إنشاء أو تعديل كود الخصم */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-arabic">
-          <div className="bg-[#0b1324] border border-[#c5a059]/40 rounded-2xl w-full max-w-lg p-5 sm:p-6 space-y-4 shadow-2xl my-auto animate-scaleUp">
-            
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Tag className="w-5 h-5 text-amber-400" />
-                <h3 className="text-base font-bold text-white">
-                  {editingCoupon ? `تعديل كود الخصم: ${editingCoupon.code}` : 'توليد وإنشاء كود خصم جديد'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-              
-              {/* رمز الكود + زر التوليد التلقائي */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-slate-300 font-semibold">رمز كود الخصم (بالحروف الإنجليزية) *</label>
-                  {!editingCoupon && (
-                    <button
-                      type="button"
-                      onClick={generateRandomCode}
-                      className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" /> توليد رمز تلقائي
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={formCode}
-                  onChange={(e) => setFormCode(e.target.value.toUpperCase())}
-                  placeholder="مثال: GULF2026 أو SUMMER15"
-                  className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-400 text-sm font-mono tracking-widest uppercase font-bold"
-                />
-              </div>
-
-              {/* نوع وقيمة الخصم */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">نوع الخصم:</label>
-                  <select
-                    value={formDiscountType}
-                    onChange={(e) => setFormDiscountType(e.target.value as any)}
-                    className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs"
-                  >
-                    <option value="percentage">نسبة مئوية (%)</option>
-                    <option value="fixed_egp">مبلغ مقطوع ثابت (ج.م)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">
-                    {formDiscountType === 'percentage' ? 'نسبة الخصم (%):' : 'مبلغ الخصم (ج.م):'}
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={formDiscountType === 'percentage' ? 100 : 100000}
-                    required
-                    value={formDiscountValue}
-                    onChange={(e) => setFormDiscountValue(Number(e.target.value))}
-                    className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono font-bold"
-                  />
-                </div>
-              </div>
-
-              {/* تاريخ الانتهاء والحد الأقصى */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">تاريخ انتهاء الصلاحية:</label>
-                  <input
-                    type="date"
-                    required
-                    value={formExpiresAt}
-                    onChange={(e) => setFormExpiresAt(e.target.value)}
-                    className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">الحد الأقصى لمرات الاستخدام:</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10000}
-                    required
-                    value={formMaxUsage}
-                    onChange={(e) => setFormMaxUsage(Number(e.target.value))}
-                    className="w-full bg-[#0e172a] border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400 text-xs font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* أزرار الإجراء */}
-              <div className="pt-3 border-t border-slate-800 flex justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold cursor-pointer transition-colors"
-                >
-                  إلغاء
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/20 cursor-pointer transition-all disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{editingCoupon ? 'حفظ التعديلات' : 'تفعيل ونشر الكود فوراً'}</span>
-                </button>
-              </div>
-
-            </form>
-          </div>
-        </div>
       )}
 
     </div>

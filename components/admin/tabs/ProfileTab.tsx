@@ -1,8 +1,27 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { User, Crown, Briefcase, Calculator, Phone, Calendar, ShieldCheck, Clock,
-  CheckCircle2, TrendingUp, KeyRound, Edit3, Save, LogOut, Activity } from 'lucide-react';
+import { 
+  User, 
+  Crown, 
+  Briefcase, 
+  Calculator, 
+  Car,
+  Phone, 
+  ShieldCheck, 
+  CheckCircle2, 
+  Edit3, 
+  Save, 
+  LogOut, 
+  Activity,
+  AlertCircle,
+  KeyRound,
+  ArrowUpRight,
+  Send,
+  Calendar,
+  CreditCard,
+  Clock
+} from 'lucide-react';
 import { StaffUser, Booking, AuditLogItem } from '@/types/fleet';
 import { supabase } from '@/lib/supabase';
 
@@ -29,6 +48,7 @@ export default function ProfileTab({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   const [saveErrorMsg, setSaveErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  
   const [requestedRole, setRequestedRole] = useState<'super_admin' | 'rental_agent' | 'accountant'>(
     currentStaff.role === 'accountant' ? 'rental_agent' : 'accountant'
   );
@@ -45,16 +65,16 @@ export default function ProfileTab({
     }
   }, [currentStaff, isEditing]);
 
-  // استخراج سجل النشاطات الخاص بالموظف الحالي فقط
+  // Activity logs by this staff member
   const myAuditLogs = auditLogs.filter(
     log => log.staffName.toLowerCase().includes(currentStaff.username.toLowerCase()) || 
            log.staffName.includes(currentStaff.name) ||
            (currentStaff.role === 'super_admin' && log.staffRole === 'super_admin')
   );
 
-  // إحصائيات الحجوزات الخاصة بهذا الموظف
+  // Bookings handled by this staff member
   const myHandledBookings = bookings.filter(
-    b => b.staffId === currentStaff.id || b.staffName.includes(currentStaff.name)
+    b => b.staffId === currentStaff.id || (b.staffName && b.staffName.includes(currentStaff.name))
   );
 
   const totalHandledRevenue = myHandledBookings.reduce((sum, b) => sum + b.finalTotalEGP, 0);
@@ -77,7 +97,7 @@ export default function ProfileTab({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'تعذر إرسال طلب الصلاحية.');
       setPermissionReason('');
-      setPermissionMessage('تم إرسال طلبك إلى المدير للمراجعة.');
+      setPermissionMessage('تم إرسال طلبك للمدير العام للمراجعة والاعتماد.');
     } catch (error) {
       setPermissionRequestError(true);
       setPermissionMessage(error instanceof Error ? error.message : 'تعذر إرسال طلب الصلاحية.');
@@ -86,7 +106,6 @@ export default function ProfileTab({
     }
   };
 
-  // حفظ التعديلات
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUsername = usernameInput.trim().toLowerCase();
@@ -110,119 +129,366 @@ export default function ProfileTab({
     }
   };
 
-  // رمز وألوان الرتبة الوظيفية
   const roleConfig = currentStaff.maintenanceAccess ? {
-    title: 'مبرمج النظام ومركز الصيانة',
-    badge: 'مبرمج النظام',
+    title: 'مبرمج المنظومة المعتمد',
+    badge: 'مبرمج المنظومة',
     icon: ShieldCheck,
-    description: 'مركز صيانة خاص لتشخيص الحالة والنسخ والاستعادة وإعادة الضبط، مع إدارة المدراء والموظفين.',
+    description: 'صلاحيات تقنية متقدمة لتشخيص النظام والنسخ الاحتياطي وإدارة المنظومة.',
   } : {
     super_admin: {
-      title: 'المدير العام للمنظومة (Super Admin)',
+      title: 'المدير العام للمنظومة',
       badge: 'مدير عام',
       icon: Crown,
-      description: 'كامل الصلاحيات لإدارة الأسطول، الحسابات، الأرباح، وتعيين الموظفين.',
+      description: 'كامل الصلاحيات التنفيذية لإدارة الأسطول، العقود، الحسابات، وتعيين الموظفين.',
     },
     rental_agent: {
-      title: 'مسؤول التأجير والاستقبال (Rental Agent)',
+      title: 'مسؤول التأجير والاستقبال',
       badge: 'مسؤول تأجير',
       icon: Briefcase,
-      description: 'إدارة وتسليم واستلام المركبات، توقيع العقود، وفحص عدادات الكيلومتر.',
+      description: 'تسليم واستلام المركبات، توثيق العقود الرسمية، وتحديث عدادات الكيلومتر.',
     },
     accountant: {
-      title: 'المحاسب المالي للشركة (Accountant)',
+      title: 'المحاسب المالي للشركة',
       badge: 'محاسب مالي',
       icon: Calculator,
-      description: 'إصدار الفواتير الرسمية، متابعة الودائع المستردة، وتصفية مستحقات الملاك.',
+      description: 'إصدار الفواتير الرسمية، متابعة الودائع، وتصفية مستحقات الملاك والشركاء.',
+    },
+    fleet_entry: {
+      title: 'مسؤول إدخال أسطول السيارات',
+      badge: 'إدخال أسطول',
+      icon: Car,
+      description: 'إدخال وتحديث بيانات السيارات والأسطول، التأمينات، والعدادات دون الاطلاع على العقود أو الحسابات.',
     },
   }[currentStaff.role];
 
   const RoleIcon = roleConfig.icon;
 
   return (
-    <div className="admin-profile">
-      <div className="admin-page-heading">
-        <div><span className="admin-kicker">مساحة الموظف</span><h2>حسابي وإعداداتي</h2><p>بياناتك، صلاحياتك، ونشاطك في مكان واحد.</p></div>
-        <span className="profile-session"><ShieldCheck size={16} /> جلسة عمل إدارية مصرحة</span>
-      </div>
+    <div className="space-y-3.5 max-w-[1600px] mx-auto text-slate-800 font-arabic" dir="rtl">
+      {/* 1. Header & Live Profile Strip */}
+      <header className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-lg flex items-center justify-center flex-shrink-0">
+            {currentStaff.name.charAt(0)}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base sm:text-lg font-black text-white truncate">
+                {currentStaff.name}
+              </h1>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-amber-300">
+                <RoleIcon size={12} className="text-amber-400" />
+                <span>{roleConfig.badge}</span>
+              </span>
+              <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                نشط ومصرّح
+              </span>
+            </div>
 
-      <section className="profile-hero" aria-label="هوية الموظف">
-        <div className="profile-hero-art" aria-hidden="true"><span /><span /><RoleIcon /></div>
-        <div className="profile-identity">
-          <div className="profile-avatar">{currentStaff.name.charAt(0)}<span><RoleIcon size={17} /></span></div>
-          <div className="profile-identity-copy">
-            <span className="profile-role"><RoleIcon size={14} /> {roleConfig.badge}</span>
-            <h3>{currentStaff.name}</h3>
-            <p>{roleConfig.title}</p>
-            <div className="profile-contact"><span dir="ltr">@{currentStaff.username}</span><span><Phone size={13} /><bdi>{currentStaff.phone || '—'}</bdi></span></div>
+            {/* Quick Metrics in Header */}
+            <div className="flex items-center gap-3 text-xs text-slate-400 mt-1 flex-wrap font-mono">
+              <span>@{currentStaff.username}</span>
+              {currentStaff.phone && (
+                <>
+                  <span>·</span>
+                  <span dir="ltr">{currentStaff.phone}</span>
+                </>
+              )}
+              <span>·</span>
+              <span className="text-slate-300 font-sans">
+                {myAuditLogs.length} عملية موثقة
+              </span>
+              {myHandledBookings.length > 0 && (
+                <>
+                  <span>·</span>
+                  <span className="text-slate-300 font-sans">
+                    {myHandledBookings.length} عقود بإشرافك
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
-        <div className="profile-hero-actions">
-          <span className="profile-active"><i /> حساب نشط ومصرح</span>
-          <button onClick={() => setIsEditing(!isEditing)} className="admin-button admin-button-lime"><Edit3 size={16} />{isEditing ? 'إلغاء التعديل' : 'تعديل بياناتي'}</button>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 self-stretch md:self-auto justify-end">
+          <button
+            type="button"
+            onClick={() => setIsEditing(!isEditing)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+              isEditing
+                ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                : 'bg-white text-slate-900 hover:bg-slate-100 shadow-2xs'
+            }`}
+          >
+            <Edit3 size={13} />
+            <span>{isEditing ? 'إلغاء التعديل' : 'تعديل بياناتي'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onLogout}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold text-rose-300 bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/80 flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="تسجيل الخروج"
+          >
+            <LogOut size={13} />
+            <span>خروج</span>
+          </button>
         </div>
-      </section>
+      </header>
 
-      {saveSuccessMsg && <div role="status" className="profile-feedback is-success"><CheckCircle2 size={18} />{saveSuccessMsg}</div>}
+      {/* Save Success Alert */}
+      {saveSuccessMsg && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 p-3 rounded-xl text-xs flex items-center gap-2 shadow-xs">
+          <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+          <span className="font-semibold">{saveSuccessMsg}</span>
+        </div>
+      )}
 
-      <div className="profile-layout">
-        <section className="profile-panel profile-account">
-          <div className="profile-section-heading"><span className="profile-section-icon"><User size={20} /></span><div><h3>المعلومات الشخصية</h3><p>بيانات حسابك ووسائل التواصل</p></div><span className="profile-section-number">01</span></div>
+      {/* 2. Main 2-Column Split Console */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Right 2 Cols: Personal Details & Edit Form */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <User size={15} className="text-slate-600" />
+              <h3 className="text-xs font-bold text-slate-900">المعلومات الشخصية وبيانات الدخول</h3>
+            </div>
+          </div>
+
           {isEditing ? (
-            <form onSubmit={handleSaveProfile} className="profile-edit-form">
-              {saveErrorMsg && <div role="alert" className="profile-feedback is-error">{saveErrorMsg}</div>}
-              <div className="profile-fields">
-                <div><label htmlFor="profile-name">الاسم الكامل</label><input id="profile-name" type="text" required value={nameInput} onChange={(e) => setNameInput(e.target.value)} /></div>
-                <div><label htmlFor="profile-username">اسم المستخدم (للدخول)</label><input id="profile-username" type="text" required value={usernameInput} onChange={(e) => setUsernameInput(e.target.value.toLowerCase().replace(/\s+/g, ''))} dir="ltr" /></div>
-                <div><label htmlFor="profile-phone">رقم الهاتف</label><input id="profile-phone" type="text" required value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} dir="ltr" /></div>
+            <form onSubmit={handleSaveProfile} className="space-y-3 text-xs">
+              {saveErrorMsg && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-2.5 rounded-lg flex items-center gap-2 text-xs">
+                  <AlertCircle size={14} className="shrink-0 text-rose-600" />
+                  <span>{saveErrorMsg}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    الاسم الكامل <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 focus:bg-white text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    اسم المستخدم (للدخول) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    dir="ltr"
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                    className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 focus:bg-white text-slate-900 font-mono text-left"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    رقم الهاتف المعتمد
+                  </label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={phoneInput}
+                    onChange={(e) => setPhoneInput(e.target.value)}
+                    className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 focus:bg-white text-slate-900 font-mono text-left"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    كلمة المرور الجديدة (اختياري)
+                  </label>
+                  <input
+                    type="password"
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    placeholder="اتركها فارغة للاحتفاظ بالحالية"
+                    className="w-full h-8 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 focus:bg-white text-slate-900 placeholder:text-slate-400"
+                  />
+                </div>
               </div>
-              <div className="profile-password-section"><div><KeyRound size={19} /><h4>كلمة المرور</h4></div><label htmlFor="profile-password">كلمة المرور الجديدة</label><input id="profile-password" type="password" minLength={8} autoComplete="new-password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="اتركها فارغة للاحتفاظ بالقديمة" /><p>اترك الحقل فارغًا للاحتفاظ بكلمة المرور الحالية.</p></div>
-              <div className="profile-form-actions"><span>تحديث فوري ينعكس على حسابك</span><button type="button" onClick={() => setIsEditing(false)} className="admin-button admin-button-subtle">إلغاء</button><button type="submit" disabled={isSaving} className="admin-button admin-button-dark"><Save size={16} />{isSaving ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}</button></div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-50 rounded-lg inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                >
+                  <Save size={13} />
+                  <span>{isSaving ? 'جارٍ الحفظ...' : 'حفظ التعديلات'}</span>
+                </button>
+              </div>
             </form>
           ) : (
-            <>
-              <dl className="profile-readonly"><div><dt>الاسم الكامل</dt><dd>{currentStaff.name}</dd></div><div><dt>اسم المستخدم (للدخول)</dt><dd><bdi>@{currentStaff.username}</bdi></dd></div><div><dt>رقم الهاتف</dt><dd><bdi>{currentStaff.phone || '—'}</bdi></dd></div><div><dt>الدور الوظيفي</dt><dd>{roleConfig.badge}</dd></div></dl>
-              <div className="profile-security-note"><KeyRound size={19} /><div><strong>كلمة المرور</strong><p>يمكنك تحديثها من خلال «تعديل بياناتي».</p></div><ShieldCheck size={19} /></div>
-            </>
-          )}
-        </section>
+            <div className="space-y-2.5 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200/70">
+                <div>
+                  <span className="text-[10px] text-slate-400 block">الاسم الكامل</span>
+                  <strong className="text-slate-900 font-bold block mt-0.5">{currentStaff.name}</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">اسم المستخدم</span>
+                  <span className="text-slate-900 font-mono font-bold block mt-0.5" dir="ltr">@{currentStaff.username}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">الهاتف المعتمد</span>
+                  <span className="text-slate-900 font-mono block mt-0.5" dir="ltr">{currentStaff.phone || 'غير مسجل'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">الرتبة الوظيفية</span>
+                  <strong className="text-slate-900 font-bold block mt-0.5">{roleConfig.badge}</strong>
+                </div>
+              </div>
 
-        <section className="profile-panel profile-access">
-          <div className="profile-section-heading"><span className="profile-section-icon"><ShieldCheck size={20} /></span><div><h3>الصلاحيات والأمان</h3><p>دورك الحالي في المنظومة</p></div><span className="profile-section-number">02</span></div>
-          <div className="profile-access-role"><RoleIcon size={26} /><strong>{roleConfig.badge}</strong><p>{roleConfig.description}</p></div>
-          {currentStaff.role !== 'super_admin' && (
-            <form onSubmit={handlePermissionRequest} className="profile-permission-form">
-              <h4>طلب صلاحية إضافية من المدير</h4>
-              <label htmlFor="profile-request-role">الصلاحية المطلوبة</label>
-              <select id="profile-request-role" value={requestedRole} onChange={(e) => setRequestedRole(e.target.value as typeof requestedRole)}>
-                {currentStaff.role !== 'rental_agent' && <option value="rental_agent">مسؤول تأجير</option>}
-                {currentStaff.role !== 'accountant' && <option value="accountant">محاسب</option>}
-                <option value="super_admin">مدير عام</option>
-              </select>
-              <label htmlFor="profile-request-reason">سبب الطلب</label>
-              <input id="profile-request-reason" value={permissionReason} onChange={(e) => setPermissionReason(e.target.value)} minLength={5} maxLength={300} required placeholder="اكتب سبب طلب الصلاحية" />
-              <button disabled={isRequestingPermission} className="admin-button admin-button-dark">{isRequestingPermission ? 'جارٍ الإرسال...' : 'إرسال الطلب'}</button>
-              {permissionMessage && <p role={permissionRequestError ? 'alert' : 'status'} className={`profile-feedback ${permissionRequestError ? 'is-error' : 'is-success'}`}>{permissionMessage}</p>}
-            </form>
+              <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200/70 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <KeyRound size={14} className="text-slate-500" />
+                  <span className="text-[11px] text-slate-600">كلمة المرور مشفرة ومؤمنة في النظام</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="text-xs text-slate-900 font-bold underline hover:text-slate-700 cursor-pointer"
+                >
+                  تغيير كلمة المرور
+                </button>
+              </div>
+            </div>
           )}
-          <div className="profile-session-note"><ShieldCheck size={16} /><span>موثق ومحمي · جلسة عمل إدارية مصرحة</span></div>
-        </section>
+        </div>
+
+        {/* Left 1 Col: Role Scope & Promotion Request */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={15} className="text-slate-600" />
+                <h3 className="text-xs font-bold text-slate-900">نطاق الصلاحيات</h3>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/70 mt-3 space-y-1">
+              <div className="flex items-center gap-1.5">
+                <RoleIcon size={14} className="text-slate-700" />
+                <strong className="text-xs font-bold text-slate-900">{roleConfig.title}</strong>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                {roleConfig.description}
+              </p>
+            </div>
+
+            {/* Request Upgrade for Non-Admins */}
+            {currentStaff.role !== 'super_admin' && (
+              <form onSubmit={handlePermissionRequest} className="pt-3 border-t border-slate-100 space-y-2 text-xs">
+                <div className="flex items-center gap-1 font-bold text-slate-900 text-[11px]">
+                  <ArrowUpRight size={13} className="text-amber-600" />
+                  <span>طلب ترقية صلاحية إضافية</span>
+                </div>
+
+                <div>
+                  <select
+                    value={requestedRole}
+                    onChange={(e) => setRequestedRole(e.target.value as typeof requestedRole)}
+                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  >
+                    {currentStaff.role !== 'rental_agent' && <option value="rental_agent">مسؤول تأجير واستقبال</option>}
+                    {currentStaff.role !== 'accountant' && <option value="accountant">محاسب مالي</option>}
+                    <option value="super_admin">مدير عام للنظام</option>
+                  </select>
+                </div>
+
+                <div>
+                  <textarea
+                    rows={2}
+                    value={permissionReason}
+                    onChange={(e) => setPermissionReason(e.target.value)}
+                    required
+                    minLength={5}
+                    placeholder="سبب طلب الصلاحية..."
+                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900 resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isRequestingPermission}
+                  className="w-full py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 disabled:opacity-50 transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Send size={12} />
+                  <span>{isRequestingPermission ? 'جارٍ الإرسال...' : 'إرسال الطلب'}</span>
+                </button>
+
+                {permissionMessage && (
+                  <p className={`text-[10px] p-2 rounded-lg ${permissionRequestError ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                    {permissionMessage}
+                  </p>
+                )}
+              </form>
+            )}
+          </div>
+        </div>
       </div>
 
-      <section className="profile-stats" aria-label="مؤشرات نشاط الموظف">
-        <div><span className="profile-stat-icon"><Activity size={19} /></span><span>العمليات المسجلة باسمي</span><strong>{myAuditLogs.length}</strong><small>عملية موثقة في سجل الرقابة</small></div>
-        <div><span className="profile-stat-icon"><Calendar size={19} /></span><span>الحجوزات المشرف عليها</span><strong>{myHandledBookings.length}</strong><small>عقود تم تسليمها أو إدارتها</small></div>
-        <div><span className="profile-stat-icon"><TrendingUp size={19} /></span><span>إجمالي مبالغ العقود</span><strong>{totalHandledRevenue > 0 ? totalHandledRevenue.toLocaleString() : '—'} <em>ج.م</em></strong><small>إيرادات بإشرافك المباشر</small></div>
-        <div><span className="profile-stat-icon"><ShieldCheck size={19} /></span><span>مستوى الأمان والتحقق</span><strong className="profile-stat-text">موثق ومحمي</strong><small>جلسة عمل إدارية مصرحة</small></div>
-      </section>
+      {/* 3. Personal Activity Log Feed */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-2.5">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Activity size={14} className="text-slate-600" />
+            <h3 className="text-xs font-bold text-slate-900">سجل نشاطاتي وإجراءاتي في النظام</h3>
+          </div>
+          <span className="text-[10px] bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-full">
+            {myAuditLogs.length} عملية
+          </span>
+        </div>
 
-      <section className="profile-panel profile-activity">
-        <div className="profile-section-heading"><span className="profile-section-icon"><Activity size={20} /></span><div><h3>سجل نشاطاتي وعملياتي</h3><p>سجل كامل للعمليات والتعديلات على الأسطول والعقود في النظام</p></div><span className="profile-activity-count">إجمالي نشاطاتك: {myAuditLogs.length}</span></div>
-        {myAuditLogs.length === 0 ? <div className="profile-empty"><Activity size={28} /><strong>لا توجد عمليات مسجلة باسمك حتى الآن في هذا الجهاز.</strong><p>أي عملية تقوم بها (إضافة سيارة، حجز، تعديل) ستوثق هنا فوراً.</p></div> : (
-          <div className="profile-timeline">{myAuditLogs.map((log) => <article key={log.id}><span className="profile-timeline-dot"><CheckCircle2 size={15} /></span><div><h4>{log.action}</h4><p>{log.details}</p></div><time><Clock size={13} />{log.timestamp}</time></article>)}</div>
+        {myAuditLogs.length === 0 ? (
+          <p className="py-6 text-center text-slate-400 text-xs">لا توجد عمليات مسجلة باسمك حتى الآن.</p>
+        ) : (
+          <div className="space-y-1.5 max-h-[260px] overflow-y-auto scrollbar-thin">
+            {myAuditLogs.slice(0, 8).map((log) => (
+              <div
+                key={log.id}
+                className="p-2 bg-slate-50 hover:bg-slate-100/70 border border-slate-200/70 rounded-lg text-xs flex items-center justify-between gap-2 transition-colors"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <strong className="text-slate-900 font-bold text-xs truncate">{log.action}</strong>
+                    <span className="text-[10px] text-slate-400 font-mono">#{log.id.slice(-5)}</span>
+                  </div>
+                  <p className="text-slate-600 text-[11px] truncate mt-0.5">{log.details}</p>
+                </div>
+
+                <div className="flex items-center gap-1 text-slate-400 font-mono text-[10px] flex-shrink-0" dir="ltr">
+                  <Clock size={11} />
+                  <span>{log.timestamp}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
-      </section>
-      <div className="profile-logout"><div><LogOut size={19} /><span>انتهيت من العمل؟<small>يمكنك تسجيل الخروج من حسابك هنا.</small></span></div><button onClick={onLogout} className="admin-button">تسجيل الخروج<LogOut size={15} /></button></div>
+      </div>
     </div>
   );
 }
