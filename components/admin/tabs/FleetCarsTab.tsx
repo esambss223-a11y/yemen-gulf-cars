@@ -251,6 +251,7 @@ export default function FleetCarsTab({
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
   const admin = currentStaff?.role === 'super_admin';
+  const canAddCar = admin || currentStaff?.role === 'fleet_entry';
   const canBook = admin || currentStaff?.role === 'rental_agent';
   const activeCount = cars.filter(car => car.status !== 'archived').length;
   const maintenanceCount = cars.filter(car => car.status === 'maintenance' || car.status === 'cleaning').length;
@@ -414,13 +415,13 @@ export default function FleetCarsTab({
           )}
 
           {/* Add Car Primary Button */}
-          {admin && (
+          {canAddCar && (
             <button
               type="button"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold transition-colors shadow-xs shrink-0 cursor-pointer"
               onClick={onOpenAddCar}
             >
-              <Plus size={13} />
+              <Plus size={13} strokeWidth={2.5} />
               <span>إضافة سيارة</span>
             </button>
           )}

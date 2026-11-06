@@ -672,6 +672,7 @@ export default function AdminDashboardPage() {
               bookings={bookings}
               coupons={coupons}
               currentStaff={currentStaff}
+              onOpenAddBooking={openBookingForm}
               onOpenContract={(bk) => setSelectedBookingForContract(bk)}
               onReturnCar={(bk) => {
                 clearDataOperationError();

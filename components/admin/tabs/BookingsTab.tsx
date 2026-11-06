@@ -9,7 +9,8 @@ import {
   LayoutGrid, 
   List, 
   CreditCard,
-  Bell
+  Bell,
+  Plus
 } from 'lucide-react';
 import type { Booking, BookingStatus, PromoCoupon, StaffUser, BookingReviewInput } from '@/types/fleet';
 import BookingReviewModal from '@/components/admin/modals/BookingReviewModal';
@@ -25,6 +26,7 @@ interface BookingsTabProps {
   onActivateBooking?: (booking: Booking) => Promise<void>;
   onApproveBooking?: (booking: Booking, details: BookingReviewInput) => Promise<void>;
   onRejectBooking?: (booking: Booking, reason: string) => Promise<void>;
+  onOpenAddBooking?: () => void;
 }
 
 type ViewSection = 'pending' | 'active' | 'completed' | 'rejected' | 'all';
@@ -49,6 +51,7 @@ export default function BookingsTab({
   onActivateBooking,
   onApproveBooking,
   onRejectBooking,
+  onOpenAddBooking,
 }: BookingsTabProps) {
   const [activeSection, setActiveSection] = useState<ViewSection>(
     () => bookings.some((b) => b.status === 'pending_approval') ? 'pending' : 'active'
@@ -57,6 +60,7 @@ export default function BookingsTab({
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [bookingForReview, setBookingForReview] = useState<Booking | null>(null);
   const [activatingBookingId, setActivatingBookingId] = useState<string | null>(null);
+  const canBook = currentStaff?.role === 'super_admin' || currentStaff?.role === 'rental_agent';
 
   const todayParts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -228,6 +232,17 @@ export default function BookingsTab({
               <List size={13} />
             </button>
           </div>
+
+          {canBook && onOpenAddBooking && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold transition-colors shadow-xs shrink-0 cursor-pointer"
+              onClick={onOpenAddBooking}
+            >
+              <Plus size={13} strokeWidth={2.5} />
+              <span>عقد وحجز جديد</span>
+            </button>
+          )}
         </div>
       </div>
 

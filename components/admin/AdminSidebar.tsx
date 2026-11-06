@@ -114,6 +114,7 @@ export default function AdminSidebar({
   };
 
   const canBook = currentStaff.role === 'super_admin' || currentStaff.role === 'rental_agent';
+  const canAddCar = currentStaff.role === 'super_admin' || currentStaff.role === 'fleet_entry';
 
   return (
     <>
@@ -205,20 +206,22 @@ export default function AdminSidebar({
         </nav>
 
         {/* Mobile Quick Action Drawer Items */}
-        {canBook && (
+        {(canBook || canAddCar) && (
           <div className="admin-navigation-create" aria-label="إجراءات جديدة">
-            <span>إنشاء جديد</span>
-            <button
-              type="button"
-              onClick={() => {
-                onCloseMobile?.();
-                onOpenAddBooking();
-              }}
-            >
-              <ClipboardList size={16} aria-hidden="true" />
-              <span>عقد وحجز جديد</span>
-            </button>
-            {currentStaff.role === 'super_admin' && (
+            <span>إنشاء وإضافة سريعة</span>
+            {canBook && (
+              <button
+                type="button"
+                onClick={() => {
+                  onCloseMobile?.();
+                  onOpenAddBooking();
+                }}
+              >
+                <ClipboardList size={16} className="text-amber-600" aria-hidden="true" />
+                <span>عقد وحجز جديد</span>
+              </button>
+            )}
+            {canAddCar && (
               <button
                 type="button"
                 onClick={() => {
@@ -226,8 +229,8 @@ export default function AdminSidebar({
                   onOpenAddCar();
                 }}
               >
-                <Plus size={16} aria-hidden="true" />
-                <span>إضافة سيارة</span>
+                <Car size={16} className="text-slate-800" aria-hidden="true" />
+                <span>إضافة سيارة للأسطول</span>
               </button>
             )}
           </div>
