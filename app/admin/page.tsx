@@ -362,6 +362,17 @@ export default function AdminDashboardPage() {
     return true;
   };
 
+  // معالجات إغلاق النوافذ الثابتة
+  const handleCloseStaffModal = useCallback(() => {
+    setIsAddStaffOpen(false);
+    setEditingStaff(null);
+  }, []);
+
+  const handleCloseOwnerModal = useCallback(() => {
+    setIsAddOwnerOpen(false);
+    setEditingOwner(null);
+  }, []);
+
   // معالجات المودال - الموظفين
   const handleStaffFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -851,7 +862,7 @@ export default function AdminDashboardPage() {
 
       <StaffFormModal
         isOpen={isAddStaffOpen}
-        onClose={() => setIsAddStaffOpen(false)}
+        onClose={handleCloseStaffModal}
         editingStaff={editingStaff}
         staffForm={staffForm}
         setStaffForm={setStaffForm}
@@ -860,7 +871,7 @@ export default function AdminDashboardPage() {
 
       <OwnerFormModal
         isOpen={isAddOwnerOpen}
-        onClose={() => setIsAddOwnerOpen(false)}
+        onClose={handleCloseOwnerModal}
         editingOwner={editingOwner}
         ownerForm={ownerForm}
         setOwnerForm={setOwnerForm}

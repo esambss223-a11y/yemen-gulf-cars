@@ -471,6 +471,7 @@ export default function FleetCarsTab({
                 onDetails={() => onOpenDetails(car)}
                 onBook={() => onOpenQuickBook(car)}
                 onEdit={() => onOpenEditCar(car)}
+                onEditImages={() => onOpenEditCar(car, 2)}
                 onManage={() => setManagementId(open ? null : car.id)}
               >
                 {open && renderManagementDrawer(car, count)}
@@ -496,6 +497,7 @@ export default function FleetCarsTab({
                 onDetails={() => onOpenDetails(car)}
                 onBook={() => onOpenQuickBook(car)}
                 onEdit={() => onOpenEditCar(car)}
+                onEditImages={() => onOpenEditCar(car, 2)}
                 onManage={() => setManagementId(open ? null : car.id)}
               >
                 {open && renderManagementDrawer(car, count)}

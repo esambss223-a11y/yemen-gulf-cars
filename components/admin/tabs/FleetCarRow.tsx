@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { CalendarDays, CalendarPlus, FileText, Gauge, Pencil, Settings2, UserRound, Clock, ShieldCheck } from 'lucide-react';
+import { CalendarDays, CalendarPlus, FileText, Gauge, Pencil, Settings2, UserRound, Clock, ShieldCheck, Camera } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { Car } from '@/types/fleet';
 import type { FleetBookingSummary } from '@/lib/fleet-booking-summary';
@@ -41,6 +41,7 @@ interface Props {
   onDetails: () => void;
   onBook: () => void;
   onEdit: () => void;
+  onEditImages?: () => void;
   onManage: () => void;
   children?: ReactNode;
 }
@@ -54,6 +55,7 @@ export default function FleetCarRow({
   onDetails,
   onBook,
   onEdit,
+  onEditImages,
   onManage,
   children,
 }: Props) {
@@ -273,6 +275,19 @@ export default function FleetCarRow({
             >
               <Pencil size={13} />
               {'تعديل'}
+            </button>
+          )}
+
+          {admin && onEditImages && (
+            <button
+              type="button"
+              onClick={onEditImages}
+              className="inline-flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-lg border border-amber-300/60 bg-amber-50/60 hover:bg-amber-100/70 text-amber-900 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+              title="انتقال مباشر لتعديل صور ومعرض السيارة"
+              aria-label="تعديل الصور"
+            >
+              <Camera size={13} className="text-amber-600 stroke-[2.2]" />
+              {'الصور'}
             </button>
           )}
 

@@ -168,6 +168,28 @@ function CarFormEditor({
     finally { savingRef.current = false; setIsSaving(false); }
   };
 
+  const handleSaveImmediately = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isUploading || savingRef.current) return;
+    if (!formRef.current?.reportValidity()) return;
+    setFormError('');
+    try {
+      validateCarOffers(carForm);
+      if (!Number.isInteger(carForm.minRentalDays ?? 1) || (carForm.minRentalDays ?? 1) < 1 || (carForm.minRentalDays ?? 1) > 365) {
+        throw new Error('أقل مدة للإيجار يجب أن تكون بين يوم و365 يومًا.');
+      }
+      savingRef.current = true;
+      setIsSaving(true);
+      const saved = await onSubmit(e as unknown as React.FormEvent);
+      if (saved === false) setFormError('لم تُحفظ السيارة. راجع رسالة الخطأ ثم أعد المحاولة؛ بياناتك ما زالت موجودة.');
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'تعذر حفظ السيارة. راجع البيانات وحاول مجددًا.');
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className={inline ? 'fleet-car-form fleet-editor fleet-editor-v2 font-arabic' : 'fleet-car-form fleet-editor-v2 fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-hidden font-arabic'}>
       {inline && <div className="fleet-editor-heading"><button type="button" disabled={isUploading || isSaving} onClick={onClose}>← رجوع إلى السيارات</button><span>{editingCar ? 'السيارات / تعديل البيانات' : 'السيارات / إضافة سيارة'}</span></div>}
@@ -194,10 +216,10 @@ function CarFormEditor({
                 type="button"
                 disabled={isUploading || isSaving}
                 onClick={() => { setFormError(''); setStep(step === 2 ? 0 : 2); }}
-                className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border border-amber-500/40 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-                title={step === 2 ? 'العودة للبيانات الأساسية' : 'انتقال مباشر للصور والمعرض'}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border border-amber-500/40 text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                title={step === 2 ? 'العودة للبيانات الأساسية' : 'انتقال مباشر لمعرض وصور السيارة'}
               >
-                <span>{step === 2 ? '← بيانات السيارة' : '📷 معرض الصور'}</span>
+                <span>{step === 2 ? '← بيانات السيارة' : '📷 معرض وصور السيارة'}</span>
               </button>
             )}
             {!inline && (
@@ -214,7 +236,26 @@ function CarFormEditor({
           </div>
         </div>
 
-        <nav className="car-editor-steps" aria-label="خطوات بيانات السيارة">{['بيانات السيارة', 'الأسعار والعروض', 'الصور والتفاصيل'].map((title, index) => <button type="button" key={title} disabled={isUploading || isSaving || index > step} aria-current={index === step ? 'step' : undefined} onClick={() => { setFormError(''); setStep(index); }}><span>{index + 1}</span><strong>{title}<small>{['الاسم واللوحة وحالة التشغيل', 'أسعار المدد وشروط التأجير', 'المعرض والمالك والصيانة'][index]}</small></strong></button>)}</nav>
+        <nav className="car-editor-steps" aria-label="خطوات بيانات السيارة">
+          {['بيانات السيارة', 'الأسعار والعروض', 'الصور والتفاصيل'].map((title, index) => (
+            <button
+              type="button"
+              key={title}
+              disabled={isUploading || isSaving || index > step}
+              aria-current={index === step ? 'step' : undefined}
+              onClick={() => {
+                setFormError('');
+                setStep(index);
+              }}
+            >
+              <span>{index + 1}</span>
+              <strong>
+                {title}
+                <small>{['الاسم واللوحة وحالة التشغيل', 'أسعار المدد وشروط التأجير', 'المعرض والمالك والصيانة'][index]}</small>
+              </strong>
+            </button>
+          ))}
+        </nav>
         {/* جسم الاستمارة القابل للتمرير الانسيابي الفاخر */}
         <form ref={formRef} id="car-form-modal" onSubmit={submitEditor} onInvalidCapture={event => { const details = (event.target as HTMLElement).closest('details'); if (details) details.open = true; }} className={`fleet-car-editor-form flex-1 p-4 sm:p-6 space-y-4 text-xs ${inline ? '' : 'overflow-y-auto overflow-x-hidden'}`}>
           <fieldset className="car-editor-step" hidden={step !== 0} disabled={step !== 0 || isSaving}>
@@ -296,6 +337,17 @@ function CarFormEditor({
             إلغاء
           </button>
           {step > 0 && <button type="button" className="fleet-car-cancel" disabled={isUploading || isSaving} onClick={() => { setFormError(''); setStep(step - 1); }}>السابق</button>}
+          {editingCar && step < 2 && (
+            <button
+              type="button"
+              onClick={handleSaveImmediately}
+              disabled={isUploading || isSaving}
+              className="px-4 py-2 rounded-xl font-bold border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs transition-colors cursor-pointer shadow-2xs"
+              title="حفظ التعديلات فوراً دون المرور بباقي الخطوات"
+            >
+              <span>{isSaving ? 'جارٍ الحفظ…' : 'حفظ التعديلات الآن'}</span>
+            </button>
+          )}
           <button
             type="submit"
             form="car-form-modal"

@@ -36,7 +36,8 @@ export default function OwnerFormModal({
   onSubmit,
 }: OwnerFormModalProps) {
   const [mounted, setMounted] = useState(false);
-  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     setMounted(true);
@@ -46,10 +47,9 @@ export default function OwnerFormModal({
     if (isOpen) {
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-      closeBtnRef.current?.focus();
 
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') onClose();
+        if (e.key === 'Escape') onCloseRef.current();
       };
       window.addEventListener('keydown', handleKeyDown);
 
@@ -58,7 +58,7 @@ export default function OwnerFormModal({
         window.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -92,7 +92,6 @@ export default function OwnerFormModal({
             </div>
           </div>
           <button
-            ref={closeBtnRef}
             type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-lg grid place-items-center text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
